@@ -1,0 +1,14 @@
+tb/
+wavefunctions/
+results/
+__pycache__/
+.idea/
+.ipynb_checkpoints/
+*.log
+scratchpad/run.sh
+config.in
+tmp*
+build
+dist
+
+
