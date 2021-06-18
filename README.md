@@ -7,7 +7,11 @@ In particular DeepErwin supports:
 - Optimizing wavefunctions for multiple nuclear geometries in parallel, while sharing neural network weights across these wavefunctions to speed-up optimization
 - Use pre-trained weights of a network to speed-up optimization for entirely new wavefunctions
 
-A detailed description of our method and the corresponding results can be found in our recent [arxiv publication](https://arxiv.org/pdf/2105.08351.pdf). Please cite this paper, whenever you use any parts of DeepErwin.
+A detailed description of our method and the corresponding results can be found in our recent [arxiv publication](https://arxiv.org/pdf/2105.08351.pdf). Please cite 
+
+Scherbela, M., Reisenhofer, R., Gerard, L., Marquetand, P., & Grohs, P. (2021). Solving the electronic Schr\" odinger equation for multiple nuclear geometries with weight-sharing deep neural networks. arXiv preprint arXiv:2105.08351.
+
+whenever you use any parts of DeepErwin.
 
 ## Getting Started
 
@@ -16,5 +20,5 @@ The quickest way to get started with DeepErwin is to have a look at our document
 ## About
 
 DeepErwin is a collaborative effort of Rafael Reisenhofer, Philipp Grohs, Philipp Marquetand, Michael Scherbela, and Leon Gerard (University of Vienna).
-For questions regarding this code, freel free to reach out via [e-mail](mailto:rafael.reisenhofer@univie.ac.at).
+For questions regarding this code, freel free to reach out via [e-mail](mailto:deeperwin.datascience@univie.ac.at).
 
