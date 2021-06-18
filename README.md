@@ -9,7 +9,9 @@ In particular DeepErwin supports:
 
 A detailed description of our method and the corresponding results can be found in our recent [arxiv publication](https://arxiv.org/pdf/2105.08351.pdf). Please cite 
 
-Scherbela, M., Reisenhofer, R., Gerard, L., Marquetand, P., & Grohs, P. (2021). Solving the electronic Schr\" odinger equation for multiple nuclear geometries with weight-sharing deep neural networks. arXiv preprint arXiv:2105.08351.
+- M. Scherbela, R. Reisenhofer, L. Gerard, P. Marquetand, and P. Grohs.<br>
+Solving the electronic Schrödinger equation for multiple nuclear geometries with weight-sharing deep neural networks.<br>
+arXiv preprint arXiv:2105.08351 (2021).
 
 whenever you use any parts of DeepErwin.
 
