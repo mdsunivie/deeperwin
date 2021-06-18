@@ -7,13 +7,12 @@ In particular DeepErwin supports:
 - Optimizing wavefunctions for multiple nuclear geometries in parallel, while sharing neural network weights across these wavefunctions to speed-up optimization
 - Use pre-trained weights of a network to speed-up optimization for entirely new wavefunctions
 
-A detailed description of our method and the corresponding results can be found in our recent [arxiv publication](https://arxiv.org/pdf/2105.08351.pdf). Please cite 
+A detailed description of our method and the corresponding results can be found in our recent [arxiv publication](https://arxiv.org/pdf/2105.08351.pdf). When you use DeepErwin in your work, please cite:
 
-- M. Scherbela, R. Reisenhofer, L. Gerard, P. Marquetand, and P. Grohs.<br>
+M. Scherbela, R. Reisenhofer, L. Gerard, P. Marquetand, and P. Grohs.<br>
 Solving the electronic Schrödinger equation for multiple nuclear geometries with weight-sharing deep neural networks.<br>
-arXiv preprint arXiv:2105.08351 (2021).
+arXiv preprint [arXiv:2105.08351](https://arxiv.org/pdf/2105.08351.pdf) (2021).
 
-whenever you use any parts of DeepErwin.
 
 ## Getting Started
 
