@@ -2,7 +2,7 @@
 
 DeepErwin is python package that implements and optimizes TF 2.x wave function models for numerical solutions to the multi-electron Schrödinger equation.
 
-In particular DeepErwin supports:
+In particular, DeepErwin supports:
 - Optimizing a wavefunction for a single nuclear geometry
 - Optimizing wavefunctions for multiple nuclear geometries in parallel, while sharing neural network weights across these wavefunctions to speed-up optimization
 - Use pre-trained weights of a network to speed-up optimization for entirely new wavefunctions
