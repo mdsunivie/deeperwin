@@ -237,8 +237,11 @@ class PickleLogger(DataLogger):
         self.config.update(params)
 
     def log_weights(self, weight_dict):
-        logging.debug(f"Pickle logger: Creating deepcopy of weight dict; keys = {weight_dict.keys()}")
-        weight_dict = copy.deepcopy(weight_dict)
+        # For some unclear reason this deepcopy has caused the code to get stuck for hours without progress.
+        # Not copying should be fine since we only store the weights once, but this could in principle be problematic when
+        # external code modifies stored weights in-place
+        # logging.debug(f"Pickle logger: Creating deepcopy of weight dict; keys = {weight_dict.keys()}")
+        # weight_dict = copy.deepcopy(weight_dict)
         logging.debug("Pickle logger: Updating self.weights")
         self.weights.update(weight_dict)
 
