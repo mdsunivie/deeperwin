@@ -16,7 +16,7 @@ from ruamel import yaml
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Optimization of wavefunction for a single molecular configuration.")
-    parser.add_argument("config_file", default="config_restart.yml", help="Path to input config file", nargs="?")
+    parser.add_argument("config_file", default="config.yml", help="Path to input config file", nargs="?")
     args = parser.parse_args()
 
     # load and parse config
