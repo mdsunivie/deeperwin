@@ -1,0 +1,35 @@
+deeperwin.configuration.Configuration
+=====================================
+
+.. currentmodule:: deeperwin.configuration
+
+.. autoclass:: Configuration
+   :members:
+   :show-inheritance:
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Configuration.experiment_has_name
+      ~Configuration.walkers_divisible_by_batch_size
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Configuration.physical
+      ~Configuration.model
+      ~Configuration.restart
+      ~Configuration.comment
+      ~Configuration.experiment_name
+   
+   

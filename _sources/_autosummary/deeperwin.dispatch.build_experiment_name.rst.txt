@@ -1,0 +1,6 @@
+deeperwin.dispatch.build\_experiment\_name
+==========================================
+
+.. currentmodule:: deeperwin.dispatch
+
+.. autofunction:: build_experiment_name

@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DeepErwin Tutorial &mdash; deeperwin 1.0.0 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="_static/custom_style.css" type="text/css" />
+    <link rel="shortcut icon" href="_static/favicon.png"/>
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Full documentation for developers" href="api.html" />
+    <link rel="prev" title="Introduction" href="introduction.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="index.html" class="icon icon-home"> deeperwin
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">DeepErwin Tutorial</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#installation">Installation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#installation-using-pip">Installation using pip</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#general-remarks">General Remarks</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">Full documentation for developers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="indices.html">Indices and tables</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">deeperwin</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>DeepErwin Tutorial</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/tutorial.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="deeperwin-tutorial">
+<h1>DeepErwin Tutorial<a class="headerlink" href="#deeperwin-tutorial" title="Permalink to this headline"></a></h1>
+<section id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline"></a></h2>
+<p>DeepErwin is a python3 package and has been tested on Linux and macOS.</p>
+<section id="installation-using-pip">
+<h3>Installation using pip<a class="headerlink" href="#installation-using-pip" title="Permalink to this headline"></a></h3>
+<p>DeepErwin is available as a pypi package, allowing installation via:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip install deeperwin
+</pre></div>
+</div>
+<p>To install from source and being able to modify the package, go to the repository root (containig the file setup.py) and install the package via:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip install -e .
+</pre></div>
+</div>
+<p>Note that you need to have <strong>python &gt;= 3.8</strong> and we recommend to install the source in a separate conda- or virtual-environment.</p>
+<p>To enable GPU-support, use a pre-built jaxlib version with CUDA-support:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip install jax <span class="nv">jaxlib</span><span class="o">==</span><span class="m">0</span>.1.69+cuda101 -f https://storage.googleapis.com/jax-releases/jax_releases.html
+</pre></div>
+</div>
+</section>
+</section>
+<section id="general-remarks">
+<h2>General Remarks<a class="headerlink" href="#general-remarks" title="Permalink to this headline"></a></h2>
+<p>To run a DeepErwin calculation, all configuration options must be specified in a YML file, typically named <em>config.yml</em>.
+For all options that are not specified explicitly, sensible default values will be used. The default values are defined in :~deeperwin.configuration: and a full_config.yml will also be created for each calculation listing the full configuration.</p>
+<p>The absolute minimum that must be specified in a config-file is the physical system that one is interested in, i.e. the positions and charges of the nuclei.</p>
+<div class="highlight-yml notranslate"><div class="highlight"><pre><span></span>physical:
+    R: [[0,0,0], [3.0,0,0]],
+    Z: [3, 1]
+</pre></div>
+</div>
+<p>By default, DeepErwin assumes a neutral, closed shell calculation, i.e. the number of electrons equals the total charge of all nuclei, and the number of spin-up electrons is equal to the number of spin-down electrons.
+For a system with an uneven number of electrons, it is assumed that there is one extra spin-up electron.
+To calculate charged or spin-polarized systems, simply state the total number of electrons and the total number of spin-up electrons, e.g.</p>
+<div class="highlight-yml notranslate"><div class="highlight"><pre><span></span>physical:
+    R: [[0,0,0], [3.0,0,0]],
+    Z: [3, 1]
+    n_electrons: 4
+    n_up: 2
+</pre></div>
+</div>
+<p>Additionally, you might want to specifiy settings for the CASSCF-baseline model: The number of active electrons and active orbitals.</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span>physical:
+    R: [[0,0,0], [3.0,0,0]],
+    Z: [3, 1]
+    n_electrons: 4
+    n_up: 2
+    n_cas_electrons: 2
+    n_cas_orbitals: 4
+</pre></div>
+</div>
+<p>For several small molecules (e.g. H2, LiH, Ethene, first and second row elements) we have predefined their geometries and spin-settings.
+Instead of setting all these parameters manually, you can just specify them using the tag <code class="code docutils literal notranslate"><span class="pre">physical:</span> <span class="pre">name</span></code>:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span>physical:
+    name: LiH
+</pre></div>
+</div>
+<p>You can also partially overwrite settings, e.g. to calculate a modified geometry of a molecule. For example to calculate a streteched LiH molecule with a bond-length of 3.5 bohr use this configuration:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span>physical:
+    name: LiH
+    R: [[0,0,0],[3.5,0,0]]
+</pre></div>
+</div>
+<p>To run an actual calculation, run the python package as an executable:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>deeperwin config.yml
+</pre></div>
+</div>
+<p>This will:</p>
+<ul class="simple">
+<li><p>Create a subdirectory for this specific run</p></li>
+<li><p>Create a full configuration, consisting of your input config-file and all relevant default parameters</p></li>
+<li><p>Run a calculation in the subdirectory</p></li>
+</ul>
+<p>You can also set-up factorial sweeps of config-options, by using the -p flag.
+The following call will set-up 12 subdirectories (4 molecules x 3 learning-rates) and start calculations for all of them.
+If you run this on a SLURM-cluster, the jobs will not be executed directly, but instead SLURM-jobs will be submitted for parallel computation.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>deeperwin -p experiment_name my_sweep -p physical.name B C N O -p optimization.learning_rate 1e-3 2e-3 5e-3 config.yml
+</pre></div>
+</div>
+<p>The code runs best on a GPU, but will in principle also work on a CPU. It will generate several output files, in particular containing:</p>
+<ul class="simple">
+<li><p><strong>GPU.out</strong> containing a detailed debug log of all steps of the calculation</p></li>
+<li><p><strong>full_config.yml</strong> containing all configuration options used for this calculation: Your provided options, as well as all default options. Take a look at this file to see all the available config options for DeepErwin</p></li>
+<li><p><strong>results.bzw</strong> containing a compressed, pickled representation of all data (including history and model weights)</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="introduction.html" class="btn btn-neutral float-left" title="Introduction" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="api.html" class="btn btn-neutral float-right" title="Full documentation for developers" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Michael Scherbela, Leon Gerard, Rafael Reisenhofer.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

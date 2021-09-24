@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>deeperwin.kfac_ferminet_alpha.loss_functions &mdash; deeperwin 1.0.0 documentation</title>
+      <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/custom_style.css" type="text/css" />
+    <link rel="shortcut icon" href="../../../_static/favicon.png"/>
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
+        <script src="../../../_static/jquery.js"></script>
+        <script src="../../../_static/underscore.js"></script>
+        <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../../index.html" class="icon icon-home"> deeperwin
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorial.html">DeepErwin Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Full documentation for developers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../indices.html">Indices and tables</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">deeperwin</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+      <li>deeperwin.kfac_ferminet_alpha.loss_functions</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for deeperwin.kfac_ferminet_alpha.loss_functions</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright 2020 DeepMind Technologies Limited.</span>
+<span class="c1">#</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1"># https://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="sd">&quot;&quot;&quot;Loss functions to be used by LayerCollection.&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">abc</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Sequence</span>
+
+<span class="kn">import</span> <span class="nn">jax</span>
+<span class="kn">import</span> <span class="nn">jax.numpy</span> <span class="k">as</span> <span class="nn">jnp</span>
+
+<span class="kn">from</span> <span class="nn">deeperwin.kfac_ferminet_alpha</span> <span class="kn">import</span> <span class="n">distributions</span>
+<span class="kn">from</span> <span class="nn">deeperwin.kfac_ferminet_alpha</span> <span class="kn">import</span> <span class="n">layers_and_loss_tags</span> <span class="k">as</span> <span class="n">tags</span>
+<span class="kn">from</span> <span class="nn">deeperwin.kfac_ferminet_alpha</span> <span class="kn">import</span> <span class="n">utils</span>
+
+<span class="n">ArrayPair</span> <span class="o">=</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span>
+<span class="n">FloatArray</span> <span class="o">=</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span>
+<span class="n">Index</span> <span class="o">=</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
+
+
+<div class="viewcode-block" id="LossFunction"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.loss_functions.LossFunction.html#deeperwin.kfac_ferminet_alpha.loss_functions.LossFunction">[docs]</a><span class="k">class</span> <span class="nc">LossFunction</span><span class="p">(</span><span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;Abstract base class for loss functions.</span>
+
+<span class="sd">  Note that unlike typical loss functions used in neural networks these are</span>
+<span class="sd">  neither summed nor averaged over the batch and hence the output of evaluate()</span>
+<span class="sd">  will not be a scalar. It is up to the user to then to correctly manipulate</span>
+<span class="sd">  them as needed.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="LossFunction.__init__"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.loss_functions.LossFunction.html#deeperwin.kfac_ferminet_alpha.loss_functions.LossFunction.__init__">[docs]</a>  <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="n">FloatArray</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_weight</span> <span class="o">=</span> <span class="n">weight</span></div>
+
+  <span class="nd">@property</span>
+  <span class="k">def</span> <span class="nf">weight</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FloatArray</span><span class="p">:</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_weight</span>
+
+  <span class="nd">@property</span>
+  <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
+  <span class="k">def</span> <span class="nf">targets</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+    <span class="sd">&quot;&quot;&quot;The targets being predicted by the model.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">      None or Tensor of appropriate shape for calling self._evaluate() on.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">pass</span>
+
+  <span class="nd">@property</span>
+  <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
+  <span class="k">def</span> <span class="nf">inputs</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+    <span class="sd">&quot;&quot;&quot;The inputs to the loss function (excluding the targets).&quot;&quot;&quot;</span>
+    <span class="k">pass</span>
+
+  <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
+  <span class="k">def</span> <span class="nf">copy_with_different_inputs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputs</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]):</span>
+    <span class="k">pass</span>
+
+<div class="viewcode-block" id="LossFunction.evaluate"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.loss_functions.LossFunction.html#deeperwin.kfac_ferminet_alpha.loss_functions.LossFunction.evaluate">[docs]</a>  <span class="k">def</span> <span class="nf">evaluate</span><span class="p">(</span>
+      <span class="bp">self</span><span class="p">,</span>
+      <span class="n">targets</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+      <span class="n">coefficient_mode</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;regular&quot;</span><span class="p">,</span>
+  <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Evaluate the loss function on the targets.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">targets</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">targets</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Cannot evaluate losses with unspecified targets.&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">targets</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+      <span class="n">targets</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">targets</span>
+    <span class="k">if</span> <span class="n">coefficient_mode</span> <span class="o">==</span> <span class="s2">&quot;regular&quot;</span><span class="p">:</span>
+      <span class="n">multiplier</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">weight</span>
+    <span class="k">elif</span> <span class="n">coefficient_mode</span> <span class="o">==</span> <span class="s2">&quot;sqrt&quot;</span><span class="p">:</span>
+      <span class="n">multiplier</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">weight</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">coefficient_mode</span> <span class="o">==</span> <span class="s2">&quot;off&quot;</span><span class="p">:</span>
+      <span class="n">multiplier</span> <span class="o">=</span> <span class="mf">1.0</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unrecognized coefficient_mode=</span><span class="si">{</span><span class="n">coefficient_mode</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_evaluate</span><span class="p">(</span><span class="n">targets</span><span class="p">)</span> <span class="o">*</span> <span class="n">multiplier</span></div>
+
+<div class="viewcode-block" id="LossFunction._evaluate"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.loss_functions.LossFunction.html#deeperwin.kfac_ferminet_alpha.loss_functions.LossFunction._evaluate">[docs]</a>  <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
+  <span class="k">def</span> <span class="nf">_evaluate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">targets</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Evaluates the negative log probability of the targets.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      targets: Tensor that distribution can calculate log_prob() of.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">      negative log probability of each target, summed across all targets.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">pass</span></div>
+
+<div class="viewcode-block" id="LossFunction.grad_of_evaluate"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.loss_functions.LossFunction.html#deeperwin.kfac_ferminet_alpha.loss_functions.LossFunction.grad_of_evaluate">[docs]</a>  <span class="k">def</span> <span class="nf">grad_of_evaluate</span><span class="p">(</span>
+      <span class="bp">self</span><span class="p">,</span>
+      <span class="n">targets</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
+      <span class="n">coefficient_mode</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+  <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+    <span class="sd">&quot;&quot;&quot;Evaluates the gradient of the loss function.</span>
+
+<span class="sd">    Note that the targets of the loss must not be `None`.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      targets: The potential targets on which to evaluate the gradient.</span>
+<span class="sd">      coefficient_mode: The coefficient mode to use for evaluation.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">      The gradient of the loss evaluation function with respect to the inputs.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">evaluate_sum</span><span class="p">(</span><span class="n">inputs</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+      <span class="n">instance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">copy_with_different_inputs</span><span class="p">(</span><span class="n">inputs</span><span class="p">)</span>
+      <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">instance</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="n">targets</span><span class="p">,</span> <span class="n">coefficient_mode</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">jax</span><span class="o">.</span><span class="n">grad</span><span class="p">(</span><span class="n">evaluate_sum</span><span class="p">)(</span><span class="bp">self</span><span class="o">.</span><span class="n">inputs</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="LossFunction.multiply_ggn"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.loss_functions.LossFunction.html#deeperwin.kfac_ferminet_alpha.loss_functions.LossFunction.multiply_ggn">[docs]</a>  <span class="k">def</span> <span class="nf">multiply_ggn</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vector</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Right-multiply a vector by the GGN.</span>
+
+<span class="sd">    Here the &#39;GGN&#39; is the GGN matrix (whose definition is slightly flexible)</span>
+<span class="sd">    of the loss function with respect to its inputs.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      vector: The vector to multiply.  Must be the same shape(s) as the &#39;inputs&#39;</span>
+<span class="sd">        property.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">      The vector right-multiplied by the GGN.  Will be of the same shape(s)</span>
+<span class="sd">      as the &#39;inputs&#39; property.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">utils</span><span class="o">.</span><span class="n">scalar_mul</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">multiply_ggn_unweighted</span><span class="p">(</span><span class="n">vector</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">weight</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="LossFunction.multiply_ggn_unweighted"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.loss_functions.LossFunction.html#deeperwin.kfac_ferminet_alpha.loss_functions.LossFunction.multiply_ggn_unweighted">[docs]</a>  <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
+  <span class="k">def</span> <span class="nf">multiply_ggn_unweighted</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vector</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Same as `multiply_ggn`, but without taking into account the weight.&quot;&quot;&quot;</span>
+    <span class="k">pass</span></div>
+
+<div class="viewcode-block" id="LossFunction.multiply_ggn_factor"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.loss_functions.LossFunction.html#deeperwin.kfac_ferminet_alpha.loss_functions.LossFunction.multiply_ggn_factor">[docs]</a>  <span class="k">def</span> <span class="nf">multiply_ggn_factor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vector</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Right-multiply a vector by a factor B of the GGN.</span>
+
+<span class="sd">    Here the &#39;GGN&#39; is the GGN matrix (whose definition is slightly flexible)</span>
+<span class="sd">    of the loss function with respect to its inputs.  Typically this will be</span>
+<span class="sd">    block-diagonal across different cases in the batch, since the loss function</span>
+<span class="sd">    is typically summed across cases.</span>
+
+<span class="sd">    Note that B can be any matrix satisfying B * B^T = G where G is the GGN,</span>
+<span class="sd">    but will agree with the one used in the other methods of this class.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      vector: The vector to multiply.  Must be of the shape given by the</span>
+<span class="sd">        &#39;ggn_factor_inner_shape&#39; property.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">      The vector right-multiplied by B.  Will be of the same shape(s) as the</span>
+<span class="sd">      &#39;inputs&#39; property.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">utils</span><span class="o">.</span><span class="n">scalar_mul</span><span class="p">(</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">multiply_ggn_factor_unweighted</span><span class="p">(</span><span class="n">vector</span><span class="p">),</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">weight</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="LossFunction.multiply_ggn_factor_unweighted"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.loss_functions.LossFunction.html#deeperwin.kfac_ferminet_alpha.loss_functions.LossFunction.multiply_ggn_factor_unweighted">[docs]</a>  <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
+  <span class="k">def</span> <span class="nf">multiply_ggn_factor_unweighted</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vector</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Same as `multiply_ggn_factor`, but without taking into account the weight.&quot;&quot;&quot;</span>
+    <span class="k">pass</span></div>
+
+<div class="viewcode-block" id="LossFunction.multiply_ggn_factor_transpose"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.loss_functions.LossFunction.html#deeperwin.kfac_ferminet_alpha.loss_functions.LossFunction.multiply_ggn_factor_transpose">[docs]</a>  <span class="k">def</span> <span class="nf">multiply_ggn_factor_transpose</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vector</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Right-multiply a vector by the transpose of a factor B of the GGN.</span>
+
+<span class="sd">    Here the &#39;GGN&#39; is the GGN matrix (whose definition is slightly flexible)</span>
+<span class="sd">    of the loss function with respect to its inputs.  Typically this will be</span>
+<span class="sd">    block-diagonal across different cases in the batch, since the loss function</span>
+<span class="sd">    is typically summed across cases.</span>
+
+<span class="sd">    Note that B can be any matrix satisfying B * B^T = G where G is the GGN,</span>
+<span class="sd">    but will agree with the one used in the other methods of this class.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      vector: The vector to multiply.  Must be the same shape(s) as the &#39;inputs&#39;</span>
+<span class="sd">        property.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">      The vector right-multiplied by B^T.  Will be of the shape given by the</span>
+<span class="sd">      &#39;ggn_factor_inner_shape&#39; property.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">utils</span><span class="o">.</span><span class="n">scalar_mul</span><span class="p">(</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">multiply_ggn_factor_transpose_unweighted</span><span class="p">(</span><span class="n">vector</span><span class="p">),</span>
+        <span class="n">jnp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">weight</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="LossFunction.multiply_ggn_factor_transpose_unweighted"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.loss_functions.LossFunction.html#deeperwin.kfac_ferminet_alpha.loss_functions.LossFunction.multiply_ggn_factor_transpose_unweighted">[docs]</a>  <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
+  <span class="k">def</span> <span class="nf">multiply_ggn_factor_transpose_unweighted</span><span class="p">(</span>
+      <span class="bp">self</span><span class="p">,</span>
+      <span class="n">vector</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span>
+  <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Same as `multiply_ggn_factor_transpose`, but without taking into account the weight.&quot;&quot;&quot;</span>
+    <span class="k">pass</span></div>
+
+<div class="viewcode-block" id="LossFunction.multiply_ggn_factor_replicated_one_hot"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.loss_functions.LossFunction.html#deeperwin.kfac_ferminet_alpha.loss_functions.LossFunction.multiply_ggn_factor_replicated_one_hot">[docs]</a>  <span class="k">def</span> <span class="nf">multiply_ggn_factor_replicated_one_hot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">:</span> <span class="n">Index</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Right-multiply a replicated-one-hot vector by a factor B of the GGN.</span>
+
+<span class="sd">    Here the &#39;GGN&#39; is the GGN matrix (whose definition is slightly flexible)</span>
+<span class="sd">    of the loss function with respect to its inputs.  Typically this will be</span>
+<span class="sd">    block-diagonal across different cases in the batch, since the loss function</span>
+<span class="sd">    is typically summed across cases.</span>
+
+<span class="sd">    A &#39;replicated-one-hot&#39; vector means a tensor which, for each slice along the</span>
+<span class="sd">    batch dimension (assumed to be dimension 0), is 1.0 in the entry</span>
+<span class="sd">    corresponding to the given index and 0 elsewhere.</span>
+
+<span class="sd">    Note that B can be any matrix satisfying B * B^T = G where G is the GGN,</span>
+<span class="sd">    but will agree with the one used in the other methods of this class.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      index: A tuple representing in the index of the entry in each slice that</span>
+<span class="sd">        is 1.0. Note that len(index) must be equal to the number of elements of</span>
+<span class="sd">        the &#39;ggn_factor_inner_shape&#39; tensor minus one.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">      The vector right-multiplied by B^T. Will be of the same shape(s) as the</span>
+<span class="sd">      &#39;inputs&#39; property.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">utils</span><span class="o">.</span><span class="n">scalar_mul</span><span class="p">(</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">multiply_ggn_factor_replicated_one_hot_unweighted</span><span class="p">(</span><span class="n">index</span><span class="p">),</span>
+        <span class="n">jnp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">weight</span><span class="p">))</span></div>
+
+  <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
+  <span class="k">def</span> <span class="nf">multiply_ggn_factor_replicated_one_hot_unweighted</span><span class="p">(</span>
+      <span class="bp">self</span><span class="p">,</span>
+      <span class="n">index</span><span class="p">:</span> <span class="n">Index</span>
+  <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="k">pass</span>
+
+  <span class="nd">@property</span>
+  <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
+  <span class="k">def</span> <span class="nf">ggn_factor_inner_shape</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+    <span class="sd">&quot;&quot;&quot;The shape of the tensor returned by multiply_ggn_factor.&quot;&quot;&quot;</span>
+    <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="NegativeLogProbLoss"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.loss_functions.NegativeLogProbLoss.html#deeperwin.kfac_ferminet_alpha.loss_functions.NegativeLogProbLoss">[docs]</a><span class="k">class</span> <span class="nc">NegativeLogProbLoss</span><span class="p">(</span><span class="n">LossFunction</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;Abstract base class for loss functions that are negative log probs.&quot;&quot;&quot;</span>
+
+  <span class="nd">@property</span>
+  <span class="k">def</span> <span class="nf">inputs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span>
+
+  <span class="nd">@property</span>
+  <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
+  <span class="k">def</span> <span class="nf">params</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Parameters to the underlying distribution.&quot;&quot;&quot;</span>
+    <span class="k">pass</span>
+
+<div class="viewcode-block" id="NegativeLogProbLoss.multiply_fisher"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.loss_functions.NegativeLogProbLoss.html#deeperwin.kfac_ferminet_alpha.loss_functions.NegativeLogProbLoss.multiply_fisher">[docs]</a>  <span class="k">def</span> <span class="nf">multiply_fisher</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vector</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Right-multiply a vector by the Fisher.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      vector: The vector to multiply.  Must be the same shape(s) as the &#39;inputs&#39;</span>
+<span class="sd">        property.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">      The vector right-multiplied by the Fisher.  Will be of the same shape(s)</span>
+<span class="sd">      as the &#39;inputs&#39; property.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">utils</span><span class="o">.</span><span class="n">scalar_mul</span><span class="p">(</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">multiply_fisher_unweighted</span><span class="p">(</span><span class="n">vector</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">weight</span><span class="p">)</span></div>
+
+  <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
+  <span class="k">def</span> <span class="nf">multiply_fisher_unweighted</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vector</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="k">pass</span>
+
+<div class="viewcode-block" id="NegativeLogProbLoss.multiply_fisher_factor"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.loss_functions.NegativeLogProbLoss.html#deeperwin.kfac_ferminet_alpha.loss_functions.NegativeLogProbLoss.multiply_fisher_factor">[docs]</a>  <span class="k">def</span> <span class="nf">multiply_fisher_factor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vector</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Right-multiply a vector by a factor B of the Fisher.</span>
+
+<span class="sd">    Here the &#39;Fisher&#39; is the Fisher information matrix (i.e. expected outer-</span>
+<span class="sd">    product of gradients) with respect to the parameters of the underlying</span>
+<span class="sd">    probability distribution (whose log-prob defines the loss). Typically this</span>
+<span class="sd">    will be block-diagonal across different cases in the batch, since the</span>
+<span class="sd">    distribution is usually (but not always) conditionally iid across different</span>
+<span class="sd">    cases.</span>
+
+<span class="sd">    Note that B can be any matrix satisfying B * B^T = F where F is the Fisher,</span>
+<span class="sd">    but will agree with the one used in the other methods of this class.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      vector: The vector to multiply.  Must be of the shape given by the</span>
+<span class="sd">        &#39;fisher_factor_inner_shape&#39; property.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">      The vector right-multiplied by B. Will be of the same shape(s) as the</span>
+<span class="sd">      &#39;inputs&#39; property.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">utils</span><span class="o">.</span><span class="n">scalar_mul</span><span class="p">(</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">multiply_fisher_factor_unweighted</span><span class="p">(</span><span class="n">vector</span><span class="p">),</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">weight</span><span class="p">))</span></div>
+
+  <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
+  <span class="k">def</span> <span class="nf">multiply_fisher_factor_unweighted</span><span class="p">(</span>
+      <span class="bp">self</span><span class="p">,</span>
+      <span class="n">vector</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span>
+  <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="k">pass</span>
+
+<div class="viewcode-block" id="NegativeLogProbLoss.multiply_fisher_factor_transpose"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.loss_functions.NegativeLogProbLoss.html#deeperwin.kfac_ferminet_alpha.loss_functions.NegativeLogProbLoss.multiply_fisher_factor_transpose">[docs]</a>  <span class="k">def</span> <span class="nf">multiply_fisher_factor_transpose</span><span class="p">(</span>
+      <span class="bp">self</span><span class="p">,</span>
+      <span class="n">vector</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span>
+  <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Right-multiply a vector by the transpose of a factor B of the Fisher.</span>
+
+<span class="sd">    Here the &#39;Fisher&#39; is the Fisher information matrix (i.e. expected outer-</span>
+<span class="sd">    product of gradients) with respect to the parameters of the underlying</span>
+<span class="sd">    probability distribution (whose log-prob defines the loss). Typically this</span>
+<span class="sd">    will be block-diagonal across different cases in the batch, since the</span>
+<span class="sd">    distribution is usually (but not always) conditionally iid across different</span>
+<span class="sd">    cases.</span>
+
+<span class="sd">    Note that B can be any matrix satisfying B * B^T = F where F is the Fisher,</span>
+<span class="sd">    but will agree with the one used in the other methods of this class.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      vector: The vector to multiply.  Must be the same shape(s) as the &#39;inputs&#39;</span>
+<span class="sd">        property.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">      The vector right-multiplied by B^T.  Will be of the shape given by the</span>
+<span class="sd">      &#39;fisher_factor_inner_shape&#39; property.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">utils</span><span class="o">.</span><span class="n">scalar_mul</span><span class="p">(</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">multiply_fisher_factor_transpose_unweighted</span><span class="p">(</span><span class="n">vector</span><span class="p">),</span>
+        <span class="n">jnp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">weight</span><span class="p">))</span></div>
+
+  <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
+  <span class="k">def</span> <span class="nf">multiply_fisher_factor_transpose_unweighted</span><span class="p">(</span>
+      <span class="bp">self</span><span class="p">,</span>
+      <span class="n">vector</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span>
+  <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="k">pass</span>
+
+<div class="viewcode-block" id="NegativeLogProbLoss.multiply_fisher_factor_replicated_one_hot"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.loss_functions.NegativeLogProbLoss.html#deeperwin.kfac_ferminet_alpha.loss_functions.NegativeLogProbLoss.multiply_fisher_factor_replicated_one_hot">[docs]</a>  <span class="k">def</span> <span class="nf">multiply_fisher_factor_replicated_one_hot</span><span class="p">(</span>
+      <span class="bp">self</span><span class="p">,</span>
+      <span class="n">index</span><span class="p">:</span> <span class="n">Index</span>
+  <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Right-multiply a replicated-one-hot vector by a factor B of the Fisher.</span>
+
+<span class="sd">    Here the &#39;Fisher&#39; is the Fisher information matrix (i.e. expected outer-</span>
+<span class="sd">    product of gradients) with respect to the parameters of the underlying</span>
+<span class="sd">    probability distribution (whose log-prob defines the loss). Typically this</span>
+<span class="sd">    will be block-diagonal across different cases in the batch, since the</span>
+<span class="sd">    distribution is usually (but not always) conditionally iid across different</span>
+<span class="sd">    cases.</span>
+
+<span class="sd">    A &#39;replicated-one-hot&#39; vector means a tensor which, for each slice along the</span>
+<span class="sd">    batch dimension (assumed to be dimension 0), is 1.0 in the entry</span>
+<span class="sd">    corresponding to the given index and 0 elsewhere.</span>
+
+<span class="sd">    Note that B can be any matrix satisfying B * B^T = H where H is the Fisher,</span>
+<span class="sd">    but will agree with the one used in the other methods of this class.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      index: A tuple representing in the index of the entry in each slice that</span>
+<span class="sd">        is 1.0. Note that len(index) must be equal to the number of elements of</span>
+<span class="sd">        the &#39;fisher_factor_inner_shape&#39; tensor minus one.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">      The vector right-multiplied by B. Will be of the same shape(s) as the</span>
+<span class="sd">      &#39;inputs&#39; property.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">utils</span><span class="o">.</span><span class="n">scalar_mul</span><span class="p">(</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">multiply_fisher_factor_replicated_one_hot_unweighted</span><span class="p">(</span><span class="n">index</span><span class="p">),</span>
+        <span class="n">jnp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">weight</span><span class="p">))</span></div>
+
+  <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
+  <span class="k">def</span> <span class="nf">multiply_fisher_factor_replicated_one_hot_unweighted</span><span class="p">(</span>
+      <span class="bp">self</span><span class="p">,</span>
+      <span class="n">index</span><span class="p">:</span> <span class="n">Index</span>
+  <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="k">pass</span>
+
+  <span class="nd">@property</span>
+  <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
+  <span class="k">def</span> <span class="nf">fisher_factor_inner_shape</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+    <span class="sd">&quot;&quot;&quot;The shape of the tensor returned by multiply_fisher_factor.&quot;&quot;&quot;</span>
+    <span class="k">pass</span>
+
+<div class="viewcode-block" id="NegativeLogProbLoss.sample"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.loss_functions.NegativeLogProbLoss.html#deeperwin.kfac_ferminet_alpha.loss_functions.NegativeLogProbLoss.sample">[docs]</a>  <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
+  <span class="k">def</span> <span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rng_key</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Sample &#39;targets&#39; from the underlying distribution.&quot;&quot;&quot;</span>
+    <span class="k">pass</span></div>
+
+<div class="viewcode-block" id="NegativeLogProbLoss.grad_of_evaluate_on_sample"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.loss_functions.NegativeLogProbLoss.html#deeperwin.kfac_ferminet_alpha.loss_functions.NegativeLogProbLoss.grad_of_evaluate_on_sample">[docs]</a>  <span class="k">def</span> <span class="nf">grad_of_evaluate_on_sample</span><span class="p">(</span>
+      <span class="bp">self</span><span class="p">,</span>
+      <span class="n">rng_key</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+      <span class="n">coefficient_mode</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+  <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+    <span class="sd">&quot;&quot;&quot;Evaluates the gradient of the log probability on a random sample.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      rng_key: Jax PRNG key for sampling.</span>
+<span class="sd">      coefficient_mode: The coefficient mode to use for evaluation.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">      The gradient of the log probability of targets sampled from the</span>
+<span class="sd">      distribution.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">grad_of_evaluate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">rng_key</span><span class="p">),</span> <span class="n">coefficient_mode</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="NaturalParamsNegativeLogProbLoss"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.loss_functions.NaturalParamsNegativeLogProbLoss.html#deeperwin.kfac_ferminet_alpha.loss_functions.NaturalParamsNegativeLogProbLoss">[docs]</a><span class="k">class</span> <span class="nc">NaturalParamsNegativeLogProbLoss</span><span class="p">(</span><span class="n">NegativeLogProbLoss</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;Base class for neg log prob losses whose inputs are &#39;natural&#39; parameters.</span>
+
+<span class="sd">  We will take the GGN of the loss to be the Fisher associated with the</span>
+<span class="sd">  distribution, which also happens to be equal to the Hessian for this class</span>
+<span class="sd">  of loss functions.  See here: https://arxiv.org/abs/1412.1193</span>
+
+<span class="sd">  &#39;Natural parameters&#39; are defined for exponential-family models. See for</span>
+<span class="sd">  example: https://en.wikipedia.org/wiki/Exponential_family</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="NaturalParamsNegativeLogProbLoss.multiply_ggn_unweighted"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.loss_functions.NaturalParamsNegativeLogProbLoss.html#deeperwin.kfac_ferminet_alpha.loss_functions.NaturalParamsNegativeLogProbLoss.multiply_ggn_unweighted">[docs]</a>  <span class="k">def</span> <span class="nf">multiply_ggn_unweighted</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vector</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">multiply_fisher_unweighted</span><span class="p">(</span><span class="n">vector</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="NaturalParamsNegativeLogProbLoss.multiply_ggn_factor_unweighted"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.loss_functions.NaturalParamsNegativeLogProbLoss.html#deeperwin.kfac_ferminet_alpha.loss_functions.NaturalParamsNegativeLogProbLoss.multiply_ggn_factor_unweighted">[docs]</a>  <span class="k">def</span> <span class="nf">multiply_ggn_factor_unweighted</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vector</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">multiply_fisher_factor_unweighted</span><span class="p">(</span><span class="n">vector</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="NaturalParamsNegativeLogProbLoss.multiply_ggn_factor_transpose_unweighted"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.loss_functions.NaturalParamsNegativeLogProbLoss.html#deeperwin.kfac_ferminet_alpha.loss_functions.NaturalParamsNegativeLogProbLoss.multiply_ggn_factor_transpose_unweighted">[docs]</a>  <span class="k">def</span> <span class="nf">multiply_ggn_factor_transpose_unweighted</span><span class="p">(</span>
+      <span class="bp">self</span><span class="p">,</span>
+      <span class="n">vector</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span>
+  <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">multiply_fisher_factor_transpose_unweighted</span><span class="p">(</span><span class="n">vector</span><span class="p">)</span></div>
+
+  <span class="k">def</span> <span class="nf">multiply_ggn_factor_replicated_one_hot_unweighted</span><span class="p">(</span>
+      <span class="bp">self</span><span class="p">,</span>
+      <span class="n">index</span><span class="p">:</span> <span class="n">Index</span>
+  <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">multiply_fisher_factor_replicated_one_hot_unweighted</span><span class="p">(</span><span class="n">index</span><span class="p">)</span>
+
+  <span class="nd">@property</span>
+  <span class="k">def</span> <span class="nf">ggn_factor_inner_shape</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">fisher_factor_inner_shape</span></div>
+
+
+<div class="viewcode-block" id="DistributionNegativeLogProbLoss"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.loss_functions.DistributionNegativeLogProbLoss.html#deeperwin.kfac_ferminet_alpha.loss_functions.DistributionNegativeLogProbLoss">[docs]</a><span class="k">class</span> <span class="nc">DistributionNegativeLogProbLoss</span><span class="p">(</span><span class="n">NegativeLogProbLoss</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;Base class for neg log prob losses that use the distribution classes.&quot;&quot;&quot;</span>
+
+  <span class="nd">@property</span>
+  <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
+  <span class="k">def</span> <span class="nf">dist</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;The underlying distribution instance.&quot;&quot;&quot;</span>
+    <span class="k">pass</span>
+
+  <span class="k">def</span> <span class="nf">_evaluate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">targets</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+    <span class="k">return</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">dist</span><span class="o">.</span><span class="n">log_prob</span><span class="p">(</span><span class="n">targets</span><span class="p">)</span>
+
+<div class="viewcode-block" id="DistributionNegativeLogProbLoss.sample"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.loss_functions.DistributionNegativeLogProbLoss.html#deeperwin.kfac_ferminet_alpha.loss_functions.DistributionNegativeLogProbLoss.sample">[docs]</a>  <span class="k">def</span> <span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rng_key</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">dist</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="n">rng_key</span><span class="p">)</span></div>
+
+  <span class="nd">@property</span>
+  <span class="k">def</span> <span class="nf">fisher_factor_inner_shape</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">dist</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">shape</span></div>
+
+
+<div class="viewcode-block" id="NormalMeanNegativeLogProbLoss"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.loss_functions.NormalMeanNegativeLogProbLoss.html#deeperwin.kfac_ferminet_alpha.loss_functions.NormalMeanNegativeLogProbLoss">[docs]</a><span class="k">class</span> <span class="nc">NormalMeanNegativeLogProbLoss</span><span class="p">(</span><span class="n">DistributionNegativeLogProbLoss</span><span class="p">,</span>
+                                    <span class="n">NaturalParamsNegativeLogProbLoss</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;Neg log prob loss for a normal distribution parameterized by a mean vector.</span>
+
+
+<span class="sd">  Note that the covariance is treated as the identity divided by 2.</span>
+<span class="sd">  Also note that the Fisher for such a normal distribution with respect the mean</span>
+<span class="sd">  parameter is given by:</span>
+
+<span class="sd">     F = (1 / variance) * I</span>
+
+<span class="sd">  See for example https://www.ii.pwr.edu.pl/~tomczak/PDF/[JMT]Fisher_inf.pdf.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="NormalMeanNegativeLogProbLoss.__init__"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.loss_functions.NormalMeanNegativeLogProbLoss.html#deeperwin.kfac_ferminet_alpha.loss_functions.NormalMeanNegativeLogProbLoss.__init__">[docs]</a>  <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+      <span class="bp">self</span><span class="p">,</span>
+      <span class="n">mean</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+      <span class="n">targets</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+      <span class="n">variance</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">,</span>
+      <span class="n">weight</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+  <span class="p">):</span>
+    <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">weight</span><span class="o">=</span><span class="n">weight</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_mean</span> <span class="o">=</span> <span class="n">mean</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_targets</span> <span class="o">=</span> <span class="n">targets</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_variance</span> <span class="o">=</span> <span class="n">variance</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">variance</span><span class="p">,</span> <span class="nb">float</span><span class="p">):</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;The `variance` argument should be python float.&quot;</span><span class="p">)</span></div>
+
+  <span class="nd">@property</span>
+  <span class="k">def</span> <span class="nf">targets</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_targets</span>
+
+  <span class="nd">@property</span>
+  <span class="k">def</span> <span class="nf">dist</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="n">scale_diag</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">full_like</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_mean</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_variance</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">distributions</span><span class="o">.</span><span class="n">MultivariateNormalDiag</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_mean</span><span class="p">,</span> <span class="n">scale_diag</span><span class="p">)</span>
+
+  <span class="nd">@property</span>
+  <span class="k">def</span> <span class="nf">params</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mean</span><span class="p">,</span>
+
+  <span class="k">def</span> <span class="nf">copy_with_different_inputs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputs</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]):</span>
+    <span class="p">[</span><span class="n">mean</span><span class="p">]</span> <span class="o">=</span> <span class="n">inputs</span>
+    <span class="k">return</span> <span class="n">NormalMeanNegativeLogProbLoss</span><span class="p">(</span>
+        <span class="n">mean</span><span class="o">=</span><span class="n">mean</span><span class="p">,</span>
+        <span class="n">targets</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">targets</span><span class="p">,</span>
+        <span class="n">variance</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_variance</span><span class="p">,</span>
+        <span class="n">weight</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">weight</span><span class="p">,</span>
+    <span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">multiply_fisher_unweighted</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vector</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">vector</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">_variance</span>
+
+  <span class="k">def</span> <span class="nf">multiply_fisher_factor_unweighted</span><span class="p">(</span>
+      <span class="bp">self</span><span class="p">,</span>
+      <span class="n">vector</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+  <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">vector</span> <span class="o">/</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_variance</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">multiply_fisher_factor_transpose_unweighted</span><span class="p">(</span>
+      <span class="bp">self</span><span class="p">,</span>
+      <span class="n">vector</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+  <span class="p">)</span>  <span class="o">-&gt;</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">multiply_fisher_factor_unweighted</span><span class="p">(</span><span class="n">vector</span><span class="p">)</span>  <span class="c1"># it&#39;s symmetric</span>
+
+  <span class="k">def</span> <span class="nf">multiply_fisher_factor_replicated_one_hot_unweighted</span><span class="p">(</span>
+      <span class="bp">self</span><span class="p">,</span>
+      <span class="n">index</span><span class="p">:</span> <span class="n">Index</span><span class="p">,</span>
+  <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">index</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Length of index was </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">index</span><span class="p">)</span><span class="si">}</span><span class="s2">.&quot;</span>
+    <span class="n">index</span> <span class="o">=</span> <span class="n">index</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">ones_slice</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ones</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">_mean</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]])[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
+    <span class="n">output_slice</span> <span class="o">=</span> <span class="n">ones_slice</span> <span class="o">/</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_variance</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">insert_slice_in_zeros</span><span class="p">(</span><span class="n">output_slice</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mean</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">index</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="insert_slice_in_zeros"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.loss_functions.insert_slice_in_zeros.html#deeperwin.kfac_ferminet_alpha.loss_functions.insert_slice_in_zeros">[docs]</a><span class="k">def</span> <span class="nf">insert_slice_in_zeros</span><span class="p">(</span>
+    <span class="n">slice_to_insert</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">dim</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">dim_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">position</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+  <span class="sd">&quot;&quot;&quot;Inserts slice into a larger tensor of zeros.</span>
+
+<span class="sd">  Forms a new tensor which is the same shape as slice_to_insert, except that</span>
+<span class="sd">  the dimension given by &#39;dim&#39; is expanded to the size given by &#39;dim_size&#39;.</span>
+<span class="sd">  &#39;position&#39; determines the position (index) at which to insert the slice within</span>
+<span class="sd">  that dimension.</span>
+
+<span class="sd">  Assumes slice_to_insert.shape[dim] = 1.</span>
+
+<span class="sd">  Args:</span>
+<span class="sd">    slice_to_insert: The slice to insert.</span>
+<span class="sd">    dim: The dimension which to expand with zeros.</span>
+<span class="sd">    dim_size: The new size of the &#39;dim&#39; dimension.</span>
+<span class="sd">    position: The position of &#39;slice_to_insert&#39; in the new tensor.</span>
+
+<span class="sd">  Returns:</span>
+<span class="sd">    The new tensor.</span>
+
+<span class="sd">  Raises:</span>
+<span class="sd">    ValueError: If the slice&#39;s shape at the given dim is not 1.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+  <span class="n">slice_shape</span> <span class="o">=</span> <span class="n">slice_to_insert</span><span class="o">.</span><span class="n">shape</span>
+  <span class="k">if</span> <span class="n">slice_shape</span><span class="p">[</span><span class="n">dim</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Expected slice_to_insert.shape to have </span><span class="si">{</span><span class="n">dim</span><span class="si">}</span><span class="s2"> dim of 1,&quot;</span>
+                     <span class="sa">f</span><span class="s2">&quot; but was </span><span class="si">{</span><span class="n">slice_to_insert</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="n">dim</span><span class="p">]</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+
+  <span class="n">before</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="nb">int</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">slice_shape</span><span class="p">))</span>
+  <span class="n">after</span> <span class="o">=</span> <span class="n">before</span><span class="p">[:]</span>
+  <span class="n">before</span><span class="p">[</span><span class="n">dim</span><span class="p">]</span> <span class="o">=</span> <span class="n">position</span>
+  <span class="n">after</span><span class="p">[</span><span class="n">dim</span><span class="p">]</span> <span class="o">=</span> <span class="n">dim_size</span> <span class="o">-</span> <span class="n">position</span> <span class="o">-</span> <span class="mi">1</span>
+  <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">pad</span><span class="p">(</span><span class="n">slice_to_insert</span><span class="p">,</span> <span class="nb">list</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">before</span><span class="p">,</span> <span class="n">after</span><span class="p">)))</span></div>
+
+
+<span class="c1">#  _______            _____            _     _             _   _</span>
+<span class="c1"># |__   __|          |  __ \          (_)   | |           | | (_)</span>
+<span class="c1">#    | | __ _  __ _  | |__) |___  __ _ _ ___| |_ _ __ __ _| |_ _  ___  _ __</span>
+<span class="c1">#    | |/ _` |/ _` | |  _  // _ \/ _` | / __| __| &#39;__/ _` | __| |/ _ \| &#39;_ \</span>
+<span class="c1">#    | | (_| | (_| | | | \ \  __/ (_| | \__ \ |_| | | (_| | |_| | (_) | | | |</span>
+<span class="c1">#    |_|\__,_|\__, | |_|  \_\___|\__, |_|___/\__|_|  \__,_|\__|_|\___/|_| |_|</span>
+<span class="c1">#              __/ |              __/ |</span>
+<span class="c1">#             |___/              |___/</span>
+
+
+<span class="n">NormalMeanNegativeLogProbLoss_tag</span> <span class="o">=</span> <span class="n">tags</span><span class="o">.</span><span class="n">LossTag</span><span class="p">(</span>
+    <span class="n">NormalMeanNegativeLogProbLoss</span><span class="p">,</span> <span class="n">num_inputs</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="register_normal_predictive_distribution"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.loss_functions.register_normal_predictive_distribution.html#deeperwin.kfac_ferminet_alpha.loss_functions.register_normal_predictive_distribution">[docs]</a><span class="k">def</span> <span class="nf">register_normal_predictive_distribution</span><span class="p">(</span>
+    <span class="n">mean</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">targets</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">variance</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">,</span>
+    <span class="n">weight</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+<span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;Registers a normal predictive distribution.</span>
+
+<span class="sd">  This corresponds to a squared error loss of the form</span>
+<span class="sd">     weight/(2*var) * ||target - mean||^2</span>
+
+<span class="sd">  Args:</span>
+<span class="sd">    mean: A tensor defining the mean vector of the distribution. The first</span>
+<span class="sd">      dimension must be the batch size.</span>
+<span class="sd">    targets: (OPTIONAL) The targets for the loss function.  Only required if one</span>
+<span class="sd">      wants to use the &quot;empirical Fisher&quot; instead of the true Fisher (which is</span>
+<span class="sd">      controlled by the &#39;estimation_mode&#39; to the optimizer).</span>
+<span class="sd">      (Default: None)</span>
+<span class="sd">    variance: float. The variance of the distribution. Note that the default</span>
+<span class="sd">      value of 0.5 corresponds to a standard squared error loss weight *</span>
+<span class="sd">      ||target - prediction||^2. If you want your squared error loss to be of</span>
+<span class="sd">      the form 0.5*coeff*||target - prediction||^2 you should use</span>
+<span class="sd">      variance=1.0.</span>
+<span class="sd">      (Default: 0.5)</span>
+<span class="sd">    weight: A scalar coefficient to multiply the log prob loss associated with</span>
+<span class="sd">      this distribution. The Fisher will be multiplied by the corresponding</span>
+<span class="sd">      factor. In general this is NOT equivalent to changing the temperature of</span>
+<span class="sd">      the distribution, but in the ase of normal distributions it may be.</span>
+<span class="sd">      (Default: 1.0)</span>
+
+<span class="sd">  Returns:</span>
+<span class="sd">    The mean and targets as dependable on the tag.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+  <span class="k">if</span> <span class="n">targets</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">targets</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">mean</span><span class="p">)</span>
+  <span class="k">return</span> <span class="n">NormalMeanNegativeLogProbLoss_tag</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span>
+      <span class="n">mean</span><span class="p">,</span> <span class="n">targets</span><span class="p">,</span> <span class="n">variance</span><span class="o">=</span><span class="n">variance</span><span class="p">,</span> <span class="n">weight</span><span class="o">=</span><span class="n">weight</span><span class="p">,</span> <span class="n">return_loss</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="register_squared_error_loss"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.loss_functions.register_squared_error_loss.html#deeperwin.kfac_ferminet_alpha.loss_functions.register_squared_error_loss">[docs]</a><span class="k">def</span> <span class="nf">register_squared_error_loss</span><span class="p">(</span>
+    <span class="n">prediction</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">targets</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">weight</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+<span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;Registers a squared error loss function.</span>
+
+<span class="sd">  This assumes the squared error loss of the form ||target - prediction||^2,</span>
+<span class="sd">  averaged across the mini-batch. If your loss uses a coefficient of 0.5</span>
+<span class="sd">  you need to set the &quot;weight&quot; argument to reflect this.</span>
+
+<span class="sd">  Args:</span>
+<span class="sd">    prediction: The prediction made by the network (i.e. its output). The first</span>
+<span class="sd">      dimension must be the batch size.</span>
+<span class="sd">    targets: (OPTIONAL) The targets for the loss function.  Only required if one</span>
+<span class="sd">      wants to use the &quot;empirical Fisher&quot; instead of the true Fisher (which is</span>
+<span class="sd">      controlled by the &#39;estimation_mode&#39; to the optimizer).</span>
+<span class="sd">      (Default: None)</span>
+<span class="sd">    weight: A float coefficient to multiply the loss function by.</span>
+<span class="sd">      (Default: 1.0)</span>
+<span class="sd">  Returns:</span>
+<span class="sd">    The mean and targets as dependable on the tag.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+  <span class="k">return</span> <span class="n">register_normal_predictive_distribution</span><span class="p">(</span>
+      <span class="n">prediction</span><span class="p">,</span> <span class="n">targets</span><span class="o">=</span><span class="n">targets</span><span class="p">,</span> <span class="n">variance</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">weight</span><span class="o">=</span><span class="n">weight</span><span class="p">)</span></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Michael Scherbela, Leon Gerard, Rafael Reisenhofer.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,6 @@
+deeperwin.dispatch.contains\_run
+================================
+
+.. currentmodule:: deeperwin.dispatch
+
+.. autofunction:: contains_run

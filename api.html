@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Full documentation for developers &mdash; deeperwin 1.0.0 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="_static/custom_style.css" type="text/css" />
+    <link rel="shortcut icon" href="_static/favicon.png"/>
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="deeperwin" href="_autosummary/deeperwin.html" />
+    <link rel="prev" title="DeepErwin Tutorial" href="tutorial.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="index.html" class="icon icon-home"> deeperwin
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial.html">DeepErwin Tutorial</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Full documentation for developers</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="_autosummary/deeperwin.html">deeperwin</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="indices.html">Indices and tables</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">deeperwin</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>Full documentation for developers</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/api.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="full-documentation-for-developers">
+<h1>Full documentation for developers<a class="headerlink" href="#full-documentation-for-developers" title="Permalink to this headline"></a></h1>
+<p>The DeepErwin codebase consists of several key modules:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="_autosummary/deeperwin.main.html#module-deeperwin.main" title="deeperwin.main"><code class="xref py py-mod docutils literal notranslate"><span class="pre">main</span></code></a> is the main entry point to using the code. It sets up calculations and dispatches them to be calculated locally or on a SLURM cluster.</p></li>
+<li><p><a class="reference internal" href="_autosummary/deeperwin.process_molecule.html#module-deeperwin.process_molecule" title="deeperwin.process_molecule"><code class="xref py py-mod docutils literal notranslate"><span class="pre">process_molecule</span></code></a> and <code class="xref py py-mod docutils literal notranslate"><span class="pre">proces_molecules_inter</span></code> contain the main program for optimizing a single molecule, or multiple molecules in an interdependent way (e.g. by using weight-sharing).</p></li>
+<li><p><a class="reference internal" href="_autosummary/deeperwin.model.html#module-deeperwin.model" title="deeperwin.model"><code class="xref py py-mod docutils literal notranslate"><span class="pre">model</span></code></a> contains all neural network architectures. The contain methods to build the wavefunction which computes <span class="math notranslate nohighlight">\(\psi\)</span> from electron coordinates <span class="math notranslate nohighlight">\(r\)</span>.</p></li>
+<li><p><a class="reference internal" href="_autosummary/deeperwin.optimization.html#module-deeperwin.optimization" title="deeperwin.optimization"><code class="xref py py-mod docutils literal notranslate"><span class="pre">optimization</span></code></a> and <a class="reference internal" href="_autosummary/deeperwin.evaluation.html#module-deeperwin.evaluation" title="deeperwin.evaluation"><code class="xref py py-mod docutils literal notranslate"><span class="pre">evaluation</span></code></a> contain the respective methods to optimize and later evaluate wavefunctions. They contain imports for more advanced second-order optimizers such as KFAC or BFGS.</p></li>
+<li><p><a class="reference internal" href="_autosummary/deeperwin.hamiltonian.html#module-deeperwin.hamiltonian" title="deeperwin.hamiltonian"><code class="xref py py-mod docutils literal notranslate"><span class="pre">hamiltonian</span></code></a> defines the basic Schrödinger equation, in particular defining how to compute local energies from a wavefunction using automatic differentiation.</p></li>
+<li><p><a class="reference internal" href="_autosummary/deeperwin.configuration.html#module-deeperwin.configuration" title="deeperwin.configuration"><code class="xref py py-mod docutils literal notranslate"><span class="pre">configuration</span></code></a> contains all default settings for running a DeepErwin calculation</p></li>
+<li><p><a class="reference internal" href="_autosummary/deeperwin.utils.html#module-deeperwin.utils" title="deeperwin.utils"><code class="xref py py-mod docutils literal notranslate"><span class="pre">utils</span></code></a> contains various utility functions to support the core code.</p></li>
+</ul>
+<p>If you have checked out the GIT repository, you will also find these directories next to the actual deeperwin-python-package:</p>
+<ul class="simple">
+<li><p><strong>doc</strong> containing this documentation</p></li>
+<li><p><strong>sample_configs</strong> containing exemplary calculations with configurations that are ready to run. These example purposefully use computationally cheap settings, so they can easily be tried on a local computer. For publishable calculations we recommend to use the (computationally more demanding) default settings.</p></li>
+</ul>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_autosummary/deeperwin.html#module-deeperwin" title="deeperwin"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="tutorial.html" class="btn btn-neutral float-left" title="DeepErwin Tutorial" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="_autosummary/deeperwin.html" class="btn btn-neutral float-right" title="deeperwin" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Michael Scherbela, Leon Gerard, Rafael Reisenhofer.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

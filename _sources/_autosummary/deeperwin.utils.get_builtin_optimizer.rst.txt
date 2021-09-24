@@ -1,0 +1,6 @@
+deeperwin.utils.get\_builtin\_optimizer
+=======================================
+
+.. currentmodule:: deeperwin.utils
+
+.. autofunction:: get_builtin_optimizer

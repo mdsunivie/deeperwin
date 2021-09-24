@@ -1,0 +1,33 @@
+deeperwin.loggers.DataLogger
+============================
+
+.. currentmodule:: deeperwin.loggers
+
+.. autoclass:: DataLogger
+   :members:
+   :show-inheritance:
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~DataLogger.__init__
+      ~DataLogger.log_checkpoint
+      ~DataLogger.log_metric
+      ~DataLogger.log_metrics
+      ~DataLogger.log_param
+      ~DataLogger.log_params
+      ~DataLogger.log_tags
+      ~DataLogger.log_weights
+      ~DataLogger.on_run_begin
+      ~DataLogger.on_run_end
+   
+   
+
+   
+   
+   

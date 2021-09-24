@@ -1,0 +1,6 @@
+deeperwin.kfac\_ferminet\_alpha.utils.broadcast\_all\_local\_devices
+====================================================================
+
+.. currentmodule:: deeperwin.kfac_ferminet_alpha.utils
+
+.. autofunction:: broadcast_all_local_devices

@@ -1,0 +1,62 @@
+deeperwin.kfac\_ferminet\_alpha.tag\_graph\_matcher
+===================================================
+
+.. automodule:: deeperwin.kfac_ferminet_alpha.tag_graph_matcher
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+   
+      abstract_args
+      abstract_single_value
+      auto_register_tags
+      broadcast_in_dim_compare
+      broadcast_merger
+      clean_jaxpr_eqns
+      conv_compare
+      create_digraph
+      default_compare
+      evaluate_eqn
+      extract_param_vars_flat
+      fill_jaxpr_to_graph
+      find_mappings
+      function_to_jax_graph
+      generate_candidates
+      get_graph_patterns
+      kfac_node_match
+      match_nodes
+      match_pattern
+      print_nice_jaxpr
+      read_env
+      register_function
+      reshape_compare
+      var_to_str
+      write_env
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: custom_class.rst
+   
+      JaxGraph
+   
+   
+
+   
+   
+   
+
+
+

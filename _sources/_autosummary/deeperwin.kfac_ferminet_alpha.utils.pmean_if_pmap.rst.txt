@@ -1,0 +1,6 @@
+deeperwin.kfac\_ferminet\_alpha.utils.pmean\_if\_pmap
+=====================================================
+
+.. currentmodule:: deeperwin.kfac_ferminet_alpha.utils
+
+.. autofunction:: pmean_if_pmap

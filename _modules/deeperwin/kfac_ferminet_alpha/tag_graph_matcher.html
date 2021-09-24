@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>deeperwin.kfac_ferminet_alpha.tag_graph_matcher &mdash; deeperwin 1.0.0 documentation</title>
+      <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/custom_style.css" type="text/css" />
+    <link rel="shortcut icon" href="../../../_static/favicon.png"/>
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
+        <script src="../../../_static/jquery.js"></script>
+        <script src="../../../_static/underscore.js"></script>
+        <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../../index.html" class="icon icon-home"> deeperwin
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorial.html">DeepErwin Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Full documentation for developers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../indices.html">Indices and tables</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">deeperwin</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+      <li>deeperwin.kfac_ferminet_alpha.tag_graph_matcher</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for deeperwin.kfac_ferminet_alpha.tag_graph_matcher</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright 2020 DeepMind Technologies Limited.</span>
+<span class="c1">#</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1"># https://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="sd">&quot;&quot;&quot;A module for tagging and graph manipulation.&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">collections</span>
+<span class="kn">import</span> <span class="nn">functools</span>
+<span class="kn">import</span> <span class="nn">itertools</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">NamedTuple</span><span class="p">,</span> <span class="n">Sequence</span>
+
+<span class="kn">from</span> <span class="nn">absl</span> <span class="kn">import</span> <span class="n">logging</span>
+<span class="kn">import</span> <span class="nn">jax</span>
+<span class="kn">from</span> <span class="nn">jax</span> <span class="kn">import</span> <span class="n">core</span> <span class="k">as</span> <span class="n">jax_core</span>
+<span class="kn">from</span> <span class="nn">jax</span> <span class="kn">import</span> <span class="n">lax</span>
+<span class="kn">from</span> <span class="nn">jax</span> <span class="kn">import</span> <span class="n">util</span> <span class="k">as</span> <span class="n">jax_util</span>
+<span class="kn">from</span> <span class="nn">jax.interpreters</span> <span class="kn">import</span> <span class="n">partial_eval</span> <span class="k">as</span> <span class="n">pe</span>
+<span class="kn">import</span> <span class="nn">jax.numpy</span> <span class="k">as</span> <span class="nn">jnp</span>
+<span class="kn">import</span> <span class="nn">networkx</span> <span class="k">as</span> <span class="nn">nx</span>
+<span class="kn">from</span> <span class="nn">networkx.algorithms</span> <span class="kn">import</span> <span class="n">isomorphism</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">ordered_set</span>
+
+<span class="kn">from</span> <span class="nn">deeperwin.kfac_ferminet_alpha</span> <span class="kn">import</span> <span class="n">layers_and_loss_tags</span> <span class="k">as</span> <span class="n">tags</span>
+
+<span class="n">USE_NETWORKX</span> <span class="o">=</span> <span class="kc">False</span>
+
+
+<div class="viewcode-block" id="match_nodes"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.tag_graph_matcher.match_nodes.html#deeperwin.kfac_ferminet_alpha.tag_graph_matcher.match_nodes">[docs]</a><span class="k">def</span> <span class="nf">match_nodes</span><span class="p">(</span><span class="n">g1</span><span class="p">,</span> <span class="n">g2</span><span class="p">,</span> <span class="n">mapping</span><span class="p">,</span> <span class="n">node1</span><span class="p">,</span> <span class="n">node2</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;Matching nodes when doing graph search.&quot;&quot;&quot;</span>
+
+  <span class="k">if</span> <span class="ow">not</span> <span class="n">kfac_node_match</span><span class="p">(</span><span class="n">g1</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="n">node1</span><span class="p">],</span> <span class="n">g2</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="n">node2</span><span class="p">]):</span>
+    <span class="k">return</span> <span class="kc">False</span>
+  <span class="c1"># Check predecessors</span>
+  <span class="n">p1</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">n</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">g1</span><span class="o">.</span><span class="n">predecessors</span><span class="p">(</span><span class="n">node1</span><span class="p">)</span> <span class="k">if</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">mapping</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+  <span class="n">p2</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">n</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">g2</span><span class="o">.</span><span class="n">predecessors</span><span class="p">(</span><span class="n">node2</span><span class="p">)</span> <span class="k">if</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">mapping</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+  <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">p1</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">p2</span><span class="p">):</span>
+    <span class="k">return</span> <span class="kc">False</span>
+  <span class="k">for</span> <span class="n">p1_i</span> <span class="ow">in</span> <span class="n">p1</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">mapping</span><span class="p">[</span><span class="n">p1_i</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">p2</span><span class="p">:</span>
+      <span class="k">return</span> <span class="kc">False</span>
+  <span class="c1"># Check successors</span>
+  <span class="n">s1</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">n</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">g1</span><span class="o">.</span><span class="n">successors</span><span class="p">(</span><span class="n">node1</span><span class="p">)</span> <span class="k">if</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">mapping</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+  <span class="n">s2</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">n</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">g2</span><span class="o">.</span><span class="n">successors</span><span class="p">(</span><span class="n">node2</span><span class="p">)</span> <span class="k">if</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">mapping</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+  <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">s1</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">s2</span><span class="p">):</span>
+    <span class="k">return</span> <span class="kc">False</span>
+  <span class="k">for</span> <span class="n">s1_i</span> <span class="ow">in</span> <span class="n">s1</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">mapping</span><span class="p">[</span><span class="n">s1_i</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">s2</span><span class="p">:</span>
+      <span class="k">return</span> <span class="kc">False</span>
+  <span class="k">return</span> <span class="kc">True</span></div>
+
+
+<div class="viewcode-block" id="generate_candidates"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.tag_graph_matcher.generate_candidates.html#deeperwin.kfac_ferminet_alpha.tag_graph_matcher.generate_candidates">[docs]</a><span class="k">def</span> <span class="nf">generate_candidates</span><span class="p">(</span><span class="n">g1</span><span class="p">,</span> <span class="n">g2</span><span class="p">,</span> <span class="n">mapping</span><span class="p">,</span> <span class="n">node1</span><span class="p">,</span> <span class="n">node2</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;Generates the initial candidates for graph search.&quot;&quot;&quot;</span>
+  <span class="c1"># Check predecessors</span>
+  <span class="n">p1</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">n</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">g1</span><span class="o">.</span><span class="n">predecessors</span><span class="p">(</span><span class="n">node1</span><span class="p">)</span> <span class="k">if</span> <span class="n">n</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">mapping</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+  <span class="n">p2</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">n</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">g2</span><span class="o">.</span><span class="n">predecessors</span><span class="p">(</span><span class="n">node2</span><span class="p">)</span> <span class="k">if</span> <span class="n">n</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">mapping</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+  <span class="n">candidates</span> <span class="o">=</span> <span class="n">ordered_set</span><span class="o">.</span><span class="n">OrderedSet</span><span class="p">(</span><span class="n">itertools</span><span class="o">.</span><span class="n">product</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span> <span class="n">p2</span><span class="p">))</span>
+  <span class="n">s1</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">n</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">g1</span><span class="o">.</span><span class="n">successors</span><span class="p">(</span><span class="n">node1</span><span class="p">)</span> <span class="k">if</span> <span class="n">n</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">mapping</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+  <span class="n">s2</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">n</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">g2</span><span class="o">.</span><span class="n">successors</span><span class="p">(</span><span class="n">node2</span><span class="p">)</span> <span class="k">if</span> <span class="n">n</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">mapping</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+  <span class="n">candidates</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">itertools</span><span class="o">.</span><span class="n">product</span><span class="p">(</span><span class="n">s1</span><span class="p">,</span> <span class="n">s2</span><span class="p">)))</span>
+  <span class="k">return</span> <span class="n">candidates</span></div>
+
+
+<div class="viewcode-block" id="find_mappings"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.tag_graph_matcher.find_mappings.html#deeperwin.kfac_ferminet_alpha.tag_graph_matcher.find_mappings">[docs]</a><span class="k">def</span> <span class="nf">find_mappings</span><span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="n">graph</span><span class="p">,</span> <span class="n">mapping</span><span class="p">,</span> <span class="n">terminals</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;Finds all mappings from graph search of the pattern.&quot;&quot;&quot;</span>
+  <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">mapping</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">pattern</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">terminals</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+      <span class="n">v</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">mapping</span><span class="p">[</span><span class="n">k</span><span class="p">])</span>
+    <span class="k">return</span> <span class="p">[</span><span class="nb">frozenset</span><span class="p">(</span><span class="n">mapping</span><span class="o">.</span><span class="n">items</span><span class="p">())]</span>
+  <span class="n">mappings</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+  <span class="n">nodes_list</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">mapping</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+  <span class="k">for</span> <span class="n">node1</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="n">nodes_list</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">s1</span> <span class="ow">in</span> <span class="n">pattern</span><span class="o">.</span><span class="n">successors</span><span class="p">(</span><span class="n">node1</span><span class="p">):</span>
+      <span class="k">if</span> <span class="n">s1</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">mapping</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+        <span class="k">for</span> <span class="n">s2</span> <span class="ow">in</span> <span class="n">graph</span><span class="o">.</span><span class="n">successors</span><span class="p">(</span><span class="n">mapping</span><span class="p">[</span><span class="n">node1</span><span class="p">]):</span>
+          <span class="k">if</span> <span class="n">s2</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">mapping</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">s1</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">terminals</span> <span class="ow">or</span> <span class="n">s2</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">terminals</span><span class="p">[</span><span class="n">s1</span><span class="p">]:</span>
+              <span class="k">if</span> <span class="n">match_nodes</span><span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="n">graph</span><span class="p">,</span> <span class="n">mapping</span><span class="p">,</span> <span class="n">s1</span><span class="p">,</span> <span class="n">s2</span><span class="p">):</span>
+                <span class="n">mapping</span><span class="p">[</span><span class="n">s1</span><span class="p">]</span> <span class="o">=</span> <span class="n">s2</span>
+                <span class="n">mappings</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+                    <span class="n">find_mappings</span><span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="n">graph</span><span class="p">,</span> <span class="n">mapping</span><span class="p">,</span> <span class="n">terminals</span><span class="p">))</span>
+                <span class="n">mapping</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">s1</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">p1</span> <span class="ow">in</span> <span class="n">pattern</span><span class="o">.</span><span class="n">predecessors</span><span class="p">(</span><span class="n">node1</span><span class="p">):</span>
+      <span class="k">if</span> <span class="n">p1</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">mapping</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+        <span class="k">for</span> <span class="n">p2</span> <span class="ow">in</span> <span class="n">graph</span><span class="o">.</span><span class="n">predecessors</span><span class="p">(</span><span class="n">mapping</span><span class="p">[</span><span class="n">node1</span><span class="p">]):</span>
+          <span class="k">if</span> <span class="n">p2</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">mapping</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">p1</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">terminals</span> <span class="ow">or</span> <span class="n">p2</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">terminals</span><span class="p">[</span><span class="n">p1</span><span class="p">]:</span>
+              <span class="k">if</span> <span class="n">match_nodes</span><span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="n">graph</span><span class="p">,</span> <span class="n">mapping</span><span class="p">,</span> <span class="n">p1</span><span class="p">,</span> <span class="n">p2</span><span class="p">):</span>
+                <span class="n">mapping</span><span class="p">[</span><span class="n">p1</span><span class="p">]</span> <span class="o">=</span> <span class="n">p2</span>
+                <span class="n">mappings</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+                    <span class="n">find_mappings</span><span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="n">graph</span><span class="p">,</span> <span class="n">mapping</span><span class="p">,</span> <span class="n">terminals</span><span class="p">))</span>
+                <span class="n">mapping</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">p1</span><span class="p">)</span>
+  <span class="k">return</span> <span class="n">mappings</span></div>
+
+
+<div class="viewcode-block" id="match_pattern"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.tag_graph_matcher.match_pattern.html#deeperwin.kfac_ferminet_alpha.tag_graph_matcher.match_pattern">[docs]</a><span class="k">def</span> <span class="nf">match_pattern</span><span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="n">graph</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;Given a pattern returns all matches inside the graph.&quot;&quot;&quot;</span>
+  <span class="k">if</span> <span class="n">USE_NETWORKX</span><span class="p">:</span>
+    <span class="n">matcher</span> <span class="o">=</span> <span class="n">isomorphism</span><span class="o">.</span><span class="n">GraphMatcher</span><span class="p">(</span>
+        <span class="n">graph</span><span class="p">,</span> <span class="n">pattern</span><span class="p">,</span> <span class="n">node_match</span><span class="o">=</span><span class="n">kfac_node_match</span><span class="p">)</span>
+    <span class="n">mappings</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span>
+        <span class="nb">dict</span><span class="p">((</span><span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
+             <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">mapping</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+        <span class="k">for</span> <span class="n">mapping</span> <span class="ow">in</span> <span class="n">matcher</span><span class="o">.</span><span class="n">subgraph_isomorphisms_iter</span><span class="p">())</span>
+  <span class="k">else</span><span class="p">:</span>
+    <span class="n">mapping</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">OrderedDict</span><span class="p">()</span>
+    <span class="n">params1</span> <span class="o">=</span> <span class="p">[</span><span class="n">n</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">pattern</span><span class="o">.</span><span class="n">nodes</span> <span class="k">if</span> <span class="n">pattern</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="n">n</span><span class="p">][</span><span class="s2">&quot;op&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;param&quot;</span><span class="p">]</span>
+    <span class="n">params2</span> <span class="o">=</span> <span class="p">[</span><span class="n">n</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">graph</span><span class="o">.</span><span class="n">nodes</span> <span class="k">if</span> <span class="n">graph</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="n">n</span><span class="p">][</span><span class="s2">&quot;op&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;param&quot;</span><span class="p">]</span>
+    <span class="n">terminals</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">n</span><span class="p">:</span> <span class="nb">set</span><span class="p">()</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">pattern</span><span class="o">.</span><span class="n">nodes</span> <span class="k">if</span> <span class="ow">not</span> <span class="nb">list</span><span class="p">(</span><span class="n">pattern</span><span class="o">.</span><span class="n">successors</span><span class="p">(</span><span class="n">n</span><span class="p">))</span>
+    <span class="p">}</span>
+
+    <span class="n">mappings</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">node1</span><span class="p">,</span> <span class="n">node2</span> <span class="ow">in</span> <span class="n">itertools</span><span class="o">.</span><span class="n">product</span><span class="p">(</span><span class="n">params1</span><span class="p">,</span> <span class="n">params2</span><span class="p">):</span>
+      <span class="n">mapping</span><span class="p">[</span><span class="n">node1</span><span class="p">]</span> <span class="o">=</span> <span class="n">node2</span>
+      <span class="n">mappings</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">find_mappings</span><span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="n">graph</span><span class="p">,</span> <span class="n">mapping</span><span class="p">,</span> <span class="n">terminals</span><span class="p">))</span>
+      <span class="n">mapping</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">node1</span><span class="p">)</span>
+      <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">terminals</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+        <span class="n">v</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+    <span class="n">mappings</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">dict</span><span class="p">(</span><span class="n">mapping</span><span class="p">)</span> <span class="k">for</span> <span class="n">mapping</span> <span class="ow">in</span> <span class="n">mappings</span><span class="p">)</span>
+
+  <span class="n">var_mappings</span> <span class="o">=</span> <span class="p">[]</span>
+  <span class="k">for</span> <span class="n">mapping</span> <span class="ow">in</span> <span class="n">mappings</span><span class="p">:</span>
+    <span class="n">var_mappings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">dict</span><span class="p">())</span>
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">mapping</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+      <span class="n">cond</span> <span class="o">=</span> <span class="n">pattern</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="s2">&quot;op&quot;</span><span class="p">]</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;param&quot;</span><span class="p">,</span> <span class="s2">&quot;array&quot;</span><span class="p">)</span>
+      <span class="n">source</span> <span class="o">=</span> <span class="n">pattern</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="s2">&quot;var&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">cond</span> <span class="k">else</span> <span class="n">k</span>
+      <span class="n">target</span> <span class="o">=</span> <span class="n">graph</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="n">v</span><span class="p">][</span><span class="s2">&quot;var&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">cond</span> <span class="k">else</span> <span class="n">graph</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="n">v</span><span class="p">][</span><span class="s2">&quot;eqn&quot;</span><span class="p">]</span>
+      <span class="n">var_mappings</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="n">source</span><span class="p">]</span> <span class="o">=</span> <span class="n">target</span>
+
+  <span class="k">return</span> <span class="n">var_mappings</span></div>
+
+
+<div class="viewcode-block" id="read_env"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.tag_graph_matcher.read_env.html#deeperwin.kfac_ferminet_alpha.tag_graph_matcher.read_env">[docs]</a><span class="k">def</span> <span class="nf">read_env</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">var</span><span class="p">):</span>
+  <span class="c1"># Literals are values baked into the Jaxpr</span>
+  <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">var</span><span class="p">,</span> <span class="n">jax</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">Literal</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">var</span><span class="o">.</span><span class="n">val</span>
+  <span class="k">return</span> <span class="n">env</span><span class="p">[</span><span class="n">var</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="write_env"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.tag_graph_matcher.write_env.html#deeperwin.kfac_ferminet_alpha.tag_graph_matcher.write_env">[docs]</a><span class="k">def</span> <span class="nf">write_env</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+  <span class="n">env</span><span class="p">[</span><span class="n">var</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span></div>
+
+
+<div class="viewcode-block" id="abstract_single_value"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.tag_graph_matcher.abstract_single_value.html#deeperwin.kfac_ferminet_alpha.tag_graph_matcher.abstract_single_value">[docs]</a><span class="k">def</span> <span class="nf">abstract_single_value</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+  <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">ShapedArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">value</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">result_type</span><span class="p">(</span><span class="n">value</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">pe</span><span class="o">.</span><span class="n">PartialVal</span><span class="o">.</span><span class="n">unknown</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+  <span class="k">else</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">value</span></div>
+
+
+<div class="viewcode-block" id="abstract_args"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.tag_graph_matcher.abstract_args.html#deeperwin.kfac_ferminet_alpha.tag_graph_matcher.abstract_args">[docs]</a><span class="k">def</span> <span class="nf">abstract_args</span><span class="p">(</span><span class="n">args</span><span class="p">):</span>
+  <span class="k">return</span> <span class="n">jax</span><span class="o">.</span><span class="n">tree_map</span><span class="p">(</span><span class="n">abstract_single_value</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="evaluate_eqn"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.tag_graph_matcher.evaluate_eqn.html#deeperwin.kfac_ferminet_alpha.tag_graph_matcher.evaluate_eqn">[docs]</a><span class="k">def</span> <span class="nf">evaluate_eqn</span><span class="p">(</span><span class="n">eqn</span><span class="p">,</span> <span class="n">in_values</span><span class="p">,</span> <span class="n">write_func</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;Evaluate a single Jax equation and writes the outputs.&quot;&quot;&quot;</span>
+  <span class="n">in_values</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">in_values</span><span class="p">)</span>
+  <span class="c1"># This is logic specifically to handle `xla_call`</span>
+  <span class="n">call_jaxpr</span><span class="p">,</span> <span class="n">params</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">extract_call_jaxpr</span><span class="p">(</span><span class="n">eqn</span><span class="o">.</span><span class="n">primitive</span><span class="p">,</span> <span class="n">eqn</span><span class="o">.</span><span class="n">params</span><span class="p">)</span>
+  <span class="k">if</span> <span class="n">call_jaxpr</span><span class="p">:</span>
+    <span class="n">subfuns</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">jax</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">lu</span><span class="o">.</span><span class="n">wrap_init</span><span class="p">(</span>
+            <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">jax</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">eval_jaxpr</span><span class="p">,</span> <span class="n">call_jaxpr</span><span class="p">,</span> <span class="p">()))</span>
+    <span class="p">]</span>
+  <span class="k">else</span><span class="p">:</span>
+    <span class="n">subfuns</span> <span class="o">=</span> <span class="p">[]</span>
+  <span class="n">ans</span> <span class="o">=</span> <span class="n">eqn</span><span class="o">.</span><span class="n">primitive</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="n">subfuns</span> <span class="o">+</span> <span class="n">in_values</span><span class="p">),</span> <span class="o">**</span><span class="n">params</span><span class="p">)</span>
+  <span class="k">if</span> <span class="n">eqn</span><span class="o">.</span><span class="n">primitive</span><span class="o">.</span><span class="n">multiple_results</span><span class="p">:</span>
+    <span class="n">jax_util</span><span class="o">.</span><span class="n">safe_map</span><span class="p">(</span><span class="n">write_func</span><span class="p">,</span> <span class="n">eqn</span><span class="o">.</span><span class="n">outvars</span><span class="p">,</span> <span class="n">ans</span><span class="p">)</span>
+  <span class="k">else</span><span class="p">:</span>
+    <span class="n">write_func</span><span class="p">(</span><span class="n">eqn</span><span class="o">.</span><span class="n">outvars</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">ans</span><span class="p">)</span>
+  <span class="k">return</span> <span class="n">ans</span></div>
+
+
+<div class="viewcode-block" id="clean_jaxpr_eqns"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.tag_graph_matcher.clean_jaxpr_eqns.html#deeperwin.kfac_ferminet_alpha.tag_graph_matcher.clean_jaxpr_eqns">[docs]</a><span class="k">def</span> <span class="nf">clean_jaxpr_eqns</span><span class="p">(</span><span class="n">jaxpr</span><span class="p">,</span> <span class="n">preserve_tags</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;Performs dead code elimination on the jaxpr, preserving loss and layer tags.&quot;&quot;&quot;</span>
+  <span class="n">eqns</span> <span class="o">=</span> <span class="p">[]</span>
+  <span class="n">dependants</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">jaxpr</span><span class="o">.</span><span class="n">outvars</span><span class="p">)</span>
+  <span class="k">for</span> <span class="n">eqn</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="n">jaxpr</span><span class="o">.</span><span class="n">eqns</span><span class="p">):</span>
+    <span class="n">check</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">eqn</span><span class="o">.</span><span class="n">outvars</span><span class="p">:</span>
+      <span class="k">if</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">dependants</span><span class="p">:</span>
+        <span class="n">dependants</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+        <span class="n">check</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">eqn</span><span class="o">.</span><span class="n">primitive</span><span class="p">,</span> <span class="p">(</span><span class="n">tags</span><span class="o">.</span><span class="n">LossTag</span><span class="p">,</span> <span class="n">tags</span><span class="o">.</span><span class="n">LayerTag</span><span class="p">)):</span>
+      <span class="n">check</span> <span class="o">=</span> <span class="n">check</span> <span class="ow">or</span> <span class="n">preserve_tags</span>
+    <span class="k">if</span> <span class="n">check</span><span class="p">:</span>
+      <span class="n">eqns</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">eqn</span><span class="p">)</span>
+      <span class="n">new_dependants</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span>
+          <span class="n">v</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">eqn</span><span class="o">.</span><span class="n">invars</span> <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">jax_core</span><span class="o">.</span><span class="n">Literal</span><span class="p">))</span>
+      <span class="n">dependants</span> <span class="o">=</span> <span class="n">dependants</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">new_dependants</span><span class="p">)</span>
+  <span class="c1"># Dependants should only be invars</span>
+  <span class="n">dependants</span> <span class="o">=</span> <span class="n">dependants</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">jaxpr</span><span class="o">.</span><span class="n">invars</span> <span class="o">+</span> <span class="n">jaxpr</span><span class="o">.</span><span class="n">constvars</span><span class="p">)</span>
+
+  <span class="k">if</span> <span class="n">dependants</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Something went wrong with the dead code elimination.&quot;</span><span class="p">)</span>
+  <span class="k">return</span> <span class="nb">reversed</span><span class="p">(</span><span class="n">eqns</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="broadcast_merger"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.tag_graph_matcher.broadcast_merger.html#deeperwin.kfac_ferminet_alpha.tag_graph_matcher.broadcast_merger">[docs]</a><span class="k">def</span> <span class="nf">broadcast_merger</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;Transforms `f` into a function where all consecutive broadcasts are merged.&quot;&quot;&quot;</span>
+
+  <span class="k">def</span> <span class="nf">merged_func</span><span class="p">(</span><span class="o">*</span><span class="n">func_args</span><span class="p">):</span>
+    <span class="n">typed_jaxpr</span><span class="p">,</span> <span class="n">out_avals</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">make_jaxpr</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">return_shape</span><span class="o">=</span><span class="kc">True</span><span class="p">)(</span><span class="o">*</span><span class="n">func_args</span><span class="p">)</span>
+    <span class="n">out_tree</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">tree_structure</span><span class="p">(</span><span class="n">out_avals</span><span class="p">)</span>
+    <span class="n">jaxpr</span><span class="p">,</span> <span class="n">consts</span> <span class="o">=</span> <span class="n">typed_jaxpr</span><span class="o">.</span><span class="n">jaxpr</span><span class="p">,</span> <span class="n">typed_jaxpr</span><span class="o">.</span><span class="n">literals</span>
+
+    <span class="c1"># Mapping from variable -&gt; value</span>
+    <span class="n">env</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+    <span class="n">read</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">read_env</span><span class="p">,</span> <span class="n">env</span><span class="p">)</span>
+    <span class="n">write</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">write_env</span><span class="p">,</span> <span class="n">env</span><span class="p">)</span>
+
+    <span class="c1"># Bind args and consts to environment</span>
+    <span class="n">flat_args</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">tree_flatten</span><span class="p">(</span><span class="n">func_args</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">write</span><span class="p">(</span><span class="n">jax</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">unitvar</span><span class="p">,</span> <span class="n">jax</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">unit</span><span class="p">)</span>
+    <span class="n">jax_util</span><span class="o">.</span><span class="n">safe_map</span><span class="p">(</span><span class="n">write</span><span class="p">,</span> <span class="n">jaxpr</span><span class="o">.</span><span class="n">invars</span><span class="p">,</span> <span class="n">flat_args</span><span class="p">)</span>
+    <span class="n">jax_util</span><span class="o">.</span><span class="n">safe_map</span><span class="p">(</span><span class="n">write</span><span class="p">,</span> <span class="n">jaxpr</span><span class="o">.</span><span class="n">constvars</span><span class="p">,</span> <span class="n">consts</span><span class="p">)</span>
+
+    <span class="c1"># Bind args and consts to environment</span>
+    <span class="n">write</span><span class="p">(</span><span class="n">jax</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">unitvar</span><span class="p">,</span> <span class="n">jax</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">unit</span><span class="p">)</span>
+    <span class="n">jax_util</span><span class="o">.</span><span class="n">safe_map</span><span class="p">(</span><span class="n">write</span><span class="p">,</span> <span class="n">jaxpr</span><span class="o">.</span><span class="n">invars</span><span class="p">,</span> <span class="n">flat_args</span><span class="p">)</span>
+    <span class="n">jax_util</span><span class="o">.</span><span class="n">safe_map</span><span class="p">(</span><span class="n">write</span><span class="p">,</span> <span class="n">jaxpr</span><span class="o">.</span><span class="n">constvars</span><span class="p">,</span> <span class="n">consts</span><span class="p">)</span>
+
+    <span class="c1"># Loop through equations and evaluate primitives using `bind`</span>
+    <span class="n">broadcasts_outputs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">eqn</span> <span class="ow">in</span> <span class="n">clean_jaxpr_eqns</span><span class="p">(</span><span class="n">jaxpr</span><span class="p">):</span>
+      <span class="c1"># We ignore broadcasting of constants</span>
+      <span class="k">if</span> <span class="p">(</span><span class="n">eqn</span><span class="o">.</span><span class="n">primitive</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;broadcast_in_dim&quot;</span> <span class="ow">and</span>
+          <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">jax_core</span><span class="o">.</span><span class="n">Literal</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">eqn</span><span class="o">.</span><span class="n">invars</span><span class="p">)):</span>
+        <span class="k">if</span> <span class="n">eqn</span><span class="o">.</span><span class="n">invars</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">in</span> <span class="n">broadcasts_outputs</span><span class="p">:</span>
+          <span class="n">x</span><span class="p">,</span> <span class="n">dims</span> <span class="o">=</span> <span class="n">broadcasts_outputs</span><span class="p">[</span><span class="n">eqn</span><span class="o">.</span><span class="n">invars</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+          <span class="n">kept_dims</span> <span class="o">=</span> <span class="n">eqn</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;broadcast_dimensions&quot;</span><span class="p">]</span>
+          <span class="n">kept_dims</span> <span class="o">=</span> <span class="p">[</span><span class="n">kept_dims</span><span class="p">[</span><span class="n">d</span><span class="p">]</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">dims</span><span class="p">]</span>
+          <span class="n">y</span> <span class="o">=</span> <span class="n">lax</span><span class="o">.</span><span class="n">broadcast_in_dim</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">eqn</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;shape&quot;</span><span class="p">],</span> <span class="n">kept_dims</span><span class="p">)</span>
+          <span class="n">jax_util</span><span class="o">.</span><span class="n">safe_map</span><span class="p">(</span><span class="n">write</span><span class="p">,</span> <span class="n">eqn</span><span class="o">.</span><span class="n">outvars</span><span class="p">,</span> <span class="p">[</span><span class="n">y</span><span class="p">])</span>
+          <span class="n">broadcasts_outputs</span><span class="p">[</span><span class="n">eqn</span><span class="o">.</span><span class="n">outvars</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">=</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">kept_dims</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+          <span class="n">inputs</span> <span class="o">=</span> <span class="n">jax_util</span><span class="o">.</span><span class="n">safe_map</span><span class="p">(</span><span class="n">read</span><span class="p">,</span> <span class="n">eqn</span><span class="o">.</span><span class="n">invars</span><span class="p">)</span>
+          <span class="n">evaluate_eqn</span><span class="p">(</span><span class="n">eqn</span><span class="p">,</span> <span class="n">inputs</span><span class="p">,</span> <span class="n">write</span><span class="p">)</span>
+          <span class="n">broadcasts_outputs</span><span class="p">[</span><span class="n">eqn</span><span class="o">.</span><span class="n">outvars</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">=</span> <span class="p">(</span>
+              <span class="n">inputs</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">eqn</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;broadcast_dimensions&quot;</span><span class="p">])</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="n">evaluate_eqn</span><span class="p">(</span><span class="n">eqn</span><span class="p">,</span> <span class="n">jax_util</span><span class="o">.</span><span class="n">safe_map</span><span class="p">(</span><span class="n">read</span><span class="p">,</span> <span class="n">eqn</span><span class="o">.</span><span class="n">invars</span><span class="p">),</span> <span class="n">write</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">jax</span><span class="o">.</span><span class="n">tree_unflatten</span><span class="p">(</span><span class="n">out_tree</span><span class="p">,</span> <span class="n">jax_util</span><span class="o">.</span><span class="n">safe_map</span><span class="p">(</span><span class="n">read</span><span class="p">,</span> <span class="n">jaxpr</span><span class="o">.</span><span class="n">outvars</span><span class="p">))</span>
+
+  <span class="k">return</span> <span class="n">merged_func</span></div>
+
+
+<div class="viewcode-block" id="JaxGraph"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.tag_graph_matcher.JaxGraph.html#deeperwin.kfac_ferminet_alpha.tag_graph_matcher.JaxGraph">[docs]</a><span class="k">class</span> <span class="nc">JaxGraph</span><span class="p">(</span><span class="n">NamedTuple</span><span class="p">):</span>
+  <span class="n">jaxpr</span><span class="p">:</span> <span class="n">Any</span>
+  <span class="n">consts</span><span class="p">:</span> <span class="n">Any</span>
+  <span class="n">params</span><span class="p">:</span> <span class="n">Any</span>
+  <span class="n">params_tree</span><span class="p">:</span> <span class="n">Any</span>
+  <span class="n">in_tree</span><span class="p">:</span> <span class="n">Any</span>
+  <span class="n">out_tree</span><span class="p">:</span> <span class="n">Any</span>
+  <span class="n">digraph</span><span class="p">:</span> <span class="n">nx</span><span class="o">.</span><span class="n">DiGraph</span>
+  <span class="n">tagging_func</span><span class="p">:</span> <span class="n">Any</span></div>
+
+
+<span class="n">SPECIAL_OP_COMPARE_RULES</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="default_compare"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.tag_graph_matcher.default_compare.html#deeperwin.kfac_ferminet_alpha.tag_graph_matcher.default_compare">[docs]</a><span class="k">def</span> <span class="nf">default_compare</span><span class="p">(</span><span class="n">node1</span><span class="p">,</span> <span class="n">node2</span><span class="p">):</span>
+  <span class="k">if</span> <span class="n">node1</span><span class="p">[</span><span class="s2">&quot;op&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">node2</span><span class="p">[</span><span class="s2">&quot;op&quot;</span><span class="p">]:</span>
+    <span class="k">return</span> <span class="kc">False</span>
+  <span class="n">params1</span><span class="p">,</span> <span class="n">params2</span> <span class="o">=</span> <span class="n">node1</span><span class="p">[</span><span class="s2">&quot;eqn&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">params</span><span class="p">,</span> <span class="n">node2</span><span class="p">[</span><span class="s2">&quot;eqn&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">params</span>
+  <span class="k">if</span> <span class="nb">set</span><span class="p">(</span><span class="n">params1</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> <span class="o">!=</span> <span class="nb">set</span><span class="p">(</span><span class="n">params2</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+    <span class="k">return</span> <span class="kc">False</span>
+  <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">params1</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+    <span class="k">if</span> <span class="n">params1</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">!=</span> <span class="n">params2</span><span class="p">[</span><span class="n">k</span><span class="p">]:</span>
+      <span class="k">return</span> <span class="kc">False</span>
+  <span class="k">return</span> <span class="kc">True</span></div>
+
+
+<div class="viewcode-block" id="reshape_compare"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.tag_graph_matcher.reshape_compare.html#deeperwin.kfac_ferminet_alpha.tag_graph_matcher.reshape_compare">[docs]</a><span class="k">def</span> <span class="nf">reshape_compare</span><span class="p">(</span><span class="n">node1</span><span class="p">,</span> <span class="n">node2</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;Compares two reshape nodes.&quot;&quot;&quot;</span>
+  <span class="k">assert</span> <span class="n">node1</span><span class="p">[</span><span class="s2">&quot;op&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">node2</span><span class="p">[</span><span class="s2">&quot;op&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;reshape&quot;</span>
+  <span class="n">params1</span><span class="p">,</span> <span class="n">params2</span> <span class="o">=</span> <span class="n">node1</span><span class="p">[</span><span class="s2">&quot;eqn&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">params</span><span class="p">,</span> <span class="n">node2</span><span class="p">[</span><span class="s2">&quot;eqn&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">params</span>
+  <span class="k">if</span> <span class="n">params1</span><span class="p">[</span><span class="s2">&quot;dimensions&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">params2</span><span class="p">[</span><span class="s2">&quot;dimensions&quot;</span><span class="p">]:</span>
+    <span class="k">return</span> <span class="kc">False</span>
+  <span class="k">return</span> <span class="kc">True</span></div>
+
+
+<div class="viewcode-block" id="broadcast_in_dim_compare"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.tag_graph_matcher.broadcast_in_dim_compare.html#deeperwin.kfac_ferminet_alpha.tag_graph_matcher.broadcast_in_dim_compare">[docs]</a><span class="k">def</span> <span class="nf">broadcast_in_dim_compare</span><span class="p">(</span><span class="n">node1</span><span class="p">,</span> <span class="n">node2</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;Compares two reshape nodes.&quot;&quot;&quot;</span>
+  <span class="k">assert</span> <span class="n">node1</span><span class="p">[</span><span class="s2">&quot;op&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">node2</span><span class="p">[</span><span class="s2">&quot;op&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;broadcast_in_dim&quot;</span>
+  <span class="k">return</span> <span class="kc">True</span></div>
+
+
+<div class="viewcode-block" id="conv_compare"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.tag_graph_matcher.conv_compare.html#deeperwin.kfac_ferminet_alpha.tag_graph_matcher.conv_compare">[docs]</a><span class="k">def</span> <span class="nf">conv_compare</span><span class="p">(</span><span class="n">node1</span><span class="p">,</span> <span class="n">node2</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;Compares two conv_general_dialted nodes.&quot;&quot;&quot;</span>
+  <span class="k">assert</span> <span class="n">node1</span><span class="p">[</span><span class="s2">&quot;op&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">node2</span><span class="p">[</span><span class="s2">&quot;op&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;conv_general_dilated&quot;</span>
+  <span class="n">params1</span><span class="p">,</span> <span class="n">params2</span> <span class="o">=</span> <span class="n">node1</span><span class="p">[</span><span class="s2">&quot;eqn&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">params</span><span class="p">,</span> <span class="n">node2</span><span class="p">[</span><span class="s2">&quot;eqn&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">params</span>
+  <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;window_strides&quot;</span><span class="p">,</span> <span class="s2">&quot;padding&quot;</span><span class="p">,</span> <span class="s2">&quot;lhs_dilation&quot;</span><span class="p">,</span> <span class="s2">&quot;rhs_dilation&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;lhs_shape&quot;</span><span class="p">,</span> <span class="s2">&quot;rhs_shape&quot;</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">params1</span><span class="p">[</span><span class="n">k</span><span class="p">])</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">params2</span><span class="p">[</span><span class="n">k</span><span class="p">]):</span>
+      <span class="k">return</span> <span class="kc">False</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">params1</span><span class="p">[</span><span class="s2">&quot;dimension_numbers&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">lhs_spec</span><span class="p">)</span> <span class="o">!=</span>  <span class="c1">#</span>
+      <span class="nb">len</span><span class="p">(</span><span class="n">params2</span><span class="p">[</span><span class="s2">&quot;dimension_numbers&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">lhs_spec</span><span class="p">)):</span>
+    <span class="k">return</span> <span class="kc">False</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">params1</span><span class="p">[</span><span class="s2">&quot;dimension_numbers&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">rhs_spec</span><span class="p">)</span> <span class="o">!=</span>  <span class="c1">#</span>
+      <span class="nb">len</span><span class="p">(</span><span class="n">params2</span><span class="p">[</span><span class="s2">&quot;dimension_numbers&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">rhs_spec</span><span class="p">)):</span>
+    <span class="k">return</span> <span class="kc">False</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">params1</span><span class="p">[</span><span class="s2">&quot;dimension_numbers&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">out_spec</span><span class="p">)</span> <span class="o">!=</span>  <span class="c1">#</span>
+      <span class="nb">len</span><span class="p">(</span><span class="n">params2</span><span class="p">[</span><span class="s2">&quot;dimension_numbers&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">out_spec</span><span class="p">)):</span>
+    <span class="k">return</span> <span class="kc">False</span>
+  <span class="k">if</span> <span class="p">((</span><span class="n">params1</span><span class="p">[</span><span class="s2">&quot;feature_group_count&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">)</span> <span class="o">!=</span>  <span class="c1">#</span>
+      <span class="p">(</span><span class="n">params2</span><span class="p">[</span><span class="s2">&quot;feature_group_count&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">)):</span>
+    <span class="k">return</span> <span class="kc">False</span>
+  <span class="k">if</span> <span class="p">((</span><span class="n">params1</span><span class="p">[</span><span class="s2">&quot;batch_group_count&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">)</span> <span class="o">!=</span>  <span class="c1">#</span>
+      <span class="p">(</span><span class="n">params2</span><span class="p">[</span><span class="s2">&quot;batch_group_count&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">)):</span>
+    <span class="k">return</span> <span class="kc">False</span>
+  <span class="k">return</span> <span class="kc">True</span></div>
+
+
+<span class="n">SPECIAL_OP_COMPARE_RULES</span><span class="p">[</span><span class="s2">&quot;reshape&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">reshape_compare</span>
+<span class="n">SPECIAL_OP_COMPARE_RULES</span><span class="p">[</span><span class="s2">&quot;broadcast_in_dim&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">broadcast_in_dim_compare</span>
+<span class="n">SPECIAL_OP_COMPARE_RULES</span><span class="p">[</span><span class="s2">&quot;conv_general_dilated&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">conv_compare</span>
+
+
+<div class="viewcode-block" id="kfac_node_match"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.tag_graph_matcher.kfac_node_match.html#deeperwin.kfac_ferminet_alpha.tag_graph_matcher.kfac_node_match">[docs]</a><span class="k">def</span> <span class="nf">kfac_node_match</span><span class="p">(</span><span class="n">node1</span><span class="p">,</span> <span class="n">node2</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;Checks if two nodes are equivalent.&quot;&quot;&quot;</span>
+  <span class="c1"># Parameters match with each other and nothing else</span>
+  <span class="k">if</span> <span class="n">node1</span><span class="p">[</span><span class="s2">&quot;op&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;param&quot;</span> <span class="ow">and</span> <span class="n">node2</span><span class="p">[</span><span class="s2">&quot;op&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;param&quot;</span><span class="p">:</span>
+    <span class="k">return</span> <span class="kc">True</span>
+    <span class="c1"># return node1[&quot;rank&quot;] == node2[&quot;rank&quot;]</span>
+  <span class="k">if</span> <span class="n">node1</span><span class="p">[</span><span class="s2">&quot;op&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;param&quot;</span> <span class="ow">or</span> <span class="n">node2</span><span class="p">[</span><span class="s2">&quot;op&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;param&quot;</span><span class="p">:</span>
+    <span class="k">return</span> <span class="kc">False</span>
+  <span class="c1"># Arrays always match each other and nothing else</span>
+  <span class="k">if</span> <span class="n">node1</span><span class="p">[</span><span class="s2">&quot;op&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;array&quot;</span> <span class="ow">and</span> <span class="n">node2</span><span class="p">[</span><span class="s2">&quot;op&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;array&quot;</span><span class="p">:</span>
+    <span class="k">return</span> <span class="kc">True</span>
+  <span class="k">if</span> <span class="n">node1</span><span class="p">[</span><span class="s2">&quot;op&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;array&quot;</span> <span class="ow">or</span> <span class="n">node2</span><span class="p">[</span><span class="s2">&quot;op&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;array&quot;</span><span class="p">:</span>
+    <span class="k">return</span> <span class="kc">False</span>
+  <span class="c1"># Operators match first on name</span>
+  <span class="k">if</span> <span class="n">node1</span><span class="p">[</span><span class="s2">&quot;op&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">node2</span><span class="p">[</span><span class="s2">&quot;op&quot;</span><span class="p">]:</span>
+    <span class="k">return</span> <span class="kc">False</span>
+  <span class="n">compare</span> <span class="o">=</span> <span class="n">SPECIAL_OP_COMPARE_RULES</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">node1</span><span class="p">[</span><span class="s2">&quot;op&quot;</span><span class="p">],</span> <span class="n">default_compare</span><span class="p">)</span>
+  <span class="k">return</span> <span class="n">compare</span><span class="p">(</span><span class="n">node1</span><span class="p">,</span> <span class="n">node2</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="var_to_str"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.tag_graph_matcher.var_to_str.html#deeperwin.kfac_ferminet_alpha.tag_graph_matcher.var_to_str">[docs]</a><span class="k">def</span> <span class="nf">var_to_str</span><span class="p">(</span><span class="n">var</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;Returns a string representation of the variable of a Jax expression.&quot;&quot;&quot;</span>
+  <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">var</span><span class="p">,</span> <span class="n">jax</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">Literal</span><span class="p">):</span>
+    <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">var</span><span class="p">)</span>
+  <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">var</span><span class="p">,</span> <span class="n">jax</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">UnitVar</span><span class="p">):</span>
+    <span class="k">return</span> <span class="s2">&quot;*&quot;</span>
+  <span class="k">elif</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">var</span><span class="p">,</span> <span class="n">jax</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">Var</span><span class="p">):</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Idk what to do with this </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">var</span><span class="p">)</span><span class="si">}</span><span class="s2">?&quot;</span><span class="p">)</span>
+  <span class="n">c</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">var</span><span class="o">.</span><span class="n">count</span><span class="p">)</span>
+  <span class="k">if</span> <span class="n">c</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+    <span class="k">return</span> <span class="s2">&quot;_&quot;</span>
+  <span class="n">str_rep</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+  <span class="k">while</span> <span class="n">c</span> <span class="o">&gt;</span> <span class="mi">25</span><span class="p">:</span>
+    <span class="n">str_rep</span> <span class="o">+=</span> <span class="nb">chr</span><span class="p">(</span><span class="n">c</span> <span class="o">%</span> <span class="mi">26</span> <span class="o">+</span> <span class="nb">ord</span><span class="p">(</span><span class="s2">&quot;a&quot;</span><span class="p">))</span>
+    <span class="n">c</span> <span class="o">=</span> <span class="n">c</span> <span class="o">//</span> <span class="mi">26</span>
+  <span class="n">str_rep</span> <span class="o">+=</span> <span class="nb">chr</span><span class="p">(</span><span class="n">c</span> <span class="o">+</span> <span class="nb">ord</span><span class="p">(</span><span class="s2">&quot;a&quot;</span><span class="p">))</span>
+  <span class="k">return</span> <span class="n">str_rep</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="extract_param_vars_flat"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.tag_graph_matcher.extract_param_vars_flat.html#deeperwin.kfac_ferminet_alpha.tag_graph_matcher.extract_param_vars_flat">[docs]</a><span class="k">def</span> <span class="nf">extract_param_vars_flat</span><span class="p">(</span><span class="n">jaxpr</span><span class="p">,</span> <span class="n">in_tree</span><span class="p">,</span> <span class="n">params_index</span><span class="p">):</span>
+  <span class="k">if</span> <span class="n">params_index</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">params_index</span> <span class="o">=</span> <span class="p">[]</span>
+  <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">params_index</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+    <span class="n">params_index</span> <span class="o">=</span> <span class="p">[</span><span class="n">params_index</span><span class="p">]</span>
+  <span class="n">in_vars</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">tree_unflatten</span><span class="p">(</span><span class="n">in_tree</span><span class="p">,</span> <span class="n">jaxpr</span><span class="o">.</span><span class="n">invars</span><span class="p">)</span>
+  <span class="k">return</span> <span class="n">jax</span><span class="o">.</span><span class="n">tree_flatten</span><span class="p">([</span><span class="n">in_vars</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">params_index</span><span class="p">])</span></div>
+
+
+<div class="viewcode-block" id="fill_jaxpr_to_graph"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.tag_graph_matcher.fill_jaxpr_to_graph.html#deeperwin.kfac_ferminet_alpha.tag_graph_matcher.fill_jaxpr_to_graph">[docs]</a><span class="k">def</span> <span class="nf">fill_jaxpr_to_graph</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">jaxpr</span><span class="p">,</span> <span class="n">in_vars</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">out_vars</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;Fills the graph with the jaxpr.&quot;&quot;&quot;</span>
+  <span class="n">in_vars</span> <span class="o">=</span> <span class="n">in_vars</span> <span class="ow">or</span> <span class="p">[</span><span class="n">var_to_str</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">jaxpr</span><span class="o">.</span><span class="n">invars</span> <span class="o">+</span> <span class="n">jaxpr</span><span class="o">.</span><span class="n">constvars</span><span class="p">]</span>
+  <span class="n">in_map</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">jaxpr</span><span class="o">.</span><span class="n">invars</span> <span class="o">+</span> <span class="n">jaxpr</span><span class="o">.</span><span class="n">constvars</span><span class="p">,</span> <span class="n">in_vars</span><span class="p">))</span>
+  <span class="n">out_vars</span> <span class="o">=</span> <span class="n">out_vars</span> <span class="ow">or</span> <span class="p">[</span><span class="n">var_to_str</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">jaxpr</span><span class="o">.</span><span class="n">outvars</span><span class="p">]</span>
+  <span class="n">out_map</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">jaxpr</span><span class="o">.</span><span class="n">outvars</span><span class="p">,</span> <span class="n">out_vars</span><span class="p">))</span>
+
+  <span class="k">for</span> <span class="n">eqn</span> <span class="ow">in</span> <span class="n">jaxpr</span><span class="o">.</span><span class="n">eqns</span><span class="p">:</span>
+    <span class="n">in_vars</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">eqn</span><span class="o">.</span><span class="n">invars</span><span class="p">:</span>
+      <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="p">(</span><span class="n">jax</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">Literal</span><span class="p">,</span> <span class="n">jax</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">UnitVar</span><span class="p">)):</span>
+        <span class="n">in_vars</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">var_to_str</span><span class="p">(</span><span class="n">v</span><span class="p">))</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="n">in_vars</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">in_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">var_to_str</span><span class="p">(</span><span class="n">v</span><span class="p">)))</span>
+    <span class="n">out_vars</span> <span class="o">=</span> <span class="p">[</span><span class="n">out_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">var_to_str</span><span class="p">(</span><span class="n">v</span><span class="p">))</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">eqn</span><span class="o">.</span><span class="n">outvars</span><span class="p">]</span>
+    <span class="n">in_str</span> <span class="o">=</span> <span class="s2">&quot;,&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">in_vars</span><span class="p">)</span>
+    <span class="n">out_str</span> <span class="o">=</span> <span class="s2">&quot;,&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">out_vars</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">eqn</span><span class="o">.</span><span class="n">primitive</span><span class="p">,</span> <span class="n">tags</span><span class="o">.</span><span class="n">LossTag</span><span class="p">):</span>
+      <span class="n">func_name</span> <span class="o">=</span> <span class="s2">&quot;__loss_tag&quot;</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">eqn</span><span class="o">.</span><span class="n">primitive</span><span class="p">,</span> <span class="n">tags</span><span class="o">.</span><span class="n">LayerTag</span><span class="p">):</span>
+      <span class="n">func_name</span> <span class="o">=</span> <span class="s2">&quot;__layer_tag&quot;</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">func_name</span> <span class="o">=</span> <span class="n">eqn</span><span class="o">.</span><span class="n">primitive</span><span class="o">.</span><span class="n">name</span>
+    <span class="n">node_c</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">func_name</span><span class="si">}</span><span class="s2">(</span><span class="si">{</span><span class="n">in_str</span><span class="si">}</span><span class="s2">)-&gt;</span><span class="si">{</span><span class="n">out_str</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="n">graph</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span><span class="n">node_c</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="n">eqn</span><span class="o">.</span><span class="n">primitive</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">eqn</span><span class="o">=</span><span class="n">eqn</span><span class="p">)</span>
+
+    <span class="c1"># Create incoming edges</span>
+    <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">eqn</span><span class="o">.</span><span class="n">invars</span><span class="p">,</span> <span class="n">in_vars</span><span class="p">):</span>
+      <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">jax</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">Literal</span><span class="p">)</span> <span class="ow">and</span>
+          <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">jax</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">UnitVar</span><span class="p">)):</span>
+        <span class="n">graph</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">node_c</span><span class="p">)</span>
+
+    <span class="c1"># Create output nodes and edges</span>
+    <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">eqn</span><span class="o">.</span><span class="n">outvars</span><span class="p">,</span> <span class="n">out_vars</span><span class="p">):</span>
+      <span class="n">graph</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="s2">&quot;array&quot;</span><span class="p">,</span> <span class="n">var</span><span class="o">=</span><span class="n">v</span><span class="p">)</span>
+      <span class="n">graph</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">node_c</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="create_digraph"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.tag_graph_matcher.create_digraph.html#deeperwin.kfac_ferminet_alpha.tag_graph_matcher.create_digraph">[docs]</a><span class="k">def</span> <span class="nf">create_digraph</span><span class="p">(</span><span class="n">jaxpr</span><span class="p">,</span> <span class="n">params</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;Creates a directed graph from the given jaxpr and parameters.&quot;&quot;&quot;</span>
+  <span class="n">graph</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">DiGraph</span><span class="p">()</span>
+  <span class="c1"># Create input nodes</span>
+  <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">jaxpr</span><span class="o">.</span><span class="n">invars</span> <span class="o">+</span> <span class="n">jaxpr</span><span class="o">.</span><span class="n">constvars</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">params</span><span class="p">:</span>
+      <span class="n">graph</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span><span class="n">var_to_str</span><span class="p">(</span><span class="n">v</span><span class="p">),</span> <span class="n">op</span><span class="o">=</span><span class="s2">&quot;param&quot;</span><span class="p">,</span> <span class="n">var</span><span class="o">=</span><span class="n">v</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">graph</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span><span class="n">var_to_str</span><span class="p">(</span><span class="n">v</span><span class="p">),</span> <span class="n">op</span><span class="o">=</span><span class="s2">&quot;array&quot;</span><span class="p">,</span> <span class="n">var</span><span class="o">=</span><span class="n">v</span><span class="p">)</span>
+  <span class="n">fill_jaxpr_to_graph</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">jaxpr</span><span class="p">)</span>
+
+  <span class="k">return</span> <span class="n">graph</span></div>
+
+
+<div class="viewcode-block" id="function_to_jax_graph"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.tag_graph_matcher.function_to_jax_graph.html#deeperwin.kfac_ferminet_alpha.tag_graph_matcher.function_to_jax_graph">[docs]</a><span class="k">def</span> <span class="nf">function_to_jax_graph</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">params_index</span><span class="p">,</span> <span class="n">tagging_func</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;Creates a `JaxGraph` instance from the provided function.&quot;&quot;&quot;</span>
+  <span class="n">in_tree</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">tree_structure</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
+  <span class="n">typed_jaxpr</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">make_jaxpr</span><span class="p">(</span><span class="n">func</span><span class="p">)(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
+  <span class="n">jaxpr</span><span class="p">,</span> <span class="n">consts</span> <span class="o">=</span> <span class="n">typed_jaxpr</span><span class="o">.</span><span class="n">jaxpr</span><span class="p">,</span> <span class="n">typed_jaxpr</span><span class="o">.</span><span class="n">literals</span>
+  <span class="n">params</span><span class="p">,</span> <span class="n">params_tree</span> <span class="o">=</span> <span class="n">extract_param_vars_flat</span><span class="p">(</span><span class="n">jaxpr</span><span class="p">,</span> <span class="n">in_tree</span><span class="p">,</span> <span class="n">params_index</span><span class="p">)</span>
+
+  <span class="n">digraph</span> <span class="o">=</span> <span class="n">create_digraph</span><span class="p">(</span><span class="n">jaxpr</span><span class="p">,</span> <span class="n">params</span><span class="p">)</span>
+  <span class="k">if</span> <span class="n">tagging_func</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">tagging_func</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">tagging_func</span><span class="p">,</span> <span class="n">jaxpr</span><span class="p">)</span>
+  <span class="k">return</span> <span class="n">JaxGraph</span><span class="p">(</span>
+      <span class="n">jaxpr</span><span class="o">=</span><span class="n">jaxpr</span><span class="p">,</span>
+      <span class="n">consts</span><span class="o">=</span><span class="n">consts</span><span class="p">,</span>
+      <span class="n">params</span><span class="o">=</span><span class="n">params</span><span class="p">,</span>
+      <span class="n">params_tree</span><span class="o">=</span><span class="n">params_tree</span><span class="p">,</span>
+      <span class="n">in_tree</span><span class="o">=</span><span class="n">in_tree</span><span class="p">,</span>
+      <span class="n">out_tree</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+      <span class="n">digraph</span><span class="o">=</span><span class="n">digraph</span><span class="p">,</span>
+      <span class="n">tagging_func</span><span class="o">=</span><span class="n">tagging_func</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="print_nice_jaxpr"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.tag_graph_matcher.print_nice_jaxpr.html#deeperwin.kfac_ferminet_alpha.tag_graph_matcher.print_nice_jaxpr">[docs]</a><span class="k">def</span> <span class="nf">print_nice_jaxpr</span><span class="p">(</span><span class="n">jaxpr</span><span class="p">):</span>
+  <span class="k">for</span> <span class="n">eqn</span> <span class="ow">in</span> <span class="n">jaxpr</span><span class="o">.</span><span class="n">eqns</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">eqn</span><span class="o">.</span><span class="n">invars</span><span class="p">),</span> <span class="s2">&quot;-&gt;&quot;</span><span class="p">,</span> <span class="n">eqn</span><span class="o">.</span><span class="n">primitive</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">eqn</span><span class="o">.</span><span class="n">outvars</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="auto_register_tags"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.tag_graph_matcher.auto_register_tags.html#deeperwin.kfac_ferminet_alpha.tag_graph_matcher.auto_register_tags">[docs]</a><span class="k">def</span> <span class="nf">auto_register_tags</span><span class="p">(</span><span class="n">func</span><span class="p">,</span>
+                       <span class="n">func_args</span><span class="p">,</span>
+                       <span class="n">params_index</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+                       <span class="n">register_only_generic</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+                       <span class="n">compute_only_loss_tags</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+                       <span class="n">patterns_to_skip</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()):</span>
+  <span class="sd">&quot;&quot;&quot;Transform the function to one that is populated with tags.&quot;&quot;&quot;</span>
+  <span class="n">func</span> <span class="o">=</span> <span class="n">broadcast_merger</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+  <span class="n">graph</span> <span class="o">=</span> <span class="n">function_to_jax_graph</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="n">func_args</span><span class="p">,</span> <span class="n">params_index</span><span class="o">=</span><span class="n">params_index</span><span class="p">)</span>
+  <span class="n">matches</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+
+  <span class="c1"># Extract the tagged losses variables and all their ancestors</span>
+  <span class="n">loss_output_vars</span> <span class="o">=</span> <span class="p">[]</span>
+  <span class="n">num_losses</span> <span class="o">=</span> <span class="mi">0</span>
+  <span class="n">loss_ancestors</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+  <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="n">graph</span><span class="o">.</span><span class="n">digraph</span><span class="o">.</span><span class="n">nodes</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">node</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;__loss_tag&quot;</span><span class="p">):</span>
+      <span class="n">num_losses</span> <span class="o">+=</span> <span class="mi">1</span>
+      <span class="n">ancestors</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">ancestors</span><span class="p">(</span><span class="n">graph</span><span class="o">.</span><span class="n">digraph</span><span class="p">,</span> <span class="n">node</span><span class="p">)</span>
+      <span class="n">ancestors</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+      <span class="k">for</span> <span class="n">output_node</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;-&gt;&quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">):</span>
+        <span class="n">ancestors</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">output_node</span><span class="p">)</span>
+        <span class="n">loss_output_vars</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">graph</span><span class="o">.</span><span class="n">digraph</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="n">output_node</span><span class="p">][</span><span class="s2">&quot;var&quot;</span><span class="p">])</span>
+      <span class="n">loss_ancestors</span> <span class="o">=</span> <span class="n">loss_ancestors</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">ancestors</span><span class="p">)</span>
+  <span class="n">loss_output_vars</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">loss_output_vars</span><span class="p">)</span>
+
+  <span class="c1"># Extract the sub-graph that leads to losses</span>
+  <span class="n">sub_graph</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">induced_subgraph</span><span class="p">(</span><span class="n">graph</span><span class="o">.</span><span class="n">digraph</span><span class="p">,</span> <span class="n">loss_ancestors</span><span class="p">)</span>
+
+  <span class="c1"># First collect all parameters that are already part of a layer tag</span>
+  <span class="n">tagged_params</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+  <span class="n">pattern_counters</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+  <span class="k">for</span> <span class="n">tag_node</span> <span class="ow">in</span> <span class="p">(</span>
+      <span class="n">node</span> <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="n">sub_graph</span><span class="o">.</span><span class="n">nodes</span> <span class="k">if</span> <span class="n">node</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;__layer_tag&quot;</span><span class="p">)):</span>
+    <span class="n">inputs</span> <span class="o">=</span> <span class="n">graph</span><span class="o">.</span><span class="n">digraph</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="n">tag_node</span><span class="p">][</span><span class="s2">&quot;eqn&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">invars</span>
+    <span class="n">tag_instance</span> <span class="o">=</span> <span class="n">graph</span><span class="o">.</span><span class="n">digraph</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="n">tag_node</span><span class="p">][</span><span class="s2">&quot;eqn&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">primitive</span>
+    <span class="k">if</span> <span class="n">tag_instance</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;generic_tag&quot;</span><span class="p">:</span>
+      <span class="n">tag_params</span> <span class="o">=</span> <span class="n">tag_instance</span><span class="o">.</span><span class="n">split_all_inputs</span><span class="p">(</span><span class="n">inputs</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">tag_params</span> <span class="o">=</span> <span class="n">tag_instance</span><span class="o">.</span><span class="n">split_all_inputs</span><span class="p">(</span><span class="n">inputs</span><span class="p">)[</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">pattern_number</span> <span class="o">=</span> <span class="n">pattern_counters</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">tag_instance</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">tag_params</span><span class="p">:</span>
+      <span class="k">if</span> <span class="n">param</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">graph</span><span class="o">.</span><span class="n">params</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;You have registered a layer tag with parameter &quot;</span>
+                         <span class="sa">f</span><span class="s2">&quot;that is not part of the parameters at index &quot;</span>
+                         <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">params_index</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+      <span class="k">if</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">tagged_params</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;You have registered twice the parameter </span><span class="si">{</span><span class="n">param</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+      <span class="n">tagged_params</span><span class="p">[</span><span class="n">param</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Manual[</span><span class="si">{</span><span class="n">tag_instance</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">pattern_number</span><span class="si">}</span><span class="s2">]&quot;</span>
+    <span class="k">if</span> <span class="n">tag_instance</span><span class="o">.</span><span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">pattern_counters</span><span class="p">:</span>
+      <span class="n">pattern_counters</span><span class="p">[</span><span class="n">tag_instance</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">pattern_counters</span><span class="p">[</span><span class="n">tag_instance</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+
+  <span class="k">if</span> <span class="ow">not</span> <span class="n">register_only_generic</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">pattern_name</span><span class="p">,</span> <span class="n">patterns</span> <span class="ow">in</span> <span class="n">get_graph_patterns</span><span class="p">():</span>
+      <span class="k">if</span> <span class="n">pattern_name</span> <span class="ow">in</span> <span class="n">patterns_to_skip</span><span class="p">:</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Skipping graph pattern </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">pattern_name</span><span class="p">)</span>
+        <span class="k">continue</span>
+      <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Matching graph pattern </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">pattern_name</span><span class="p">)</span>
+      <span class="k">for</span> <span class="n">pattern</span> <span class="ow">in</span> <span class="n">patterns</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">match_map</span> <span class="ow">in</span> <span class="n">match_pattern</span><span class="p">(</span><span class="n">pattern</span><span class="o">.</span><span class="n">digraph</span><span class="p">,</span> <span class="n">sub_graph</span><span class="p">):</span>
+          <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">pattern</span><span class="o">.</span><span class="n">jaxpr</span><span class="o">.</span><span class="n">outvars</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
+          <span class="n">output</span> <span class="o">=</span> <span class="n">pattern</span><span class="o">.</span><span class="n">jaxpr</span><span class="o">.</span><span class="n">outvars</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+          <span class="k">if</span> <span class="n">matches</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">match_map</span><span class="p">[</span><span class="n">output</span><span class="p">])</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found more than one match for equation &quot;</span>
+                             <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">match_map</span><span class="p">[</span><span class="n">output</span><span class="p">]</span><span class="si">}</span><span class="s2">. Examine the jaxpr:</span><span class="se">\n</span><span class="s2"> &quot;</span>
+                             <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">graph</span><span class="o">.</span><span class="n">jaxpr</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+          <span class="c1"># Mark the parameters as already tagged</span>
+          <span class="n">match_params</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+          <span class="n">match_params_already_tagged</span> <span class="o">=</span> <span class="kc">False</span>
+          <span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">match_map</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">graph</span><span class="o">.</span><span class="n">params</span><span class="p">:</span>
+              <span class="n">match_params</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">param</span><span class="p">)</span>
+              <span class="k">if</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">tagged_params</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="n">match_params_already_tagged</span> <span class="o">=</span> <span class="kc">True</span>
+          <span class="c1"># Register the match only if no parameters are already registered</span>
+          <span class="k">if</span> <span class="ow">not</span> <span class="n">match_params_already_tagged</span><span class="p">:</span>
+            <span class="n">matches</span><span class="p">[</span><span class="n">match_map</span><span class="p">[</span><span class="n">output</span><span class="p">]]</span> <span class="o">=</span> <span class="p">(</span><span class="n">match_map</span><span class="p">,</span> <span class="n">pattern</span><span class="o">.</span><span class="n">tagging_func</span><span class="p">)</span>
+            <span class="n">pattern_number</span> <span class="o">=</span> <span class="n">pattern_counters</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">pattern_name</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">match_params</span><span class="p">:</span>
+              <span class="n">tagged_params</span><span class="p">[</span><span class="n">param</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Auto[</span><span class="si">{</span><span class="n">pattern_name</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">pattern_number</span><span class="si">}</span><span class="s2">]&quot;</span>
+            <span class="k">if</span> <span class="n">pattern_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">pattern_counters</span><span class="p">:</span>
+              <span class="n">pattern_counters</span><span class="p">[</span><span class="n">pattern_name</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="k">else</span><span class="p">:</span>
+              <span class="n">pattern_counters</span><span class="p">[</span><span class="n">pattern_name</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+
+  <span class="c1"># Mark remaining parameters as orphans</span>
+  <span class="n">orphan_params</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span>
+      <span class="nb">set</span><span class="p">(</span><span class="n">graph</span><span class="o">.</span><span class="n">params</span><span class="p">)</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">tagged_params</span><span class="o">.</span><span class="n">keys</span><span class="p">()),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">v</span><span class="p">:</span> <span class="n">v</span><span class="o">.</span><span class="n">count</span><span class="p">)</span>
+  <span class="n">params_regs</span> <span class="o">=</span> <span class="p">[</span><span class="n">tagged_params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="s2">&quot;Orphan&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">graph</span><span class="o">.</span><span class="n">params</span><span class="p">]</span>
+  <span class="n">params_regs</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">tree_unflatten</span><span class="p">(</span><span class="n">graph</span><span class="o">.</span><span class="n">params_tree</span><span class="p">,</span> <span class="n">params_regs</span><span class="p">)</span>
+  <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">50</span><span class="p">)</span>
+  <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Graph parameter registrations:&quot;</span><span class="p">)</span>
+  <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">params_regs</span><span class="p">)</span>
+  <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">50</span><span class="p">)</span>
+
+  <span class="c1"># Construct a function with all of the extra tag registrations</span>
+  <span class="nd">@functools</span><span class="o">.</span><span class="n">wraps</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+  <span class="k">def</span> <span class="nf">wrapped_auto_registered</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
+    <span class="n">flat_args</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">tree_flatten</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
+    <span class="c1"># Mapping from variable -&gt; value</span>
+    <span class="n">env</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="n">read</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">read_env</span><span class="p">,</span> <span class="n">env</span><span class="p">)</span>
+    <span class="n">write</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">write_env</span><span class="p">,</span> <span class="n">env</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">tag</span><span class="p">(</span><span class="n">var</span><span class="p">):</span>
+      <span class="k">if</span> <span class="n">matches</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">var</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">inv_map</span><span class="p">,</span> <span class="n">tagging_func</span> <span class="o">=</span> <span class="n">matches</span><span class="p">[</span><span class="n">var</span><span class="p">]</span>
+        <span class="n">var_map</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">inv_map</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="nb">str</span><span class="p">)}</span>
+        <span class="n">val_map</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">tree_map</span><span class="p">(</span><span class="n">read</span><span class="p">,</span> <span class="n">var_map</span><span class="p">)</span>
+        <span class="n">val</span> <span class="o">=</span> <span class="n">tagging_func</span><span class="p">(</span><span class="n">inv_map</span><span class="p">,</span> <span class="n">val_map</span><span class="p">)</span>
+        <span class="n">env</span><span class="p">[</span><span class="n">var</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span>
+
+    <span class="c1"># Bind args and consts to environment</span>
+    <span class="n">write</span><span class="p">(</span><span class="n">jax</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">unitvar</span><span class="p">,</span> <span class="n">jax</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">unit</span><span class="p">)</span>
+    <span class="n">jax_util</span><span class="o">.</span><span class="n">safe_map</span><span class="p">(</span><span class="n">write</span><span class="p">,</span> <span class="n">graph</span><span class="o">.</span><span class="n">jaxpr</span><span class="o">.</span><span class="n">invars</span><span class="p">,</span> <span class="n">flat_args</span><span class="p">)</span>
+    <span class="n">jax_util</span><span class="o">.</span><span class="n">safe_map</span><span class="p">(</span><span class="n">write</span><span class="p">,</span> <span class="n">graph</span><span class="o">.</span><span class="n">jaxpr</span><span class="o">.</span><span class="n">constvars</span><span class="p">,</span> <span class="n">graph</span><span class="o">.</span><span class="n">consts</span><span class="p">)</span>
+
+    <span class="c1"># Register any orphan parameters as generic</span>
+    <span class="k">for</span> <span class="n">param_var</span> <span class="ow">in</span> <span class="n">orphan_params</span><span class="p">:</span>
+      <span class="n">write</span><span class="p">(</span><span class="n">param_var</span><span class="p">,</span> <span class="n">tags</span><span class="o">.</span><span class="n">register_generic</span><span class="p">(</span><span class="n">read</span><span class="p">(</span><span class="n">param_var</span><span class="p">)))</span>
+
+    <span class="c1"># Set the correct output variables</span>
+    <span class="k">if</span> <span class="n">compute_only_loss_tags</span><span class="p">:</span>
+      <span class="n">output_vars</span> <span class="o">=</span> <span class="n">loss_output_vars</span>
+      <span class="n">out_tree</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">tree_structure</span><span class="p">(</span><span class="n">loss_output_vars</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">output_vars</span> <span class="o">=</span> <span class="n">graph</span><span class="o">.</span><span class="n">jaxpr</span><span class="o">.</span><span class="n">outvars</span>
+      <span class="n">out_tree</span> <span class="o">=</span> <span class="n">graph</span><span class="o">.</span><span class="n">out_tree</span>
+
+    <span class="c1"># Loop through equations and evaluate primitives using `bind`</span>
+    <span class="n">losses_evaluated</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">eqn</span> <span class="ow">in</span> <span class="n">graph</span><span class="o">.</span><span class="n">jaxpr</span><span class="o">.</span><span class="n">eqns</span><span class="p">:</span>
+      <span class="n">evaluate_eqn</span><span class="p">(</span><span class="n">eqn</span><span class="p">,</span> <span class="n">jax_util</span><span class="o">.</span><span class="n">safe_map</span><span class="p">(</span><span class="n">read</span><span class="p">,</span> <span class="n">eqn</span><span class="o">.</span><span class="n">invars</span><span class="p">),</span> <span class="n">write</span><span class="p">)</span>
+      <span class="n">jax_util</span><span class="o">.</span><span class="n">safe_map</span><span class="p">(</span><span class="n">tag</span><span class="p">,</span> <span class="n">eqn</span><span class="o">.</span><span class="n">outvars</span><span class="p">)</span>
+
+      <span class="c1"># If we want to output only tagged losses</span>
+      <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">eqn</span><span class="o">.</span><span class="n">primitive</span><span class="p">,</span> <span class="n">tags</span><span class="o">.</span><span class="n">LossTag</span><span class="p">):</span>
+        <span class="n">losses_evaluated</span> <span class="o">+=</span> <span class="mi">1</span>
+      <span class="k">if</span> <span class="n">compute_only_loss_tags</span> <span class="ow">and</span> <span class="n">num_losses</span> <span class="o">==</span> <span class="n">losses_evaluated</span><span class="p">:</span>
+        <span class="k">break</span>
+
+    <span class="n">outputs</span> <span class="o">=</span> <span class="n">jax_util</span><span class="o">.</span><span class="n">safe_map</span><span class="p">(</span><span class="n">read</span><span class="p">,</span> <span class="n">output_vars</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">jax</span><span class="o">.</span><span class="n">tree_unflatten</span><span class="p">(</span><span class="n">out_tree</span><span class="p">,</span> <span class="n">outputs</span><span class="p">)</span>
+
+  <span class="k">return</span> <span class="n">wrapped_auto_registered</span></div>
+
+
+<span class="c1"># Registered graphs</span>
+<span class="n">NAME_TO_JAX_GRAPH</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+<span class="n">DEFERRED_REGISTRATIONS</span> <span class="o">=</span> <span class="p">[]</span>
+
+
+<div class="viewcode-block" id="register_function"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.tag_graph_matcher.register_function.html#deeperwin.kfac_ferminet_alpha.tag_graph_matcher.register_function">[docs]</a><span class="k">def</span> <span class="nf">register_function</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="n">tagging_func</span><span class="p">,</span> <span class="n">example_args</span><span class="p">,</span> <span class="n">params_index</span><span class="p">,</span>
+                      <span class="n">precedence</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;Registers a function as a pattern in the graph matcher registry.</span>
+
+<span class="sd">  The graph matcher needs to trace at least once the full function, which means</span>
+<span class="sd">  you need to provide it with dummy arguments. The shapes of the arguments do</span>
+<span class="sd">  not matter, as the graph matcher ignores their values, however the rank does.</span>
+<span class="sd">  Especially if there is some broadcasting happening you should register with</span>
+<span class="sd">  every possible broadcast pattern. As a general advice avoid using a shape to</span>
+<span class="sd">  be 1, unless you want the pattern to specifically match that, as some</span>
+<span class="sd">  operations, like squeeze for example, can have special behaviour then.</span>
+
+<span class="sd">  Args:</span>
+<span class="sd">    name: The name of the pattern that is being registered to.</span>
+<span class="sd">    func: The function that performs the computation.</span>
+<span class="sd">    tagging_func: Function that correctly creates the tag.</span>
+<span class="sd">    example_args: Example arguments that can be inputted into `func`.</span>
+<span class="sd">    params_index: Specifies at which index of the `example_args` are considered</span>
+<span class="sd">      a parameter.</span>
+<span class="sd">    precedence: This specifies what precedence the graph matcher is going to</span>
+<span class="sd">      assign to the provided pattern. The graph matcher will go from lowest to</span>
+<span class="sd">      highest precedence, randomly breaking ties, when matching. Note that the</span>
+<span class="sd">      pattern that matches a parameter with the lowest precedence will get</span>
+<span class="sd">      registered and no other will. Specifically useful when there is a pattern</span>
+<span class="sd">      for a layer with and without bias, in which case the with bias</span>
+<span class="sd">      registration always should go with lower precedence.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="c1"># This is required because we can not use Jax before InitGoogle() runs</span>
+  <span class="k">def</span> <span class="nf">register</span><span class="p">():</span>
+    <span class="n">jnp_args</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">tree_map</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">,</span> <span class="n">example_args</span><span class="p">)</span>
+    <span class="n">graph</span> <span class="o">=</span> <span class="n">function_to_jax_graph</span><span class="p">(</span>
+        <span class="n">func</span><span class="p">,</span> <span class="n">jnp_args</span><span class="p">,</span> <span class="n">params_index</span><span class="o">=</span><span class="n">params_index</span><span class="p">,</span> <span class="n">tagging_func</span><span class="o">=</span><span class="n">tagging_func</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">NAME_TO_JAX_GRAPH</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+      <span class="n">NAME_TO_JAX_GRAPH</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">precedence</span><span class="p">,</span> <span class="p">[])</span>
+    <span class="k">assert</span> <span class="n">precedence</span> <span class="o">==</span> <span class="n">NAME_TO_JAX_GRAPH</span><span class="p">[</span><span class="n">name</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">NAME_TO_JAX_GRAPH</span><span class="p">[</span><span class="n">name</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">graph</span><span class="p">)</span>
+
+  <span class="n">DEFERRED_REGISTRATIONS</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">register</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="get_graph_patterns"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.tag_graph_matcher.get_graph_patterns.html#deeperwin.kfac_ferminet_alpha.tag_graph_matcher.get_graph_patterns">[docs]</a><span class="k">def</span> <span class="nf">get_graph_patterns</span><span class="p">():</span>
+  <span class="sd">&quot;&quot;&quot;Returns all graph patterns sorted by their precedence.&quot;&quot;&quot;</span>
+  <span class="k">while</span> <span class="n">DEFERRED_REGISTRATIONS</span><span class="p">:</span>
+    <span class="n">DEFERRED_REGISTRATIONS</span><span class="o">.</span><span class="n">pop</span><span class="p">()()</span>
+  <span class="k">return</span> <span class="p">[(</span><span class="n">name</span><span class="p">,</span> <span class="n">pattern</span><span class="p">)</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="p">(</span><span class="n">_</span><span class="p">,</span> <span class="n">pattern</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span>
+      <span class="n">NAME_TO_JAX_GRAPH</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">pair</span><span class="p">:</span> <span class="n">pair</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">])]</span></div>
+
+
+<span class="c1"># Dense with bias</span>
+<span class="n">register_function</span><span class="p">(</span>
+    <span class="s2">&quot;dense_with_bias&quot;</span><span class="p">,</span>
+    <span class="n">tags</span><span class="o">.</span><span class="n">dense_func</span><span class="p">,</span>
+    <span class="n">tags</span><span class="o">.</span><span class="n">dense_tagging</span><span class="p">,</span>
+    <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">11</span><span class="p">,</span> <span class="mi">13</span><span class="p">]),</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">13</span><span class="p">,</span> <span class="mi">7</span><span class="p">]),</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">7</span><span class="p">])]],</span>
+    <span class="n">params_index</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">precedence</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+<span class="c1"># Dense without bias</span>
+<span class="n">register_function</span><span class="p">(</span>
+    <span class="s2">&quot;dense_no_bias&quot;</span><span class="p">,</span>
+    <span class="n">tags</span><span class="o">.</span><span class="n">dense_func</span><span class="p">,</span>
+    <span class="n">tags</span><span class="o">.</span><span class="n">dense_tagging</span><span class="p">,</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">11</span><span class="p">,</span> <span class="mi">13</span><span class="p">]),</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">13</span><span class="p">,</span> <span class="mi">7</span><span class="p">])]],</span>
+    <span class="n">params_index</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">precedence</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="c1"># Conv2d with bias</span>
+<span class="n">register_function</span><span class="p">(</span>
+    <span class="s2">&quot;conv2d_with_bias&quot;</span><span class="p">,</span>
+    <span class="n">tags</span><span class="o">.</span><span class="n">conv2d_func</span><span class="p">,</span>
+    <span class="n">tags</span><span class="o">.</span><span class="n">conv2d_tagging</span><span class="p">,</span>
+    <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">5</span><span class="p">]),</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">]),</span>
+                              <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">4</span><span class="p">])]],</span>
+    <span class="n">params_index</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">precedence</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+<span class="c1"># Conv2d without bias</span>
+<span class="n">register_function</span><span class="p">(</span>
+    <span class="s2">&quot;conv2d_no_bias&quot;</span><span class="p">,</span>
+    <span class="n">tags</span><span class="o">.</span><span class="n">conv2d_func</span><span class="p">,</span>
+    <span class="n">tags</span><span class="o">.</span><span class="n">conv2d_tagging</span><span class="p">,</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">5</span><span class="p">]),</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">])]],</span>
+    <span class="n">params_index</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">precedence</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="c1"># Standard scale and shift with both scale and shift</span>
+<span class="n">register_function</span><span class="p">(</span>
+    <span class="s2">&quot;scale_and_shift&quot;</span><span class="p">,</span>
+    <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span>
+        <span class="n">tags</span><span class="o">.</span><span class="n">scale_and_shift_func</span><span class="p">,</span> <span class="n">has_scale</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">has_shift</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+    <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span>
+        <span class="n">tags</span><span class="o">.</span><span class="n">scale_and_shift_tagging</span><span class="p">,</span> <span class="n">has_scale</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">has_shift</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+    <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">13</span><span class="p">]),</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">13</span><span class="p">]),</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">13</span><span class="p">])]],</span>
+    <span class="n">params_index</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">precedence</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+<span class="c1"># Same but no broadcasting</span>
+<span class="n">register_function</span><span class="p">(</span>
+    <span class="s2">&quot;scale_and_shift&quot;</span><span class="p">,</span>
+    <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span>
+        <span class="n">tags</span><span class="o">.</span><span class="n">scale_and_shift_func</span><span class="p">,</span> <span class="n">has_scale</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">has_shift</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+    <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span>
+        <span class="n">tags</span><span class="o">.</span><span class="n">scale_and_shift_tagging</span><span class="p">,</span> <span class="n">has_scale</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">has_shift</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+    <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">13</span><span class="p">]),</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">13</span><span class="p">]),</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">13</span><span class="p">])]],</span>
+    <span class="n">params_index</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">precedence</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+<span class="c1"># Scale and shift as implemented in batch norm layers in Haiku</span>
+<span class="n">register_function</span><span class="p">(</span>
+    <span class="s2">&quot;scale_and_shift&quot;</span><span class="p">,</span>
+    <span class="n">tags</span><span class="o">.</span><span class="n">batch_norm_func</span><span class="p">,</span>
+    <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span>
+        <span class="n">tags</span><span class="o">.</span><span class="n">batch_norm_tagging_func</span><span class="p">,</span> <span class="n">has_scale</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">has_shift</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+    <span class="p">[[</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">13</span><span class="p">]),</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">13</span><span class="p">])],</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">13</span><span class="p">]),</span>
+                                           <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">13</span><span class="p">])]],</span>
+    <span class="n">params_index</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">precedence</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+<span class="c1"># Same but no broadcasting</span>
+<span class="n">register_function</span><span class="p">(</span>
+    <span class="s2">&quot;scale_and_shift&quot;</span><span class="p">,</span>
+    <span class="n">tags</span><span class="o">.</span><span class="n">batch_norm_func</span><span class="p">,</span>
+    <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span>
+        <span class="n">tags</span><span class="o">.</span><span class="n">batch_norm_tagging_func</span><span class="p">,</span> <span class="n">has_scale</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">has_shift</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+    <span class="p">[[</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">13</span><span class="p">]),</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">13</span><span class="p">])],</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">13</span><span class="p">]),</span>
+                                        <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">13</span><span class="p">])]],</span>
+    <span class="n">params_index</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">precedence</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+<span class="c1"># Only scale</span>
+<span class="n">register_function</span><span class="p">(</span>
+    <span class="s2">&quot;scale_only&quot;</span><span class="p">,</span>
+    <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span>
+        <span class="n">tags</span><span class="o">.</span><span class="n">scale_and_shift_func</span><span class="p">,</span> <span class="n">has_scale</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">has_shift</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
+    <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span>
+        <span class="n">tags</span><span class="o">.</span><span class="n">scale_and_shift_tagging</span><span class="p">,</span> <span class="n">has_scale</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">has_shift</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
+    <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">13</span><span class="p">]),</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">13</span><span class="p">])]],</span>
+    <span class="n">params_index</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">precedence</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Michael Scherbela, Leon Gerard, Rafael Reisenhofer.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator &mdash; deeperwin 1.0.0 documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/custom_style.css" type="text/css" />
+    <link rel="shortcut icon" href="../_static/favicon.png"/>
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="deeperwin.kfac_ferminet_alpha.layers_and_loss_tags" href="deeperwin.kfac_ferminet_alpha.layers_and_loss_tags.html" />
+    <link rel="prev" title="deeperwin.kfac_ferminet_alpha.estimator" href="deeperwin.kfac_ferminet_alpha.estimator.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> deeperwin
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorial.html">DeepErwin Tutorial</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../api.html">Full documentation for developers</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="deeperwin.html">deeperwin</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.ase_bindings.html">deeperwin.ase_bindings</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.bfgs.html">deeperwin.bfgs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.configuration.html">deeperwin.configuration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.dispatch.html">deeperwin.dispatch</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.evaluation.html">deeperwin.evaluation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.hamiltonian.html">deeperwin.hamiltonian</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.kfac.html">deeperwin.kfac</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.html">deeperwin.kfac_ferminet_alpha</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.curvature_blocks.html">deeperwin.kfac_ferminet_alpha.curvature_blocks</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.distributions.html">deeperwin.kfac_ferminet_alpha.distributions</a></li>
+<li class="toctree-l4 current"><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.estimator.html">deeperwin.kfac_ferminet_alpha.estimator</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.layers_and_loss_tags.html">deeperwin.kfac_ferminet_alpha.layers_and_loss_tags</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.loss_functions.html">deeperwin.kfac_ferminet_alpha.loss_functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.optimizer.html">deeperwin.kfac_ferminet_alpha.optimizer</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.tag_graph_matcher.html">deeperwin.kfac_ferminet_alpha.tag_graph_matcher</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.tests.html">deeperwin.kfac_ferminet_alpha.tests</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.tracer.html">deeperwin.kfac_ferminet_alpha.tracer</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.utils.html">deeperwin.kfac_ferminet_alpha.utils</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.loggers.html">deeperwin.loggers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.main.html">deeperwin.main</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.mcmc.html">deeperwin.mcmc</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.model.html">deeperwin.model</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.optimization.html">deeperwin.optimization</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.orbitals.html">deeperwin.orbitals</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.process_molecule.html">deeperwin.process_molecule</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.process_molecules_inter.html">deeperwin.process_molecules_inter</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.register_curvature.html">deeperwin.register_curvature</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.sweep_agent.html">deeperwin.sweep_agent</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.utils.html">deeperwin.utils</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../indices.html">Indices and tables</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">deeperwin</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../api.html">Full documentation for developers</a> &raquo;</li>
+          <li><a href="deeperwin.html">deeperwin</a> &raquo;</li>
+          <li><a href="deeperwin.kfac_ferminet_alpha.html">deeperwin.kfac_ferminet_alpha</a> &raquo;</li>
+          <li><a href="deeperwin.kfac_ferminet_alpha.estimator.html">deeperwin.kfac_ferminet_alpha.estimator</a> &raquo;</li>
+      <li>deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/_autosummary/deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="deeperwin-kfac-ferminet-alpha-estimator-curvatureestimator">
+<h1>deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator<a class="headerlink" href="#deeperwin-kfac-ferminet-alpha-estimator-curvatureestimator" title="Permalink to this headline"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">deeperwin.kfac_ferminet_alpha.estimator.</span></span><span class="sig-name descname"><span class="pre">CurvatureEstimator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/deeperwin/kfac_ferminet_alpha/estimator.html#CurvatureEstimator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="deeperwin.kfac_ferminet_alpha.utils.Stateful.html#deeperwin.kfac_ferminet_alpha.utils.Stateful" title="deeperwin.kfac_ferminet_alpha.utils.Stateful"><code class="xref py py-class docutils literal notranslate"><span class="pre">deeperwin.kfac_ferminet_alpha.utils.Stateful</span></code></a></p>
+<p>Curvature estimator class supporting various curvature approximations.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator.__init__" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator.__init__" title="deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(*args, **kwargs)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator.blocks_to_vectors" title="deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator.blocks_to_vectors"><code class="xref py py-obj docutils literal notranslate"><span class="pre">blocks_to_vectors</span></code></a>(per_block_vectors)</p></td>
+<td><p>Reverses the function self.vectors_to_blocks.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator.init" title="deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator.init"><code class="xref py py-obj docutils literal notranslate"><span class="pre">init</span></code></a>(rng, init_damping)</p></td>
+<td><p>Returns an initialized variables for the curvature approximations and the inverses..</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator.multiply" title="deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator.multiply"><code class="xref py py-obj docutils literal notranslate"><span class="pre">multiply</span></code></a>(parameter_structured_vector)</p></td>
+<td><p>Multiplies the vectors by the corresponding (damped) blocks.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator.multiply_inverse" title="deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator.multiply_inverse"><code class="xref py py-obj docutils literal notranslate"><span class="pre">multiply_inverse</span></code></a>(parameter_structured_vector)</p></td>
+<td><p>Multiplies the vectors by the corresponding (damped) inverses of the blocks.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator.multiply_matpower" title="deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator.multiply_matpower"><code class="xref py py-obj docutils literal notranslate"><span class="pre">multiply_matpower</span></code></a>(...)</p></td>
+<td><p>Multiplies the vectors by the corresponding matrix powers of the blocks.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_curvature_estimate_inverse</span></code>(...)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator.update_curvature_matrix_estimate" title="deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator.update_curvature_matrix_estimate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_curvature_matrix_estimate</span></code></a>(ema_old, ...)</p></td>
+<td><p>Updates the curvature estimate.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator.vec_block_apply" title="deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator.vec_block_apply"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vec_block_apply</span></code></a>(func, ...)</p></td>
+<td><p>Executes func for each approximation block on vectors.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator.vectors_to_blocks" title="deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator.vectors_to_blocks"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vectors_to_blocks</span></code></a>(parameter_structured_vector)</p></td>
+<td><p>Splits the parameters to values for the corresponding blocks.</p></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Attributes</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">diagonal_weight</span></code></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">mat_type</span></code></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">blocks</span></code></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">damping</span></code></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py method">
+<dt class="sig sig-object py" id="deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator.vectors_to_blocks">
+<span class="sig-name descname"><span class="pre">vectors_to_blocks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parameter_structured_vector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">jax._src.numpy.lax_numpy.ndarray</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/deeperwin/kfac_ferminet_alpha/estimator.html#CurvatureEstimator.vectors_to_blocks"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator.vectors_to_blocks" title="Permalink to this definition"></a></dt>
+<dd><p>Splits the parameters to values for the corresponding blocks.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator.blocks_to_vectors">
+<span class="sig-name descname"><span class="pre">blocks_to_vectors</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">per_block_vectors</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">jax._src.numpy.lax_numpy.ndarray</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span><a class="reference internal" href="../_modules/deeperwin/kfac_ferminet_alpha/estimator.html#CurvatureEstimator.blocks_to_vectors"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator.blocks_to_vectors" title="Permalink to this definition"></a></dt>
+<dd><p>Reverses the function self.vectors_to_blocks.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator.init">
+<span class="sig-name descname"><span class="pre">init</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rng</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">jax._src.numpy.lax_numpy.ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">init_damping</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">jax._src.numpy.lax_numpy.ndarray</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Mapping</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/deeperwin/kfac_ferminet_alpha/estimator.html#CurvatureEstimator.init"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator.init" title="Permalink to this definition"></a></dt>
+<dd><p>Returns an initialized variables for the curvature approximations and the inverses..</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator.vec_block_apply">
+<span class="sig-name descname"><span class="pre">vec_block_apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">func</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.curvature_blocks.CurvatureBlock.html#deeperwin.kfac_ferminet_alpha.curvature_blocks.CurvatureBlock" title="deeperwin.kfac_ferminet_alpha.curvature_blocks.CurvatureBlock"><span class="pre">deeperwin.kfac_ferminet_alpha.curvature_blocks.CurvatureBlock</span></a><span class="p"><span class="pre">,</span> </span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">jax._src.numpy.lax_numpy.ndarray</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span> </span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">jax._src.numpy.lax_numpy.ndarray</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parameter_structured_vector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span><a class="reference internal" href="../_modules/deeperwin/kfac_ferminet_alpha/estimator.html#CurvatureEstimator.vec_block_apply"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator.vec_block_apply" title="Permalink to this definition"></a></dt>
+<dd><p>Executes func for each approximation block on vectors.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator.multiply_inverse">
+<span class="sig-name descname"><span class="pre">multiply_inverse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parameter_structured_vector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span><a class="reference internal" href="../_modules/deeperwin/kfac_ferminet_alpha/estimator.html#CurvatureEstimator.multiply_inverse"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator.multiply_inverse" title="Permalink to this definition"></a></dt>
+<dd><p>Multiplies the vectors by the corresponding (damped) inverses of the blocks.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>parameter_structured_vector</strong> – Structure equivalent to the parameters of the
+model.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A structured identical to <cite>vectors</cite> containing the product.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator.multiply">
+<span class="sig-name descname"><span class="pre">multiply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parameter_structured_vector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span><a class="reference internal" href="../_modules/deeperwin/kfac_ferminet_alpha/estimator.html#CurvatureEstimator.multiply"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator.multiply" title="Permalink to this definition"></a></dt>
+<dd><p>Multiplies the vectors by the corresponding (damped) blocks.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>parameter_structured_vector</strong> – A vector in the same structure as the
+parameters of the model.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A structured identical to <cite>vectors</cite> containing the product.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator.multiply_matpower">
+<span class="sig-name descname"><span class="pre">multiply_matpower</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parameter_structured_vector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">deeperwin.kfac_ferminet_alpha.estimator._StructureT</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exp</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">deeperwin.kfac_ferminet_alpha.estimator._StructureT</span></span></span><a class="reference internal" href="../_modules/deeperwin/kfac_ferminet_alpha/estimator.html#CurvatureEstimator.multiply_matpower"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator.multiply_matpower" title="Permalink to this definition"></a></dt>
+<dd><p>Multiplies the vectors by the corresponding matrix powers of the blocks.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>parameter_structured_vector</strong> – A vector in the same structure as the
+parameters of the model.</p></li>
+<li><p><strong>exp</strong> – A float representing the power to raise the blocks by before
+multiplying it by the vector.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A structured identical to <cite>vectors</cite> containing the product.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator.update_curvature_matrix_estimate">
+<span class="sig-name descname"><span class="pre">update_curvature_matrix_estimate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ema_old</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span> </span><span class="pre">jax._src.numpy.lax_numpy.ndarray</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ema_new</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span> </span><span class="pre">jax._src.numpy.lax_numpy.ndarray</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rng</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">jax._src.numpy.lax_numpy.ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">func_args</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pmap_axis_name</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../_modules/deeperwin/kfac_ferminet_alpha/estimator.html#CurvatureEstimator.update_curvature_matrix_estimate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator.update_curvature_matrix_estimate" title="Permalink to this definition"></a></dt>
+<dd><p>Updates the curvature estimate.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="deeperwin.kfac_ferminet_alpha.estimator.html" class="btn btn-neutral float-left" title="deeperwin.kfac_ferminet_alpha.estimator" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="deeperwin.kfac_ferminet_alpha.layers_and_loss_tags.html" class="btn btn-neutral float-right" title="deeperwin.kfac_ferminet_alpha.layers_and_loss_tags" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Michael Scherbela, Leon Gerard, Rafael Reisenhofer.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

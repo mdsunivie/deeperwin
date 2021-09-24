@@ -1,0 +1,6 @@
+deeperwin.utils.make\_opt\_state\_picklable
+===========================================
+
+.. currentmodule:: deeperwin.utils
+
+.. autofunction:: make_opt_state_picklable

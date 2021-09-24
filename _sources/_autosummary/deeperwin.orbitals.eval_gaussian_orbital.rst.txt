@@ -1,0 +1,6 @@
+deeperwin.orbitals.eval\_gaussian\_orbital
+==========================================
+
+.. currentmodule:: deeperwin.orbitals
+
+.. autofunction:: eval_gaussian_orbital

@@ -1,0 +1,6 @@
+deeperwin.model.build\_backflow\_shift
+======================================
+
+.. currentmodule:: deeperwin.model
+
+.. autofunction:: build_backflow_shift

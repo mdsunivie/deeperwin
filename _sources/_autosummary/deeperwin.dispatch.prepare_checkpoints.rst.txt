@@ -1,0 +1,6 @@
+deeperwin.dispatch.prepare\_checkpoints
+=======================================
+
+.. currentmodule:: deeperwin.dispatch
+
+.. autofunction:: prepare_checkpoints

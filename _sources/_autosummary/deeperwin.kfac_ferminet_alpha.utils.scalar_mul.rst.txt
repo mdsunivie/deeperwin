@@ -1,0 +1,6 @@
+deeperwin.kfac\_ferminet\_alpha.utils.scalar\_mul
+=================================================
+
+.. currentmodule:: deeperwin.kfac_ferminet_alpha.utils
+
+.. autofunction:: scalar_mul

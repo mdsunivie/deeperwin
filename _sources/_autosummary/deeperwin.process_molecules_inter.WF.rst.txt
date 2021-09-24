@@ -1,0 +1,37 @@
+deeperwin.process\_molecules\_inter.WF
+======================================
+
+.. currentmodule:: deeperwin.process_molecules_inter
+
+.. autoclass:: WF
+   :members:
+   :show-inheritance:
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~WF.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~WF.checkpoints
+      ~WF.clipping_params
+      ~WF.fixed_params
+      ~WF.loggers
+      ~WF.mcmc_state
+      ~WF.opt_state
+      ~WF.physical
+      ~WF.trainable_params
+   
+   

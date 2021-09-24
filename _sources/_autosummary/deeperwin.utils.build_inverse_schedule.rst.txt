@@ -1,0 +1,6 @@
+deeperwin.utils.build\_inverse\_schedule
+========================================
+
+.. currentmodule:: deeperwin.utils
+
+.. autofunction:: build_inverse_schedule

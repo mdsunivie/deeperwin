@@ -1,0 +1,6 @@
+deeperwin.model.calculate\_shift\_decay
+=======================================
+
+.. currentmodule:: deeperwin.model
+
+.. autofunction:: calculate_shift_decay

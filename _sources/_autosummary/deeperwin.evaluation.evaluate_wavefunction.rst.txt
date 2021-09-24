@@ -1,0 +1,6 @@
+deeperwin.evaluation.evaluate\_wavefunction
+===========================================
+
+.. currentmodule:: deeperwin.evaluation
+
+.. autofunction:: evaluate_wavefunction

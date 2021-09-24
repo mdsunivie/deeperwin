@@ -1,0 +1,6 @@
+deeperwin.kfac.build\_optimize\_epoch\_kfac\_test
+=================================================
+
+.. currentmodule:: deeperwin.kfac
+
+.. autofunction:: build_optimize_epoch_kfac_test

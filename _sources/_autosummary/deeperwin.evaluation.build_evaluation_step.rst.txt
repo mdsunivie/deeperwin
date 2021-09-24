@@ -1,0 +1,6 @@
+deeperwin.evaluation.build\_evaluation\_step
+============================================
+
+.. currentmodule:: deeperwin.evaluation
+
+.. autofunction:: build_evaluation_step

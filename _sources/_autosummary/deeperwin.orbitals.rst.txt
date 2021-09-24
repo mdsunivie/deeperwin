@@ -1,0 +1,36 @@
+deeperwin.orbitals
+==================
+
+.. automodule:: deeperwin.orbitals
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+   
+      build_el_el_cusp_correction
+      build_pyscf_molecule
+      calculate_molecular_orbital_cusp_params
+      eval_atomic_orbitals
+      eval_gaussian_orbital
+      evaluate_molecular_orbitals
+      get_baseline_solution
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+

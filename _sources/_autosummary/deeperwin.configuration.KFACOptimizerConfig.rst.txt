@@ -1,0 +1,31 @@
+deeperwin.configuration.KFACOptimizerConfig
+===========================================
+
+.. currentmodule:: deeperwin.configuration
+
+.. autoclass:: KFACOptimizerConfig
+   :members:
+   :show-inheritance:
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~KFACOptimizerConfig.name
+      ~KFACOptimizerConfig.order
+      ~KFACOptimizerConfig.internal_optimizer
+   
+   

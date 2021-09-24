@@ -1,0 +1,6 @@
+deeperwin.kfac\_ferminet\_alpha.curvature\_blocks.copy\_default\_tag\_to\_block
+===============================================================================
+
+.. currentmodule:: deeperwin.kfac_ferminet_alpha.curvature_blocks
+
+.. autofunction:: copy_default_tag_to_block

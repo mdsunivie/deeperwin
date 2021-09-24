@@ -1,0 +1,6 @@
+deeperwin.model.ffwd\_net
+=========================
+
+.. currentmodule:: deeperwin.model
+
+.. autofunction:: ffwd_net

@@ -1,0 +1,26 @@
+deeperwin.loggers.BasicLogger
+=============================
+
+.. currentmodule:: deeperwin.loggers
+
+.. autoclass:: BasicLogger
+   :members:
+   :show-inheritance:
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~BasicLogger.__init__
+      ~BasicLogger.log_metrics
+      ~BasicLogger.log_params
+   
+   
+
+   
+   
+   

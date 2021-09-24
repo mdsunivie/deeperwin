@@ -1,0 +1,50 @@
+﻿deeperwin
+=========
+
+.. automodule:: deeperwin
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+
+.. rubric:: Modules
+
+.. autosummary::
+   :toctree:
+   :template: custom_module.rst
+   :recursive:
+
+   deeperwin.ase_bindings
+   deeperwin.bfgs
+   deeperwin.configuration
+   deeperwin.dispatch
+   deeperwin.evaluation
+   deeperwin.hamiltonian
+   deeperwin.kfac
+   deeperwin.kfac_ferminet_alpha
+   deeperwin.loggers
+   deeperwin.main
+   deeperwin.mcmc
+   deeperwin.model
+   deeperwin.optimization
+   deeperwin.orbitals
+   deeperwin.process_molecule
+   deeperwin.process_molecules_inter
+   deeperwin.register_curvature
+   deeperwin.sweep_agent
+   deeperwin.utils
+

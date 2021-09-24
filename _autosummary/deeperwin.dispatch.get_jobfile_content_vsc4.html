@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>deeperwin.dispatch.get_jobfile_content_vsc4 &mdash; deeperwin 1.0.0 documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/custom_style.css" type="text/css" />
+    <link rel="shortcut icon" href="../_static/favicon.png"/>
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="deeperwin.dispatch.idx_to_job_name" href="deeperwin.dispatch.idx_to_job_name.html" />
+    <link rel="prev" title="deeperwin.dispatch.get_jobfile_content_vsc3" href="deeperwin.dispatch.get_jobfile_content_vsc3.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> deeperwin
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorial.html">DeepErwin Tutorial</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../api.html">Full documentation for developers</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="deeperwin.html">deeperwin</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.ase_bindings.html">deeperwin.ase_bindings</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.bfgs.html">deeperwin.bfgs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.configuration.html">deeperwin.configuration</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="deeperwin.dispatch.html">deeperwin.dispatch</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.append_nfs_to_fullpaths.html">deeperwin.dispatch.append_nfs_to_fullpaths</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.build_experiment_name.html">deeperwin.dispatch.build_experiment_name</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.contains_run.html">deeperwin.dispatch.contains_run</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.dispatch_job.html">deeperwin.dispatch.dispatch_job</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.dispatch_to_dgx.html">deeperwin.dispatch.dispatch_to_dgx</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.dispatch_to_local.html">deeperwin.dispatch.dispatch_to_local</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.dispatch_to_vsc3.html">deeperwin.dispatch.dispatch_to_vsc3</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.dispatch_to_vsc4.html">deeperwin.dispatch.dispatch_to_vsc4</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.dump_config_dict.html">deeperwin.dispatch.dump_config_dict</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.duration_string_to_minutes.html">deeperwin.dispatch.duration_string_to_minutes</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.find_runs_rec.html">deeperwin.dispatch.find_runs_rec</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.get_fname_fullpath.html">deeperwin.dispatch.get_fname_fullpath</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.get_jobfile_content_dgx.html">deeperwin.dispatch.get_jobfile_content_dgx</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.get_jobfile_content_vsc3.html">deeperwin.dispatch.get_jobfile_content_vsc3</a></li>
+<li class="toctree-l4 current"><a class="current reference internal" href="#">deeperwin.dispatch.get_jobfile_content_vsc4</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.idx_to_job_name.html">deeperwin.dispatch.idx_to_job_name</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.is_checkpoint.html">deeperwin.dispatch.is_checkpoint</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.load_all_runs.html">deeperwin.dispatch.load_all_runs</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.load_from_file.html">deeperwin.dispatch.load_from_file</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.load_run.html">deeperwin.dispatch.load_run</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.prepare_checkpoints.html">deeperwin.dispatch.prepare_checkpoints</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.save_to_file.html">deeperwin.dispatch.save_to_file</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.setup_experiment_dir.html">deeperwin.dispatch.setup_experiment_dir</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.setup_job_dir.html">deeperwin.dispatch.setup_job_dir</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.shorten_parameter_name.html">deeperwin.dispatch.shorten_parameter_name</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.evaluation.html">deeperwin.evaluation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.hamiltonian.html">deeperwin.hamiltonian</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.kfac.html">deeperwin.kfac</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.html">deeperwin.kfac_ferminet_alpha</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.loggers.html">deeperwin.loggers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.main.html">deeperwin.main</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.mcmc.html">deeperwin.mcmc</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.model.html">deeperwin.model</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.optimization.html">deeperwin.optimization</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.orbitals.html">deeperwin.orbitals</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.process_molecule.html">deeperwin.process_molecule</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.process_molecules_inter.html">deeperwin.process_molecules_inter</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.register_curvature.html">deeperwin.register_curvature</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.sweep_agent.html">deeperwin.sweep_agent</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.utils.html">deeperwin.utils</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../indices.html">Indices and tables</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">deeperwin</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../api.html">Full documentation for developers</a> &raquo;</li>
+          <li><a href="deeperwin.html">deeperwin</a> &raquo;</li>
+          <li><a href="deeperwin.dispatch.html">deeperwin.dispatch</a> &raquo;</li>
+      <li>deeperwin.dispatch.get_jobfile_content_vsc4</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/_autosummary/deeperwin.dispatch.get_jobfile_content_vsc4.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="deeperwin-dispatch-get-jobfile-content-vsc4">
+<h1>deeperwin.dispatch.get_jobfile_content_vsc4<a class="headerlink" href="#deeperwin-dispatch-get-jobfile-content-vsc4" title="Permalink to this headline"></a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="deeperwin.dispatch.get_jobfile_content_vsc4">
+<span class="sig-prename descclassname"><span class="pre">deeperwin.dispatch.</span></span><span class="sig-name descname"><span class="pre">get_jobfile_content_vsc4</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">command</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">jobname</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">queue</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">time</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/deeperwin/dispatch.html#get_jobfile_content_vsc4"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.dispatch.get_jobfile_content_vsc4" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="deeperwin.dispatch.get_jobfile_content_vsc3.html" class="btn btn-neutral float-left" title="deeperwin.dispatch.get_jobfile_content_vsc3" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="deeperwin.dispatch.idx_to_job_name.html" class="btn btn-neutral float-right" title="deeperwin.dispatch.idx_to_job_name" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Michael Scherbela, Leon Gerard, Rafael Reisenhofer.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

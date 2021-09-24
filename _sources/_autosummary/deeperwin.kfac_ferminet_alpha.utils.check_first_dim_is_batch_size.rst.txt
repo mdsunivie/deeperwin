@@ -1,0 +1,6 @@
+deeperwin.kfac\_ferminet\_alpha.utils.check\_first\_dim\_is\_batch\_size
+========================================================================
+
+.. currentmodule:: deeperwin.kfac_ferminet_alpha.utils
+
+.. autofunction:: check_first_dim_is_batch_size

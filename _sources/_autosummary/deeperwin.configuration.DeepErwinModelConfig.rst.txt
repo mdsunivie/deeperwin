@@ -1,0 +1,41 @@
+deeperwin.configuration.DeepErwinModelConfig
+============================================
+
+.. currentmodule:: deeperwin.configuration
+
+.. autoclass:: DeepErwinModelConfig
+   :members:
+   :show-inheritance:
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~DeepErwinModelConfig.get_default_network_shape
+      ~DeepErwinModelConfig.total_number_of_pairwise_features
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~DeepErwinModelConfig.net_width
+      ~DeepErwinModelConfig.net_depth
+      ~DeepErwinModelConfig.n_hidden_bf_factor
+      ~DeepErwinModelConfig.n_hidden_bf_shift
+      ~DeepErwinModelConfig.n_hidden_jastrow
+      ~DeepErwinModelConfig.output_shift
+      ~DeepErwinModelConfig.distance_feature_powers
+      ~DeepErwinModelConfig.n_rbf_features
+      ~DeepErwinModelConfig.eps_dist_feat
+      ~DeepErwinModelConfig.n_pairwise_features
+      ~DeepErwinModelConfig.embedding
+   
+   

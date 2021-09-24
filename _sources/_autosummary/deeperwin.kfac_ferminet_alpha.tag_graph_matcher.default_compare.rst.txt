@@ -1,0 +1,6 @@
+deeperwin.kfac\_ferminet\_alpha.tag\_graph\_matcher.default\_compare
+====================================================================
+
+.. currentmodule:: deeperwin.kfac_ferminet_alpha.tag_graph_matcher
+
+.. autofunction:: default_compare

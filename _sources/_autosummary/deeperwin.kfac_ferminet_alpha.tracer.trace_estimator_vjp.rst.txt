@@ -1,0 +1,6 @@
+deeperwin.kfac\_ferminet\_alpha.tracer.trace\_estimator\_vjp
+============================================================
+
+.. currentmodule:: deeperwin.kfac_ferminet_alpha.tracer
+
+.. autofunction:: trace_estimator_vjp

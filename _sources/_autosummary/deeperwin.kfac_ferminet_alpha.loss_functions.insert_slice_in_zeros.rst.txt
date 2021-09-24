@@ -1,0 +1,6 @@
+deeperwin.kfac\_ferminet\_alpha.loss\_functions.insert\_slice\_in\_zeros
+========================================================================
+
+.. currentmodule:: deeperwin.kfac_ferminet_alpha.loss_functions
+
+.. autofunction:: insert_slice_in_zeros

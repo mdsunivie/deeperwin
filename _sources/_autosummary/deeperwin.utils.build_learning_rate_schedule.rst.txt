@@ -1,0 +1,6 @@
+deeperwin.utils.build\_learning\_rate\_schedule
+===============================================
+
+.. currentmodule:: deeperwin.utils
+
+.. autofunction:: build_learning_rate_schedule

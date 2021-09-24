@@ -1,0 +1,41 @@
+deeperwin.kfac\_ferminet\_alpha.curvature\_blocks.TwoKroneckerFactored
+======================================================================
+
+.. currentmodule:: deeperwin.kfac_ferminet_alpha.curvature_blocks
+
+.. autoclass:: TwoKroneckerFactored
+   :members:
+   :show-inheritance:
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~TwoKroneckerFactored.__init__
+      ~TwoKroneckerFactored.compute_extra_scale
+      ~TwoKroneckerFactored.init
+      ~TwoKroneckerFactored.input_size
+      ~TwoKroneckerFactored.multiply_matpower
+      ~TwoKroneckerFactored.output_size
+      ~TwoKroneckerFactored.update_curvature_inverse_estimate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~TwoKroneckerFactored.has_bias
+      ~TwoKroneckerFactored.inputs_factor
+      ~TwoKroneckerFactored.inputs_factor_inverse
+      ~TwoKroneckerFactored.outputs_factor
+      ~TwoKroneckerFactored.outputs_factor_inverse
+      ~TwoKroneckerFactored.extra_scale
+   
+   

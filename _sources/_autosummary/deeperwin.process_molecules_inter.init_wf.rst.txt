@@ -1,0 +1,6 @@
+deeperwin.process\_molecules\_inter.init\_wf
+============================================
+
+.. currentmodule:: deeperwin.process_molecules_inter
+
+.. autofunction:: init_wf

@@ -1,0 +1,31 @@
+deeperwin.kfac\_ferminet\_alpha.optimizer
+=========================================
+
+.. automodule:: deeperwin.kfac_ferminet_alpha.optimizer
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: custom_class.rst
+   
+      Optimizer
+   
+   
+
+   
+   
+   
+
+
+

@@ -1,0 +1,6 @@
+deeperwin.kfac\_ferminet\_alpha.layers\_and\_loss\_tags.scale\_and\_shift\_tagging
+==================================================================================
+
+.. currentmodule:: deeperwin.kfac_ferminet_alpha.layers_and_loss_tags
+
+.. autofunction:: scale_and_shift_tagging

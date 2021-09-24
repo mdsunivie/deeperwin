@@ -1,0 +1,29 @@
+deeperwin.loggers.PickleLogger
+==============================
+
+.. currentmodule:: deeperwin.loggers
+
+.. autoclass:: PickleLogger
+   :members:
+   :show-inheritance:
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~PickleLogger.__init__
+      ~PickleLogger.log_checkpoint
+      ~PickleLogger.log_metrics
+      ~PickleLogger.log_params
+      ~PickleLogger.log_weights
+      ~PickleLogger.on_run_end
+   
+   
+
+   
+   
+   

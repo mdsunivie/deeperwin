@@ -1,0 +1,6 @@
+deeperwin.mcmc.calculate\_metrics
+=================================
+
+.. currentmodule:: deeperwin.mcmc
+
+.. autofunction:: calculate_metrics

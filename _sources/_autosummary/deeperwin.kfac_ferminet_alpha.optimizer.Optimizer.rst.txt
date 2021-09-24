@@ -1,0 +1,38 @@
+deeperwin.kfac\_ferminet\_alpha.optimizer.Optimizer
+===================================================
+
+.. currentmodule:: deeperwin.kfac_ferminet_alpha.optimizer
+
+.. autoclass:: Optimizer
+   :members:
+   :show-inheritance:
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Optimizer.__init__
+      ~Optimizer.finalize
+      ~Optimizer.init
+      ~Optimizer.propose_directions
+      ~Optimizer.step
+      ~Optimizer.velocities_and_delta
+      ~Optimizer.verify_args_and_get_step_counter
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Optimizer.velocities
+      ~Optimizer.estimator
+      ~Optimizer.step_counter
+   
+   

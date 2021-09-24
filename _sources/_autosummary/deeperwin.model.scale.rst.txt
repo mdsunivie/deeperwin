@@ -1,0 +1,6 @@
+deeperwin.model.scale
+=====================
+
+.. currentmodule:: deeperwin.model
+
+.. autofunction:: scale

@@ -1,0 +1,37 @@
+deeperwin.kfac\_ferminet\_alpha.curvature\_blocks.CurvatureBlock
+================================================================
+
+.. currentmodule:: deeperwin.kfac_ferminet_alpha.curvature_blocks
+
+.. autoclass:: CurvatureBlock
+   :members:
+   :show-inheritance:
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~CurvatureBlock.__init__
+      ~CurvatureBlock.init
+      ~CurvatureBlock.multiply_matpower
+      ~CurvatureBlock.update_curvature_inverse_estimate
+      ~CurvatureBlock.update_curvature_matrix_estimate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~CurvatureBlock.inputs_shapes
+      ~CurvatureBlock.layer_tag_primitive
+      ~CurvatureBlock.outputs_shapes
+      ~CurvatureBlock.params_shapes
+   
+   

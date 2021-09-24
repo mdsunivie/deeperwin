@@ -1,0 +1,30 @@
+deeperwin.configuration.AdamOptimizerConfig
+===========================================
+
+.. currentmodule:: deeperwin.configuration
+
+.. autoclass:: AdamOptimizerConfig
+   :members:
+   :show-inheritance:
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~AdamOptimizerConfig.name
+      ~AdamOptimizerConfig.order
+   
+   

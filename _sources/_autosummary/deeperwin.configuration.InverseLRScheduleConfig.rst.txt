@@ -1,0 +1,30 @@
+deeperwin.configuration.InverseLRScheduleConfig
+===============================================
+
+.. currentmodule:: deeperwin.configuration
+
+.. autoclass:: InverseLRScheduleConfig
+   :members:
+   :show-inheritance:
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~InverseLRScheduleConfig.name
+      ~InverseLRScheduleConfig.decay_time
+   
+   

@@ -1,0 +1,6 @@
+deeperwin.hamiltonian.get\_kinetic\_energy\_fwd\_diff
+=====================================================
+
+.. currentmodule:: deeperwin.hamiltonian
+
+.. autofunction:: get_kinetic_energy_fwd_diff

@@ -1,0 +1,35 @@
+deeperwin.kfac\_ferminet\_alpha.curvature\_blocks.ScaleAndShiftFull
+===================================================================
+
+.. currentmodule:: deeperwin.kfac_ferminet_alpha.curvature_blocks
+
+.. autoclass:: ScaleAndShiftFull
+   :members:
+   :show-inheritance:
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~ScaleAndShiftFull.__init__
+      ~ScaleAndShiftFull.init
+      ~ScaleAndShiftFull.multiply_matpower
+      ~ScaleAndShiftFull.update_curvature_inverse_estimate
+      ~ScaleAndShiftFull.update_curvature_matrix_estimate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ScaleAndShiftFull.factor
+      ~ScaleAndShiftFull.inverse_factor
+   
+   

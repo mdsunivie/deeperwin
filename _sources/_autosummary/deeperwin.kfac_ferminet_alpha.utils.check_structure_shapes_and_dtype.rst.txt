@@ -1,0 +1,6 @@
+deeperwin.kfac\_ferminet\_alpha.utils.check\_structure\_shapes\_and\_dtype
+==========================================================================
+
+.. currentmodule:: deeperwin.kfac_ferminet_alpha.utils
+
+.. autofunction:: check_structure_shapes_and_dtype

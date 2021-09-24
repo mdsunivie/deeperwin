@@ -1,0 +1,6 @@
+deeperwin.kfac\_ferminet\_alpha.tag\_graph\_matcher.get\_graph\_patterns
+========================================================================
+
+.. currentmodule:: deeperwin.kfac_ferminet_alpha.tag_graph_matcher
+
+.. autofunction:: get_graph_patterns

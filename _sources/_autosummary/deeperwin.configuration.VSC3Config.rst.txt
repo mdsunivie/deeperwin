@@ -1,0 +1,29 @@
+deeperwin.configuration.VSC3Config
+==================================
+
+.. currentmodule:: deeperwin.configuration
+
+.. autoclass:: VSC3Config
+   :members:
+   :show-inheritance:
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~VSC3Config.queue
+   
+   

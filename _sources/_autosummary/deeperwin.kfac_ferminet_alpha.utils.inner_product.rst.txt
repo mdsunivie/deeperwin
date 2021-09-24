@@ -1,0 +1,6 @@
+deeperwin.kfac\_ferminet\_alpha.utils.inner\_product
+====================================================
+
+.. currentmodule:: deeperwin.kfac_ferminet_alpha.utils
+
+.. autofunction:: inner_product

@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>deeperwin.configuration &mdash; deeperwin 1.0.0 documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/custom_style.css" type="text/css" />
+    <link rel="shortcut icon" href="../_static/favicon.png"/>
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="deeperwin.configuration.build_nested_dict" href="deeperwin.configuration.build_nested_dict.html" />
+    <link rel="prev" title="deeperwin.bfgs.update_hessian_representation" href="deeperwin.bfgs.update_hessian_representation.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> deeperwin
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorial.html">DeepErwin Tutorial</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../api.html">Full documentation for developers</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="deeperwin.html">deeperwin</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.ase_bindings.html">deeperwin.ase_bindings</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.bfgs.html">deeperwin.bfgs</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">deeperwin.configuration</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.configuration.build_nested_dict.html">deeperwin.configuration.build_nested_dict</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.configuration.get_attribute_by_nested_key.html">deeperwin.configuration.get_attribute_by_nested_key</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.configuration.set_with_nested_key.html">deeperwin.configuration.set_with_nested_key</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.configuration.AdamOptimizerConfig.html">deeperwin.configuration.AdamOptimizerConfig</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.configuration.BFGSOptimizerConfig.html">deeperwin.configuration.BFGSOptimizerConfig</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.configuration.BasicLoggerConfig.html">deeperwin.configuration.BasicLoggerConfig</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.configuration.CASSCFConfig.html">deeperwin.configuration.CASSCFConfig</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.configuration.ClippingConfig.html">deeperwin.configuration.ClippingConfig</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.configuration.ComputationConfig.html">deeperwin.configuration.ComputationConfig</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.configuration.ConfigModel.html">deeperwin.configuration.ConfigModel</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.configuration.Configuration.html">deeperwin.configuration.Configuration</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.configuration.CuspCorrectionConfig.html">deeperwin.configuration.CuspCorrectionConfig</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.configuration.DGXConfig.html">deeperwin.configuration.DGXConfig</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.configuration.DeepErwinModelConfig.html">deeperwin.configuration.DeepErwinModelConfig</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.configuration.DummyEmbeddingConfig.html">deeperwin.configuration.DummyEmbeddingConfig</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.configuration.EvaluationConfig.html">deeperwin.configuration.EvaluationConfig</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.configuration.FixedLRSchedule.html">deeperwin.configuration.FixedLRSchedule</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.configuration.ForceEvaluationConfig.html">deeperwin.configuration.ForceEvaluationConfig</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.configuration.IntermediateEvaluationConfig.html">deeperwin.configuration.IntermediateEvaluationConfig</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.configuration.InverseLRScheduleConfig.html">deeperwin.configuration.InverseLRScheduleConfig</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.configuration.KFACOptimizerConfig.html">deeperwin.configuration.KFACOptimizerConfig</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.configuration.LoggerBaseConfig.html">deeperwin.configuration.LoggerBaseConfig</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.configuration.LoggingConfig.html">deeperwin.configuration.LoggingConfig</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.configuration.MCMCConfig.html">deeperwin.configuration.MCMCConfig</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.configuration.MCMCLangevinProposalConfig.html">deeperwin.configuration.MCMCLangevinProposalConfig</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.configuration.MCMCSimpleProposalConfig.html">deeperwin.configuration.MCMCSimpleProposalConfig</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.configuration.NetworkConfig.html">deeperwin.configuration.NetworkConfig</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.configuration.OptimizationConfig.html">deeperwin.configuration.OptimizationConfig</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.configuration.PhysicalConfig.html">deeperwin.configuration.PhysicalConfig</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.configuration.PhysicalConfigChange.html">deeperwin.configuration.PhysicalConfigChange</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.configuration.PickleLoggerConfig.html">deeperwin.configuration.PickleLoggerConfig</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.configuration.RestartConfig.html">deeperwin.configuration.RestartConfig</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.configuration.SimpleSchnetConfig.html">deeperwin.configuration.SimpleSchnetConfig</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.configuration.StandardOptimizerConfig.html">deeperwin.configuration.StandardOptimizerConfig</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.configuration.VSC3Config.html">deeperwin.configuration.VSC3Config</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.configuration.VSC4Config.html">deeperwin.configuration.VSC4Config</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.configuration.WandBConfig.html">deeperwin.configuration.WandBConfig</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.dispatch.html">deeperwin.dispatch</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.evaluation.html">deeperwin.evaluation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.hamiltonian.html">deeperwin.hamiltonian</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.kfac.html">deeperwin.kfac</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.html">deeperwin.kfac_ferminet_alpha</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.loggers.html">deeperwin.loggers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.main.html">deeperwin.main</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.mcmc.html">deeperwin.mcmc</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.model.html">deeperwin.model</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.optimization.html">deeperwin.optimization</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.orbitals.html">deeperwin.orbitals</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.process_molecule.html">deeperwin.process_molecule</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.process_molecules_inter.html">deeperwin.process_molecules_inter</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.register_curvature.html">deeperwin.register_curvature</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.sweep_agent.html">deeperwin.sweep_agent</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.utils.html">deeperwin.utils</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../indices.html">Indices and tables</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">deeperwin</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../api.html">Full documentation for developers</a> &raquo;</li>
+          <li><a href="deeperwin.html">deeperwin</a> &raquo;</li>
+      <li>deeperwin.configuration</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/_autosummary/deeperwin.configuration.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-deeperwin.configuration">
+<span id="deeperwin-configuration"></span><h1>deeperwin.configuration<a class="headerlink" href="#module-deeperwin.configuration" title="Permalink to this headline"></a></h1>
+<p class="rubric">Functions</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.configuration.build_nested_dict.html#deeperwin.configuration.build_nested_dict" title="deeperwin.configuration.build_nested_dict"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_nested_dict</span></code></a>(flattened_dict)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.configuration.get_attribute_by_nested_key.html#deeperwin.configuration.get_attribute_by_nested_key" title="deeperwin.configuration.get_attribute_by_nested_key"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_attribute_by_nested_key</span></code></a>(config, key)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.configuration.set_with_nested_key.html#deeperwin.configuration.set_with_nested_key" title="deeperwin.configuration.set_with_nested_key"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_with_nested_key</span></code></a>(config_dict, key, value)</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Classes</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.configuration.AdamOptimizerConfig.html#deeperwin.configuration.AdamOptimizerConfig" title="deeperwin.configuration.AdamOptimizerConfig"><code class="xref py py-obj docutils literal notranslate"><span class="pre">AdamOptimizerConfig</span></code></a>(*[, name, order, b1, ...])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.configuration.BFGSOptimizerConfig.html#deeperwin.configuration.BFGSOptimizerConfig" title="deeperwin.configuration.BFGSOptimizerConfig"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BFGSOptimizerConfig</span></code></a>(*[, name, order, ...])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.configuration.BasicLoggerConfig.html#deeperwin.configuration.BasicLoggerConfig" title="deeperwin.configuration.BasicLoggerConfig"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BasicLoggerConfig</span></code></a>(*[, n_skip_epochs, ...])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.configuration.CASSCFConfig.html#deeperwin.configuration.CASSCFConfig" title="deeperwin.configuration.CASSCFConfig"><code class="xref py py-obj docutils literal notranslate"><span class="pre">CASSCFConfig</span></code></a>(*[, name, basis_set, ...])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.configuration.ClippingConfig.html#deeperwin.configuration.ClippingConfig" title="deeperwin.configuration.ClippingConfig"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ClippingConfig</span></code></a>(*[, name, width_metric, ...])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.configuration.ComputationConfig.html#deeperwin.configuration.ComputationConfig" title="deeperwin.configuration.ComputationConfig"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ComputationConfig</span></code></a>(*[, float_precision, ...])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.configuration.ConfigModel.html#deeperwin.configuration.ConfigModel" title="deeperwin.configuration.ConfigModel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ConfigModel</span></code></a>()</p></td>
+<td><p>Base class for all config models</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.configuration.Configuration.html#deeperwin.configuration.Configuration" title="deeperwin.configuration.Configuration"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Configuration</span></code></a>(*[, physical, model, restart, ...])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.configuration.CuspCorrectionConfig.html#deeperwin.configuration.CuspCorrectionConfig" title="deeperwin.configuration.CuspCorrectionConfig"><code class="xref py py-obj docutils literal notranslate"><span class="pre">CuspCorrectionConfig</span></code></a>(*[, cusp_type, use, ...])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.configuration.DGXConfig.html#deeperwin.configuration.DGXConfig" title="deeperwin.configuration.DGXConfig"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DGXConfig</span></code></a>(*[, time, conda_env])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.configuration.DeepErwinModelConfig.html#deeperwin.configuration.DeepErwinModelConfig" title="deeperwin.configuration.DeepErwinModelConfig"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DeepErwinModelConfig</span></code></a>(*[, net_width, ...])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.configuration.DummyEmbeddingConfig.html#deeperwin.configuration.DummyEmbeddingConfig" title="deeperwin.configuration.DummyEmbeddingConfig"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DummyEmbeddingConfig</span></code></a>(*, name)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.configuration.EvaluationConfig.html#deeperwin.configuration.EvaluationConfig" title="deeperwin.configuration.EvaluationConfig"><code class="xref py py-obj docutils literal notranslate"><span class="pre">EvaluationConfig</span></code></a>(*[, forces, n_epochs])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.configuration.FixedLRSchedule.html#deeperwin.configuration.FixedLRSchedule" title="deeperwin.configuration.FixedLRSchedule"><code class="xref py py-obj docutils literal notranslate"><span class="pre">FixedLRSchedule</span></code></a>(*[, name])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.configuration.ForceEvaluationConfig.html#deeperwin.configuration.ForceEvaluationConfig" title="deeperwin.configuration.ForceEvaluationConfig"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ForceEvaluationConfig</span></code></a>(*[, use_polynomial, ...])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.configuration.IntermediateEvaluationConfig.html#deeperwin.configuration.IntermediateEvaluationConfig" title="deeperwin.configuration.IntermediateEvaluationConfig"><code class="xref py py-obj docutils literal notranslate"><span class="pre">IntermediateEvaluationConfig</span></code></a>(*[, ...])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.configuration.InverseLRScheduleConfig.html#deeperwin.configuration.InverseLRScheduleConfig" title="deeperwin.configuration.InverseLRScheduleConfig"><code class="xref py py-obj docutils literal notranslate"><span class="pre">InverseLRScheduleConfig</span></code></a>(*[, name, decay_time])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.configuration.KFACOptimizerConfig.html#deeperwin.configuration.KFACOptimizerConfig" title="deeperwin.configuration.KFACOptimizerConfig"><code class="xref py py-obj docutils literal notranslate"><span class="pre">KFACOptimizerConfig</span></code></a>(*[, name, order, ...])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.configuration.LoggerBaseConfig.html#deeperwin.configuration.LoggerBaseConfig" title="deeperwin.configuration.LoggerBaseConfig"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LoggerBaseConfig</span></code></a>(*[, n_skip_epochs])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.configuration.LoggingConfig.html#deeperwin.configuration.LoggingConfig" title="deeperwin.configuration.LoggingConfig"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LoggingConfig</span></code></a>(*[, tags, log_opt_state, ...])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.configuration.MCMCConfig.html#deeperwin.configuration.MCMCConfig" title="deeperwin.configuration.MCMCConfig"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MCMCConfig</span></code></a>(*[, n_walkers_opt, ...])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.configuration.MCMCLangevinProposalConfig.html#deeperwin.configuration.MCMCLangevinProposalConfig" title="deeperwin.configuration.MCMCLangevinProposalConfig"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MCMCLangevinProposalConfig</span></code></a>(*[, name, ...])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.configuration.MCMCSimpleProposalConfig.html#deeperwin.configuration.MCMCSimpleProposalConfig" title="deeperwin.configuration.MCMCSimpleProposalConfig"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MCMCSimpleProposalConfig</span></code></a>(*[, name])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.configuration.NetworkConfig.html#deeperwin.configuration.NetworkConfig" title="deeperwin.configuration.NetworkConfig"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NetworkConfig</span></code></a>(*[, net_width, net_depth])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.configuration.OptimizationConfig.html#deeperwin.configuration.OptimizationConfig" title="deeperwin.configuration.OptimizationConfig"><code class="xref py py-obj docutils literal notranslate"><span class="pre">OptimizationConfig</span></code></a>(*[, optimizer, schedule, ...])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.configuration.PhysicalConfig.html#deeperwin.configuration.PhysicalConfig" title="deeperwin.configuration.PhysicalConfig"><code class="xref py py-obj docutils literal notranslate"><span class="pre">PhysicalConfig</span></code></a>(*[, name, R, Z, n_electrons, ...])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.configuration.PhysicalConfigChange.html#deeperwin.configuration.PhysicalConfigChange" title="deeperwin.configuration.PhysicalConfigChange"><code class="xref py py-obj docutils literal notranslate"><span class="pre">PhysicalConfigChange</span></code></a>(*[, R, E_ref, comment])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.configuration.PickleLoggerConfig.html#deeperwin.configuration.PickleLoggerConfig" title="deeperwin.configuration.PickleLoggerConfig"><code class="xref py py-obj docutils literal notranslate"><span class="pre">PickleLoggerConfig</span></code></a>(*[, n_skip_epochs, fname])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.configuration.RestartConfig.html#deeperwin.configuration.RestartConfig" title="deeperwin.configuration.RestartConfig"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RestartConfig</span></code></a>(*, path[, reuse_params, ...])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.configuration.SimpleSchnetConfig.html#deeperwin.configuration.SimpleSchnetConfig" title="deeperwin.configuration.SimpleSchnetConfig"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SimpleSchnetConfig</span></code></a>(*[, net_width, ...])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.configuration.StandardOptimizerConfig.html#deeperwin.configuration.StandardOptimizerConfig" title="deeperwin.configuration.StandardOptimizerConfig"><code class="xref py py-obj docutils literal notranslate"><span class="pre">StandardOptimizerConfig</span></code></a>(*[, name, order])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.configuration.VSC3Config.html#deeperwin.configuration.VSC3Config" title="deeperwin.configuration.VSC3Config"><code class="xref py py-obj docutils literal notranslate"><span class="pre">VSC3Config</span></code></a>(*[, queue, time, conda_env])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.configuration.VSC4Config.html#deeperwin.configuration.VSC4Config" title="deeperwin.configuration.VSC4Config"><code class="xref py py-obj docutils literal notranslate"><span class="pre">VSC4Config</span></code></a>(*[, queue, time])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.configuration.WandBConfig.html#deeperwin.configuration.WandBConfig" title="deeperwin.configuration.WandBConfig"><code class="xref py py-obj docutils literal notranslate"><span class="pre">WandBConfig</span></code></a>(*[, n_skip_epochs, project, entity])</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="deeperwin.bfgs.update_hessian_representation.html" class="btn btn-neutral float-left" title="deeperwin.bfgs.update_hessian_representation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="deeperwin.configuration.build_nested_dict.html" class="btn btn-neutral float-right" title="deeperwin.configuration.build_nested_dict" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Michael Scherbela, Leon Gerard, Rafael Reisenhofer.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

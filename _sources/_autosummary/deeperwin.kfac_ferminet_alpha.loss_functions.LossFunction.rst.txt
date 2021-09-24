@@ -1,0 +1,44 @@
+deeperwin.kfac\_ferminet\_alpha.loss\_functions.LossFunction
+============================================================
+
+.. currentmodule:: deeperwin.kfac_ferminet_alpha.loss_functions
+
+.. autoclass:: LossFunction
+   :members:
+   :show-inheritance:
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~LossFunction.__init__
+      ~LossFunction.copy_with_different_inputs
+      ~LossFunction.evaluate
+      ~LossFunction.grad_of_evaluate
+      ~LossFunction.multiply_ggn
+      ~LossFunction.multiply_ggn_factor
+      ~LossFunction.multiply_ggn_factor_replicated_one_hot
+      ~LossFunction.multiply_ggn_factor_replicated_one_hot_unweighted
+      ~LossFunction.multiply_ggn_factor_transpose
+      ~LossFunction.multiply_ggn_factor_transpose_unweighted
+      ~LossFunction.multiply_ggn_factor_unweighted
+      ~LossFunction.multiply_ggn_unweighted
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~LossFunction.ggn_factor_inner_shape
+      ~LossFunction.inputs
+      ~LossFunction.targets
+      ~LossFunction.weight
+   
+   

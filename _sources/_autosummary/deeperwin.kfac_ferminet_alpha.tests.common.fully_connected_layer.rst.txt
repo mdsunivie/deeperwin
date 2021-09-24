@@ -1,0 +1,6 @@
+deeperwin.kfac\_ferminet\_alpha.tests.common.fully\_connected\_layer
+====================================================================
+
+.. currentmodule:: deeperwin.kfac_ferminet_alpha.tests.common
+
+.. autofunction:: fully_connected_layer

@@ -1,0 +1,40 @@
+deeperwin.mcmc.MCMCState
+========================
+
+.. currentmodule:: deeperwin.mcmc
+
+.. autoclass:: MCMCState
+   :members:
+   :show-inheritance:
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~MCMCState.__init__
+      ~MCMCState.initialize_around_nuclei
+      ~MCMCState.tree_flatten
+      ~MCMCState.tree_unflatten
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MCMCState.log_psi_sqr
+      ~MCMCState.model_args
+      ~MCMCState.rng_state
+      ~MCMCState.stepsize
+      ~MCMCState.walker_age
+      ~MCMCState.r
+      ~MCMCState.R
+      ~MCMCState.Z
+   
+   

@@ -1,0 +1,40 @@
+deeperwin.mcmc
+==============
+
+.. automodule:: deeperwin.mcmc
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+   
+      calculate_metrics
+      resize_nr_of_walkers
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: custom_class.rst
+   
+      MCMCState
+      MetropolisHastingsMonteCarlo
+   
+   
+
+   
+   
+   
+
+
+

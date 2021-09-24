@@ -1,0 +1,6 @@
+deeperwin.model.register\_scale\_and\_shift
+===========================================
+
+.. currentmodule:: deeperwin.model
+
+.. autofunction:: register_scale_and_shift

@@ -1,0 +1,47 @@
+deeperwin.model
+===============
+
+.. automodule:: deeperwin.model
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+   
+      build_backflow_factor
+      build_backflow_shift
+      build_dummy_embedding
+      build_jastrow_factor
+      build_log_psi_squared
+      build_log_psi_squared_baseline_model
+      build_simple_schnet
+      calculate_shift_decay
+      dense_layer
+      ffwd_net
+      get_number_of_params
+      get_pairwise_features
+      get_rbf_features
+      init_ffwd_net
+      init_log_psi_squared_fixed_params
+      register_repeated_dense
+      register_scale_and_shift
+      scale
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+

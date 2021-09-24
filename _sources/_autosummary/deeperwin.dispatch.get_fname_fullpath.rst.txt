@@ -1,0 +1,6 @@
+deeperwin.dispatch.get\_fname\_fullpath
+=======================================
+
+.. currentmodule:: deeperwin.dispatch
+
+.. autofunction:: get_fname_fullpath

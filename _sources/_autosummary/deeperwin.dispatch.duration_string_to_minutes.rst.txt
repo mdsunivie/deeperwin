@@ -1,0 +1,6 @@
+deeperwin.dispatch.duration\_string\_to\_minutes
+================================================
+
+.. currentmodule:: deeperwin.dispatch
+
+.. autofunction:: duration_string_to_minutes

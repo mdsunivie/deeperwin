@@ -1,0 +1,6 @@
+deeperwin.kfac.build\_grad\_loss\_kfac
+======================================
+
+.. currentmodule:: deeperwin.kfac
+
+.. autofunction:: build_grad_loss_kfac
