@@ -1,0 +1,6 @@
+deeperwin.bfgs.build\_bfgs\_optimizer
+=====================================
+
+.. currentmodule:: deeperwin.bfgs
+
+.. autofunction:: build_bfgs_optimizer

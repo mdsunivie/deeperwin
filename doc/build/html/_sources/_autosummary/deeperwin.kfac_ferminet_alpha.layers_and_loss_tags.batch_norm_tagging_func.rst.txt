@@ -1,0 +1,6 @@
+deeperwin.kfac\_ferminet\_alpha.layers\_and\_loss\_tags.batch\_norm\_tagging\_func
+==================================================================================
+
+.. currentmodule:: deeperwin.kfac_ferminet_alpha.layers_and_loss_tags
+
+.. autofunction:: batch_norm_tagging_func

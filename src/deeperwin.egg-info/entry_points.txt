@@ -1,0 +1,3 @@
+[console_scripts]
+deeperwin = deeperwin.main:main
+

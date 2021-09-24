@@ -1,0 +1,6 @@
+deeperwin.kfac\_ferminet\_alpha.tag\_graph\_matcher.print\_nice\_jaxpr
+======================================================================
+
+.. currentmodule:: deeperwin.kfac_ferminet_alpha.tag_graph_matcher
+
+.. autofunction:: print_nice_jaxpr

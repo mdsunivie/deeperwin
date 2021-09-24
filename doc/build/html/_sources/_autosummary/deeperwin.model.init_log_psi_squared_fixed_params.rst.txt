@@ -1,0 +1,6 @@
+deeperwin.model.init\_log\_psi\_squared\_fixed\_params
+======================================================
+
+.. currentmodule:: deeperwin.model
+
+.. autofunction:: init_log_psi_squared_fixed_params

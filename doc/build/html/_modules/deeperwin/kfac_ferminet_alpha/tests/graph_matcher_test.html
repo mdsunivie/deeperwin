@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>deeperwin.kfac_ferminet_alpha.tests.graph_matcher_test &mdash; deeperwin 1.0.0 documentation</title>
+      <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../../../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../../../../_static/custom_style.css" type="text/css" />
+    <link rel="shortcut icon" href="../../../../_static/favicon.png"/>
+  <!--[if lt IE 9]>
+    <script src="../../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../../../" id="documentation_options" src="../../../../_static/documentation_options.js"></script>
+        <script src="../../../../_static/jquery.js"></script>
+        <script src="../../../../_static/underscore.js"></script>
+        <script src="../../../../_static/doctools.js"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../../../index.html" class="icon icon-home"> deeperwin
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tutorial.html">DeepErwin Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api.html">Full documentation for developers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../indices.html">Indices and tables</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">deeperwin</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../../../index.html">Module code</a> &raquo;</li>
+      <li>deeperwin.kfac_ferminet_alpha.tests.graph_matcher_test</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for deeperwin.kfac_ferminet_alpha.tests.graph_matcher_test</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright 2020 DeepMind Technologies Limited.</span>
+<span class="c1">#</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1"># https://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="kn">from</span> <span class="nn">absl.testing</span> <span class="kn">import</span> <span class="n">absltest</span>
+<span class="kn">import</span> <span class="nn">jax</span>
+<span class="kn">import</span> <span class="nn">jax.numpy</span> <span class="k">as</span> <span class="nn">jnp</span>
+<span class="kn">import</span> <span class="nn">jax.random</span> <span class="k">as</span> <span class="nn">jnr</span>
+<span class="kn">import</span> <span class="nn">jax.test_util</span> <span class="k">as</span> <span class="nn">jtu</span>
+
+<span class="kn">from</span> <span class="nn">deeperwin.kfac_ferminet_alpha</span> <span class="kn">import</span> <span class="n">layers_and_loss_tags</span>
+<span class="kn">from</span> <span class="nn">deeperwin.kfac_ferminet_alpha</span> <span class="kn">import</span> <span class="n">loss_functions</span>
+<span class="kn">from</span> <span class="nn">deeperwin.kfac_ferminet_alpha</span> <span class="kn">import</span> <span class="n">tag_graph_matcher</span>
+<span class="kn">from</span> <span class="nn">deeperwin.kfac_ferminet_alpha.tests</span> <span class="kn">import</span> <span class="n">common</span>
+
+
+<div class="viewcode-block" id="tagged_autoencoder"><a class="viewcode-back" href="../../../../_autosummary/deeperwin.kfac_ferminet_alpha.tests.graph_matcher_test.tagged_autoencoder.html#deeperwin.kfac_ferminet_alpha.tests.graph_matcher_test.tagged_autoencoder">[docs]</a><span class="k">def</span> <span class="nf">tagged_autoencoder</span><span class="p">(</span><span class="n">all_params</span><span class="p">,</span> <span class="n">x_in</span><span class="p">):</span>
+  <span class="n">h_in</span> <span class="o">=</span> <span class="n">x_in</span>
+  <span class="n">layers_values</span> <span class="o">=</span> <span class="p">[]</span>
+  <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">params</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">all_params</span><span class="p">):</span>
+    <span class="n">h_out</span> <span class="o">=</span> <span class="n">common</span><span class="o">.</span><span class="n">fully_connected_layer</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">h_in</span><span class="p">)</span>
+    <span class="n">h_out</span> <span class="o">=</span> <span class="n">layers_and_loss_tags</span><span class="o">.</span><span class="n">register_dense</span><span class="p">(</span><span class="n">h_out</span><span class="p">,</span> <span class="n">h_in</span><span class="p">,</span> <span class="n">params</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                                                <span class="n">params</span><span class="p">[</span><span class="mi">1</span><span class="p">],)</span>
+    <span class="n">layers_values</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">h_out</span><span class="p">,</span> <span class="n">h_in</span><span class="p">))</span>
+    <span class="c1"># Last layer does not have a nonlinearity</span>
+    <span class="k">if</span> <span class="n">i</span> <span class="o">%</span> <span class="mi">4</span> <span class="o">!=</span> <span class="mi">3</span><span class="p">:</span>
+      <span class="n">h_in</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">tanh</span><span class="p">(</span><span class="n">h_out</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">h_in</span> <span class="o">=</span> <span class="n">h_out</span>
+  <span class="n">h1</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">loss_functions</span><span class="o">.</span><span class="n">register_normal_predictive_distribution</span><span class="p">(</span>
+      <span class="n">h_in</span><span class="p">,</span> <span class="n">targets</span><span class="o">=</span><span class="n">x_in</span><span class="p">,</span> <span class="n">weight</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+  <span class="n">h2</span><span class="p">,</span> <span class="n">t2</span> <span class="o">=</span> <span class="n">loss_functions</span><span class="o">.</span><span class="n">register_normal_predictive_distribution</span><span class="p">(</span>
+      <span class="n">h_in</span><span class="p">,</span> <span class="n">targets</span><span class="o">=</span><span class="n">x_in</span><span class="p">,</span> <span class="n">weight</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
+  <span class="k">return</span> <span class="p">[[</span><span class="n">h1</span><span class="p">,</span> <span class="n">t2</span><span class="p">],</span> <span class="p">[</span><span class="n">h2</span><span class="p">,</span> <span class="n">t2</span><span class="p">]]</span></div>
+
+
+<div class="viewcode-block" id="TestGraphMatcher"><a class="viewcode-back" href="../../../../_autosummary/deeperwin.kfac_ferminet_alpha.tests.graph_matcher_test.TestGraphMatcher.html#deeperwin.kfac_ferminet_alpha.tests.graph_matcher_test.TestGraphMatcher">[docs]</a><span class="k">class</span> <span class="nc">TestGraphMatcher</span><span class="p">(</span><span class="n">jtu</span><span class="o">.</span><span class="n">JaxTestCase</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;Class for running all of the tests for integrating the systems.&quot;&quot;&quot;</span>
+
+  <span class="k">def</span> <span class="nf">_test_jaxpr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">init_func</span><span class="p">,</span> <span class="n">model_func</span><span class="p">,</span> <span class="n">tagged_model</span><span class="p">,</span> <span class="n">data_shape</span><span class="p">):</span>
+    <span class="n">data_shape</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">data_shape</span><span class="p">)</span>
+    <span class="n">rng_key</span> <span class="o">=</span> <span class="n">jnr</span><span class="o">.</span><span class="n">PRNGKey</span><span class="p">(</span><span class="mi">12345</span><span class="p">)</span>
+    <span class="n">init_key</span><span class="p">,</span> <span class="n">data_key</span> <span class="o">=</span> <span class="n">jnr</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">rng_key</span><span class="p">)</span>
+    <span class="n">params</span> <span class="o">=</span> <span class="n">init_func</span><span class="p">(</span><span class="n">init_key</span><span class="p">,</span> <span class="n">data_shape</span><span class="p">)</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">jnr</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">data_key</span><span class="p">,</span> <span class="p">(</span><span class="mi">11</span><span class="p">,)</span> <span class="o">+</span> <span class="n">data_shape</span><span class="p">)</span>
+    <span class="n">func</span> <span class="o">=</span> <span class="n">tag_graph_matcher</span><span class="o">.</span><span class="n">auto_register_tags</span><span class="p">(</span><span class="n">model_func</span><span class="p">,</span> <span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">data</span><span class="p">))</span>
+    <span class="n">jaxpr</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">make_jaxpr</span><span class="p">(</span><span class="n">func</span><span class="p">)(</span><span class="n">params</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span><span class="o">.</span><span class="n">jaxpr</span>
+    <span class="n">tagged_jaxpr</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">make_jaxpr</span><span class="p">(</span><span class="n">tagged_model</span><span class="p">)(</span><span class="n">params</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span><span class="o">.</span><span class="n">jaxpr</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">jaxpr</span><span class="o">.</span><span class="n">invars</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">tagged_jaxpr</span><span class="o">.</span><span class="n">invars</span><span class="p">))</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">jaxpr</span><span class="o">.</span><span class="n">constvars</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">tagged_jaxpr</span><span class="o">.</span><span class="n">constvars</span><span class="p">))</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">jaxpr</span><span class="o">.</span><span class="n">outvars</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">tagged_jaxpr</span><span class="o">.</span><span class="n">outvars</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">eq</span><span class="p">,</span> <span class="n">tagged_eq</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">jaxpr</span><span class="o">.</span><span class="n">eqns</span><span class="p">,</span> <span class="n">tagged_jaxpr</span><span class="o">.</span><span class="n">eqns</span><span class="p">):</span>
+      <span class="n">eq_in_vars</span> <span class="o">=</span> <span class="p">[</span><span class="n">v</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">eq</span><span class="o">.</span><span class="n">invars</span> <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">jax</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">UnitVar</span><span class="p">)]</span>
+      <span class="n">tagged_in_vars</span> <span class="o">=</span> <span class="p">[</span>
+          <span class="n">v</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">tagged_eq</span><span class="o">.</span><span class="n">invars</span> <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">jax</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">UnitVar</span><span class="p">)</span>
+      <span class="p">]</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">eq_in_vars</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">tagged_in_vars</span><span class="p">))</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">eq</span><span class="o">.</span><span class="n">outvars</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">tagged_eq</span><span class="o">.</span><span class="n">outvars</span><span class="p">))</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">eq</span><span class="o">.</span><span class="n">primitive</span><span class="p">,</span> <span class="n">tagged_eq</span><span class="o">.</span><span class="n">primitive</span><span class="p">)</span>
+      <span class="k">for</span> <span class="n">variable</span><span class="p">,</span> <span class="n">t_variable</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">eq_in_vars</span> <span class="o">+</span> <span class="n">eq</span><span class="o">.</span><span class="n">outvars</span><span class="p">,</span>
+                                      <span class="n">tagged_in_vars</span> <span class="o">+</span> <span class="n">tagged_eq</span><span class="o">.</span><span class="n">outvars</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">variable</span><span class="p">,</span> <span class="n">jax</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">Literal</span><span class="p">):</span>
+          <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">variable</span><span class="o">.</span><span class="n">aval</span><span class="p">,</span> <span class="n">t_variable</span><span class="o">.</span><span class="n">aval</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+          <span class="k">if</span> <span class="n">variable</span><span class="o">.</span><span class="n">count</span> <span class="o">!=</span> <span class="n">t_variable</span><span class="o">.</span><span class="n">count</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;0&quot;</span><span class="p">)</span>
+          <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">variable</span><span class="o">.</span><span class="n">count</span><span class="p">,</span> <span class="n">t_variable</span><span class="o">.</span><span class="n">count</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">test_autoencoder</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_test_jaxpr</span><span class="p">(</span><span class="n">common</span><span class="o">.</span><span class="n">init_autoencoder</span><span class="p">,</span> <span class="n">common</span><span class="o">.</span><span class="n">autoencoder</span><span class="p">,</span>
+                     <span class="n">tagged_autoencoder</span><span class="p">,</span> <span class="p">[</span><span class="mi">784</span><span class="p">])</span></div>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+  <span class="n">absltest</span><span class="o">.</span><span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Michael Scherbela, Leon Gerard, Rafael Reisenhofer.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

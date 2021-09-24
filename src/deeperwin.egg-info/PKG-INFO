@@ -1,0 +1,16 @@
+Metadata-Version: 2.1
+Name: deeperwin
+Version: 1.0.0
+Summary: A JAX based framework to calculate deep-learning VMC solutions to the Schrödinger equation
+Home-page: UNKNOWN
+Author: Michael Scherbela, Leon Gerard, Rafael Reisenhofer
+Author-email: deeperwin.datascience@univie.ac.at
+License: UNKNOWN
+Description: UNKNOWN
+Platform: UNKNOWN
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Provides-Extra: full

@@ -1,0 +1,6 @@
+deeperwin.model.get\_pairwise\_features
+=======================================
+
+.. currentmodule:: deeperwin.model
+
+.. autofunction:: get_pairwise_features

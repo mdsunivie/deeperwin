@@ -1,0 +1,29 @@
+deeperwin.configuration.CuspCorrectionConfig
+============================================
+
+.. currentmodule:: deeperwin.configuration
+
+.. autoclass:: CuspCorrectionConfig
+   :members:
+   :show-inheritance:
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~CuspCorrectionConfig.cusp_type
+   
+   

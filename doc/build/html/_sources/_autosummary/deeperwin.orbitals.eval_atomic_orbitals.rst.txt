@@ -1,0 +1,6 @@
+deeperwin.orbitals.eval\_atomic\_orbitals
+=========================================
+
+.. currentmodule:: deeperwin.orbitals
+
+.. autofunction:: eval_atomic_orbitals

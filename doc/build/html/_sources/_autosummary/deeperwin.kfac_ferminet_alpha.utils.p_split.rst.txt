@@ -1,0 +1,6 @@
+deeperwin.kfac\_ferminet\_alpha.utils.p\_split
+==============================================
+
+.. currentmodule:: deeperwin.kfac_ferminet_alpha.utils
+
+.. autofunction:: p_split

@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>deeperwin.kfac_ferminet_alpha.optimizer &mdash; deeperwin 1.0.0 documentation</title>
+      <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/custom_style.css" type="text/css" />
+    <link rel="shortcut icon" href="../../../_static/favicon.png"/>
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
+        <script src="../../../_static/jquery.js"></script>
+        <script src="../../../_static/underscore.js"></script>
+        <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../../index.html" class="icon icon-home"> deeperwin
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorial.html">DeepErwin Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Full documentation for developers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../indices.html">Indices and tables</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">deeperwin</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+      <li>deeperwin.kfac_ferminet_alpha.optimizer</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for deeperwin.kfac_ferminet_alpha.optimizer</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright 2020 DeepMind Technologies Limited.</span>
+<span class="c1"># This file has been modified from its original, licensed version.</span>
+<span class="c1">#</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1"># https://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="sd">&quot;&quot;&quot;A module for the main curvature optimizer class.&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Iterator</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Union</span>
+
+<span class="kn">import</span> <span class="nn">jax</span>
+<span class="kn">import</span> <span class="nn">jax.lax</span> <span class="k">as</span> <span class="nn">lax</span>
+<span class="kn">import</span> <span class="nn">jax.numpy</span> <span class="k">as</span> <span class="nn">jnp</span>
+<span class="kn">import</span> <span class="nn">jax.random</span> <span class="k">as</span> <span class="nn">jnr</span>
+
+<span class="kn">from</span> <span class="nn">deeperwin.kfac_ferminet_alpha</span> <span class="kn">import</span> <span class="n">estimator</span>
+<span class="kn">from</span> <span class="nn">deeperwin.kfac_ferminet_alpha</span> <span class="kn">import</span> <span class="n">tag_graph_matcher</span> <span class="k">as</span> <span class="n">tgm</span>
+<span class="kn">from</span> <span class="nn">deeperwin.kfac_ferminet_alpha</span> <span class="kn">import</span> <span class="n">utils</span>
+
+<span class="n">ScheduleType</span> <span class="o">=</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">Optional</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]</span>
+<span class="n">Parameters</span> <span class="o">=</span> <span class="n">Any</span>
+<span class="n">Batch</span> <span class="o">=</span> <span class="n">Any</span>
+<span class="n">FuncState</span> <span class="o">=</span> <span class="n">Any</span>
+<span class="n">State</span> <span class="o">=</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+
+
+<div class="viewcode-block" id="Optimizer"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.optimizer.Optimizer.html#deeperwin.kfac_ferminet_alpha.optimizer.Optimizer">[docs]</a><span class="nd">@utils</span><span class="o">.</span><span class="n">Stateful</span><span class="o">.</span><span class="n">infer_class_state</span>
+<span class="k">class</span> <span class="nc">Optimizer</span><span class="p">(</span><span class="n">utils</span><span class="o">.</span><span class="n">Stateful</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;The default optimizer class.&quot;&quot;&quot;</span>
+  <span class="n">velocities</span><span class="p">:</span> <span class="n">Parameters</span>
+  <span class="n">estimator</span><span class="p">:</span> <span class="n">estimator</span><span class="o">.</span><span class="n">CurvatureEstimator</span>
+  <span class="n">step_counter</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span>
+
+  <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+      <span class="bp">self</span><span class="p">,</span>
+      <span class="n">value_and_grad_func</span><span class="p">,</span>
+      <span class="n">l2_reg</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
+      <span class="n">value_func_has_aux</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+      <span class="n">value_func_has_state</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+      <span class="n">value_func_has_rng</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+      <span class="n">learning_rate_schedule</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ScheduleType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+      <span class="n">momentum_schedule</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ScheduleType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+      <span class="n">damping_schedule</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ScheduleType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+      <span class="n">min_damping</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1e-8</span><span class="p">,</span>
+      <span class="n">max_damping</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">inf</span><span class="p">,</span>
+      <span class="n">norm_constraint</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+      <span class="n">num_burnin_steps</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+      <span class="n">estimation_mode</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;fisher_gradients&quot;</span><span class="p">,</span>
+      <span class="n">curvature_ema</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.95</span><span class="p">,</span>
+      <span class="n">inverse_update_period</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
+      <span class="n">register_only_generic</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+      <span class="n">layer_tag_to_block_cls</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">estimator</span><span class="o">.</span><span class="n">TagMapping</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+      <span class="n">patterns_to_skip</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">(),</span>
+      <span class="n">donate_parameters</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+      <span class="n">donate_optimizer_state</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+      <span class="n">donate_batch_inputs</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+      <span class="n">donate_func_state</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+      <span class="n">batch_process_func</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">[[</span><span class="n">Any</span><span class="p">],</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+      <span class="n">multi_device</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+      <span class="n">use_jax_cond</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+      <span class="n">debug</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+      <span class="n">pmap_axis_name</span><span class="o">=</span><span class="s2">&quot;kfac_axis&quot;</span><span class="p">,</span>
+  <span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Initializes the K-FAC optimizer with the given settings.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      value_and_grad_func: Python callable. The function should return the value</span>
+<span class="sd">        of the loss to be optimized and its gradients. If the argument</span>
+<span class="sd">          `value_func_has_aux` is `False` then the interface should be: loss,</span>
+<span class="sd">            loss_grads = value_and_grad_func(params, batch)</span>
+<span class="sd">          If `value_func_has_aux` is `True` then the interface should be: (loss,</span>
+<span class="sd">            aux), loss_grads = value_and_grad_func(params, batch)</span>
+<span class="sd">      l2_reg: Scalar. Set this value to tell the optimizer what L2</span>
+<span class="sd">        regularization coefficient you are using (if any). Note the coefficient</span>
+<span class="sd">        appears in the regularizer as coeff / 2 * sum(param**2). Note that the</span>
+<span class="sd">        user is still responsible for adding regularization to the loss.</span>
+<span class="sd">      value_func_has_aux: Boolean. Specifies whether the provided callable</span>
+<span class="sd">        `value_and_grad_func` returns the loss value only, or also some</span>
+<span class="sd">          auxiliary data. (Default: False)</span>
+<span class="sd">      value_func_has_state: Boolean. Specifies whether the provided callable</span>
+<span class="sd">        `value_and_grad_func` has a persistent state that is inputed and</span>
+<span class="sd">          it also outputs an update version of it. (Default: False)</span>
+<span class="sd">      value_func_has_rng: Boolean. Specifies whether the provided callable</span>
+<span class="sd">        `value_and_grad_func` additionally takes as input an rng key.</span>
+<span class="sd">          (Default: False)</span>
+<span class="sd">      learning_rate_schedule: Callable. A schedule for the learning rate. This</span>
+<span class="sd">        should take as input the current step number and return a single</span>
+<span class="sd">          `jnp.ndarray` that represents the learning rate. (Default: None)</span>
+<span class="sd">      momentum_schedule: Callable. A schedule for the momentum. This should take</span>
+<span class="sd">        as input the current step number and return a single `jnp.ndarray`</span>
+<span class="sd">          that represents the momentum. (Default: None)</span>
+<span class="sd">      damping_schedule: Callable. A schedule for the damping. This should take</span>
+<span class="sd">        as input the current step number and return a single `jnp.ndarray`</span>
+<span class="sd">          that represents the learning rate. (Default: None)</span>
+<span class="sd">      min_damping: Scalar. Minimum value the damping parameter can take. Note</span>
+<span class="sd">        that the default value of 1e-8 is quite arbitrary, and you may have to</span>
+<span class="sd">        adjust this up or down for your particular problem. If you are using a</span>
+<span class="sd">        non-zero value of l2_reg you *may* be able to set this to</span>
+<span class="sd">          zero. (Default: 1e-8)</span>
+<span class="sd">      max_damping: Scalar. Maximum value the damping parameter can take.</span>
+<span class="sd">          (Default: Infinity)</span>
+<span class="sd">      norm_constraint: Scalar. If specified, the update is scaled down so that</span>
+<span class="sd">        its approximate squared Fisher norm `v^T F v` is at most the specified</span>
+<span class="sd">        value.(Note that here `F` is the approximate curvature matrix, not the</span>
+<span class="sd">          exact.) (Default: None)</span>
+<span class="sd">      num_burnin_steps: Int. At the start of optimization, e.g. the first step,</span>
+<span class="sd">        before performing the actual step the optimizer will perform this many</span>
+<span class="sd">        times updates to the curvature approximation without updating the</span>
+<span class="sd">          actual parameters. (Default: 10)</span>
+<span class="sd">      estimation_mode: String. The type of estimator to use for the curvature</span>
+<span class="sd">          matrix. Can be one of: * fisher_empirical * fisher_exact *</span>
+<span class="sd">            fisher_gradients * fisher_curvature_prop * ggn_exact *</span>
+<span class="sd">            ggn_curvature_prop See the doc-string for CurvatureEstimator (in</span>
+<span class="sd">            estimator.py) for a more</span>
+<span class="sd">          detailed description of these options. (Default: &#39;fisher_gradients&#39;).</span>
+<span class="sd">      curvature_ema: The decay factor used when calculating the covariance</span>
+<span class="sd">          estimate moving averages. (Default: 0.95)</span>
+<span class="sd">      inverse_update_period: Int. The number of steps in between updating the</span>
+<span class="sd">          the computation of the inverse curvature approximation. (Default: 5)</span>
+<span class="sd">      register_only_generic: Boolean. Whether when running the auto-tagger to</span>
+<span class="sd">        register only generic parameters, or allow it to use the graph matcher</span>
+<span class="sd">          to automatically pick up any kind of layer tags. (Default: False)</span>
+<span class="sd">      layer_tag_to_block_cls: Dictionary. A mapping from layer tags to block</span>
+<span class="sd">        classes which to override the default choices of block approximation for</span>
+<span class="sd">        that specific tag. See the doc-string for CurvatureEstimator (in</span>
+<span class="sd">        estimator.py) for a more detailed description of this.</span>
+<span class="sd">      patterns_to_skip: Tuple. A list of any patterns that should be skipped by</span>
+<span class="sd">        the graph matcher when auto-tagging.</span>
+<span class="sd">      donate_parameters: Boolean. Whether to use jax&#39;s `donate_argnums` to</span>
+<span class="sd">        donate the parameter values of each call to `step`. Note that this</span>
+<span class="sd">        implies that you will not be able to access the old parameter values&#39;</span>
+<span class="sd">        buffers after calling into `step`.</span>
+<span class="sd">      donate_optimizer_state: Boolean. Whether to use jax&#39;s `donate_argnums` to</span>
+<span class="sd">        donate the optimizer state of each call to `step`. Note that this</span>
+<span class="sd">        implies that you will not be able to access the old optimizer state</span>
+<span class="sd">        values&#39; buffers after calling into `step`.</span>
+<span class="sd">      donate_batch_inputs: Boolean. Whether to use jax&#39;s `donate_argnums` to</span>
+<span class="sd">        donate the batch values of each call to `step`. Note that this implies</span>
+<span class="sd">        that you will not be able to access the old batch values&#39; buffers after</span>
+<span class="sd">        calling into `step`.</span>
+<span class="sd">      donate_func_state: Boolean. Whether to use jax&#39;s `donate_argnums` to</span>
+<span class="sd">        donate the persistent function state of each call to `step`. Note that</span>
+<span class="sd">        this implies that you will not be able to access the old function state</span>
+<span class="sd">        values&#39; buffers after calling into `step`.</span>
+<span class="sd">      batch_process_func: Callable. A function which to be called on each batch</span>
+<span class="sd">        before feeding to the KFAC on device. This could be useful for specific</span>
+<span class="sd">        device input optimizations.</span>
+<span class="sd">      multi_device: Boolean. Whether to use `pmap` and run the optimizer on</span>
+<span class="sd">          multiple devices. (Default: False)</span>
+<span class="sd">      use_jax_cond: Not used for the moment.</span>
+<span class="sd">      debug: Boolean. If non of the step or init functions would be jitted. Note</span>
+<span class="sd">        that this also overrides `multi_device` and prevents using `pmap`.</span>
+<span class="sd">          (Default: False)</span>
+<span class="sd">      pmap_axis_name: String. The name of the `pmap` axis to use when</span>
+<span class="sd">          `multi_device` is set to True. (Default: curvature_axis)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">value_and_grad_func</span> <span class="o">=</span> <span class="n">value_and_grad_func</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">value_func_has_aux</span> <span class="o">=</span> <span class="n">value_func_has_aux</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">value_func_has_state</span> <span class="o">=</span> <span class="n">value_func_has_state</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">value_func_has_rng</span> <span class="o">=</span> <span class="n">value_func_has_rng</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">value_func</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">convert_value_and_grad_to_value_func</span><span class="p">(</span>
+        <span class="n">value_and_grad_func</span><span class="p">,</span> <span class="n">has_aux</span><span class="o">=</span><span class="n">value_func_has_aux</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">l2_reg</span> <span class="o">=</span> <span class="n">l2_reg</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">learning_rate_schedule</span> <span class="o">=</span> <span class="n">learning_rate_schedule</span>
+    <span class="k">if</span> <span class="n">momentum_schedule</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+
+      <span class="k">def</span> <span class="nf">schedule_with_first_step_zero</span><span class="p">(</span><span class="n">global_step</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">momentum_schedule</span><span class="p">(</span><span class="n">global_step</span><span class="p">)</span>
+        <span class="n">check</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">equal</span><span class="p">(</span><span class="n">global_step</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">check</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">check</span><span class="p">)</span> <span class="o">*</span> <span class="n">value</span>
+
+      <span class="bp">self</span><span class="o">.</span><span class="n">momentum_schedule</span> <span class="o">=</span> <span class="n">schedule_with_first_step_zero</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">momentum_schedule</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">damping_schedule</span> <span class="o">=</span> <span class="n">damping_schedule</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">min_damping</span> <span class="o">=</span> <span class="n">min_damping</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">max_damping</span> <span class="o">=</span> <span class="n">max_damping</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">norm_constraint</span> <span class="o">=</span> <span class="n">norm_constraint</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">num_burnin_steps</span> <span class="o">=</span> <span class="n">num_burnin_steps</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">estimation_mode</span> <span class="o">=</span> <span class="n">estimation_mode</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">curvature_ema</span> <span class="o">=</span> <span class="n">curvature_ema</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">inverse_update_period</span> <span class="o">=</span> <span class="n">inverse_update_period</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">register_only_generic</span> <span class="o">=</span> <span class="n">register_only_generic</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">layer_tag_to_block_cls</span> <span class="o">=</span> <span class="n">layer_tag_to_block_cls</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">patterns_to_skip</span> <span class="o">=</span> <span class="n">patterns_to_skip</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">donate_parameters</span> <span class="o">=</span> <span class="n">donate_parameters</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">donate_optimizer_state</span> <span class="o">=</span> <span class="n">donate_optimizer_state</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">donate_batch_inputs</span> <span class="o">=</span> <span class="n">donate_batch_inputs</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">donate_func_state</span> <span class="o">=</span> <span class="n">donate_func_state</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">batch_process_func</span> <span class="o">=</span> <span class="n">batch_process_func</span> <span class="ow">or</span> <span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">multi_device</span> <span class="o">=</span> <span class="n">multi_device</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">use_jax_cond</span> <span class="o">=</span> <span class="n">use_jax_cond</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">debug</span> <span class="o">=</span> <span class="n">debug</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">pmap_axis_name</span> <span class="o">=</span> <span class="n">pmap_axis_name</span> <span class="k">if</span> <span class="n">multi_device</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_rng_split</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">p_split</span> <span class="k">if</span> <span class="n">multi_device</span> <span class="k">else</span> <span class="n">jnr</span><span class="o">.</span><span class="n">split</span>
+
+    <span class="c1"># Attributes filled in during self.init()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">finalized</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">tagged_func</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">flat_params_shapes</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">params_treedef</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="c1"># Special attributes related to jitting/pmap</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_jit_init</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_jit_burnin</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_jit_step</span> <span class="o">=</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="Optimizer.finalize"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.optimizer.Optimizer.html#deeperwin.kfac_ferminet_alpha.optimizer.Optimizer.finalize">[docs]</a>  <span class="k">def</span> <span class="nf">finalize</span><span class="p">(</span>
+      <span class="bp">self</span><span class="p">,</span>
+      <span class="n">params</span><span class="p">:</span> <span class="n">Parameters</span><span class="p">,</span>
+      <span class="n">rng</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+      <span class="n">batch</span><span class="p">:</span> <span class="n">Batch</span><span class="p">,</span>
+      <span class="n">func_state</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">FuncState</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+  <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Finalizes the optimizer by tracing the model function with the params and batch.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">finalized</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Optimizer has already been finalized.&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">multi_device</span><span class="p">:</span>
+      <span class="c1"># We assume that the parameters and batch are replicated, while tracing</span>
+      <span class="c1"># must happen with parameters for a single device call</span>
+      <span class="n">params</span><span class="p">,</span> <span class="n">rng</span><span class="p">,</span> <span class="n">batch</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">tree_map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">rng</span><span class="p">,</span> <span class="n">batch</span><span class="p">))</span>
+      <span class="k">if</span> <span class="n">func_state</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">func_state</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">tree_map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">func_state</span><span class="p">)</span>
+    <span class="n">batch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch_process_func</span><span class="p">(</span><span class="n">batch</span><span class="p">)</span>
+    <span class="c1"># These are all tracing operations and we can run them with abstract values</span>
+    <span class="n">func_args</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">make_func_args</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">func_state</span><span class="p">,</span> <span class="n">rng</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span>
+                                     <span class="bp">self</span><span class="o">.</span><span class="n">value_func_has_state</span><span class="p">,</span>
+                                     <span class="bp">self</span><span class="o">.</span><span class="n">value_func_has_rng</span><span class="p">)</span>
+    <span class="c1"># Run all tracing with abstract values so no computation is done</span>
+    <span class="n">flat_params</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">params_treedef</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">tree_flatten</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">flat_params_shapes</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">shape</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">flat_params</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">tagged_func</span> <span class="o">=</span> <span class="n">tgm</span><span class="o">.</span><span class="n">auto_register_tags</span><span class="p">(</span>
+        <span class="n">func</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">value_func</span><span class="p">,</span>
+        <span class="n">func_args</span><span class="o">=</span><span class="n">func_args</span><span class="p">,</span>
+        <span class="n">params_index</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+        <span class="n">register_only_generic</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">register_only_generic</span><span class="p">,</span>
+        <span class="n">patterns_to_skip</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">patterns_to_skip</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">estimator</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">CurvatureEstimator</span><span class="p">(</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tagged_func</span><span class="p">,</span>
+        <span class="n">func_args</span><span class="p">,</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">l2_reg</span><span class="p">,</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">estimation_mode</span><span class="p">,</span>
+        <span class="n">layer_tag_to_block_cls</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">layer_tag_to_block_cls</span><span class="p">)</span>
+    <span class="c1"># Arguments: params, opt_state, rng, batch, func_state</span>
+    <span class="n">donate_argnums</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">donate_parameters</span><span class="p">:</span>
+      <span class="n">donate_argnums</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">donate_optimizer_state</span><span class="p">:</span>
+      <span class="n">donate_argnums</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">donate_batch_inputs</span><span class="p">:</span>
+      <span class="n">donate_argnums</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">donate_func_state</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">value_func_has_state</span><span class="p">:</span>
+      <span class="n">donate_argnums</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+    <span class="n">donate_argnums</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">donate_argnums</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">debug</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_jit_init</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_init</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_jit_burnin</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_burnin</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_jit_step</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_step</span>
+    <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">multi_device</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_jit_init</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">pmap</span><span class="p">(</span>
+          <span class="bp">self</span><span class="o">.</span><span class="n">_init</span><span class="p">,</span> <span class="n">axis_name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">pmap_axis_name</span><span class="p">,</span> <span class="n">donate_argnums</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+      <span class="c1"># batch size is static argnum and is at index 5</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_jit_burnin</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">pmap</span><span class="p">(</span>
+          <span class="bp">self</span><span class="o">.</span><span class="n">_burnin</span><span class="p">,</span>
+          <span class="n">axis_name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">pmap_axis_name</span><span class="p">,</span>
+          <span class="n">static_broadcasted_argnums</span><span class="o">=</span><span class="p">[</span><span class="mi">5</span><span class="p">])</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_jit_step</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">pmap</span><span class="p">(</span>
+          <span class="bp">self</span><span class="o">.</span><span class="n">_step</span><span class="p">,</span>
+          <span class="n">axis_name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">pmap_axis_name</span><span class="p">,</span>
+          <span class="n">donate_argnums</span><span class="o">=</span><span class="n">donate_argnums</span><span class="p">,</span>
+          <span class="n">static_broadcasted_argnums</span><span class="o">=</span><span class="p">[</span><span class="mi">5</span><span class="p">])</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_jit_init</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">jit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_init</span><span class="p">,</span> <span class="n">donate_argnums</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+      <span class="c1"># batch size is static argnum and is at index 5</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_jit_burnin</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">jit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_burnin</span><span class="p">,</span> <span class="n">static_argnums</span><span class="o">=</span><span class="p">[</span><span class="mi">5</span><span class="p">])</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_jit_step</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">jit</span><span class="p">(</span>
+          <span class="bp">self</span><span class="o">.</span><span class="n">_step</span><span class="p">,</span> <span class="n">donate_argnums</span><span class="o">=</span><span class="n">donate_argnums</span><span class="p">,</span> <span class="n">static_argnums</span><span class="o">=</span><span class="p">[</span><span class="mi">5</span><span class="p">])</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">finalized</span> <span class="o">=</span> <span class="kc">True</span></div>
+
+<div class="viewcode-block" id="Optimizer._init"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.optimizer.Optimizer.html#deeperwin.kfac_ferminet_alpha.optimizer.Optimizer._init">[docs]</a>  <span class="k">def</span> <span class="nf">_init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rng</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">State</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;This is the non-jitted version of initializing the state.&quot;&quot;&quot;</span>
+    <span class="n">flat_velocities</span> <span class="o">=</span> <span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span> <span class="k">for</span> <span class="n">shape</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">flat_params_shapes</span><span class="p">]</span>
+    <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span>
+        <span class="n">velocities</span><span class="o">=</span><span class="n">jax</span><span class="o">.</span><span class="n">tree_unflatten</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">params_treedef</span><span class="p">,</span> <span class="n">flat_velocities</span><span class="p">),</span>
+        <span class="n">estimator</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">estimator</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">rng</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+        <span class="n">step_counter</span><span class="o">=</span><span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="Optimizer.verify_args_and_get_step_counter"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.optimizer.Optimizer.html#deeperwin.kfac_ferminet_alpha.optimizer.Optimizer.verify_args_and_get_step_counter">[docs]</a>  <span class="k">def</span> <span class="nf">verify_args_and_get_step_counter</span><span class="p">(</span>
+      <span class="bp">self</span><span class="p">,</span>
+      <span class="n">params</span><span class="p">:</span> <span class="n">Parameters</span><span class="p">,</span>
+      <span class="n">state</span><span class="p">:</span> <span class="n">State</span><span class="p">,</span>
+      <span class="n">rng</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+      <span class="n">data_iterator</span><span class="p">:</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">Batch</span><span class="p">],</span>
+      <span class="n">func_state</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">FuncState</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+      <span class="n">learning_rate</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+      <span class="n">momentum</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+      <span class="n">damping</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+      <span class="n">global_step_int</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+  <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Verifies that the arguments passed to `Optimizer.step` are correct.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">finalized</span><span class="p">:</span>
+      <span class="n">rng</span><span class="p">,</span> <span class="n">rng_finalize</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rng_split</span><span class="p">(</span><span class="n">rng</span><span class="p">)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">finalize</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">rng_finalize</span><span class="p">,</span> <span class="nb">next</span><span class="p">(</span><span class="n">data_iterator</span><span class="p">),</span> <span class="n">func_state</span><span class="p">)</span>
+    <span class="c1"># Verify correct arguments invocation</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">learning_rate_schedule</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">learning_rate</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;When you have passed a `learning_rate_schedule` you &quot;</span>
+                       <span class="s2">&quot;should not pass a value to the step function.&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">momentum_schedule</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">momentum</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;When you have passed a `momentum_schedule` you should &quot;</span>
+                       <span class="s2">&quot;not pass a value to the step function.&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">damping_schedule</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">damping</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;When you have passed a `damping_schedule` you should &quot;</span>
+                       <span class="s2">&quot;not pass a value to the step function.&quot;</span><span class="p">)</span>
+    <span class="c1"># Do a bunrnin on the first iteration</span>
+    <span class="k">if</span> <span class="n">global_step_int</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+      <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">multi_device</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">utils</span><span class="o">.</span><span class="n">get_first</span><span class="p">(</span><span class="n">state</span><span class="p">[</span><span class="s2">&quot;step_counter&quot;</span><span class="p">]))</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">state</span><span class="p">[</span><span class="s2">&quot;step_counter&quot;</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">global_step_int</span></div>
+
+<div class="viewcode-block" id="Optimizer._burnin"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.optimizer.Optimizer.html#deeperwin.kfac_ferminet_alpha.optimizer.Optimizer._burnin">[docs]</a>  <span class="k">def</span> <span class="nf">_burnin</span><span class="p">(</span>
+      <span class="bp">self</span><span class="p">,</span>
+      <span class="n">params</span><span class="p">:</span> <span class="n">Parameters</span><span class="p">,</span>
+      <span class="n">state</span><span class="p">:</span> <span class="n">State</span><span class="p">,</span>
+      <span class="n">rng</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+      <span class="n">batch</span><span class="p">:</span> <span class="n">Batch</span><span class="p">,</span>
+      <span class="n">func_state</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">FuncState</span><span class="p">],</span>
+      <span class="n">batch_size</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+  <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">State</span><span class="p">,</span> <span class="n">Optional</span><span class="p">[</span><span class="n">FuncState</span><span class="p">]]:</span>
+    <span class="sd">&quot;&quot;&quot;This is the non-jitted version of a single burnin step.&quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+    <span class="n">batch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch_process_func</span><span class="p">(</span><span class="n">batch</span><span class="p">)</span>
+    <span class="n">rng</span><span class="p">,</span> <span class="n">func_rng</span> <span class="o">=</span> <span class="n">jnr</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">rng</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">value_func_has_rng</span> <span class="k">else</span> <span class="p">(</span><span class="n">rng</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="n">func_args</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">make_func_args</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">func_state</span><span class="p">,</span> <span class="n">func_rng</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span>
+                                     <span class="bp">self</span><span class="o">.</span><span class="n">value_func_has_state</span><span class="p">,</span>
+                                     <span class="bp">self</span><span class="o">.</span><span class="n">value_func_has_rng</span><span class="p">)</span>
+
+    <span class="c1"># Compute batch size</span>
+    <span class="k">if</span> <span class="n">batch_size</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+      <span class="n">batch_size</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">tree_flatten</span><span class="p">(</span><span class="n">batch</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="c1"># Update curvature estimate</span>
+    <span class="n">ema_old</span><span class="p">,</span> <span class="n">ema_new</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_burnin_steps</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">estimator</span><span class="o">.</span><span class="n">update_curvature_matrix_estimate</span><span class="p">(</span><span class="n">ema_old</span><span class="p">,</span> <span class="n">ema_new</span><span class="p">,</span>
+                                                    <span class="n">batch_size</span><span class="p">,</span> <span class="n">rng</span><span class="p">,</span> <span class="n">func_args</span><span class="p">,</span>
+                                                    <span class="bp">self</span><span class="o">.</span><span class="n">pmap_axis_name</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">func_state</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+      <span class="n">out</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value_and_grad_func</span><span class="p">(</span><span class="o">*</span><span class="n">func_args</span><span class="p">)</span>
+      <span class="n">_</span><span class="p">,</span> <span class="n">func_state</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">extract_func_outputs</span><span class="p">(</span><span class="n">out</span><span class="p">,</span>
+                                                    <span class="bp">self</span><span class="o">.</span><span class="n">value_func_has_aux</span><span class="p">,</span>
+                                                    <span class="bp">self</span><span class="o">.</span><span class="n">value_func_has_state</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">pop_state</span><span class="p">(),</span> <span class="n">func_state</span></div>
+
+<div class="viewcode-block" id="Optimizer._step"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.optimizer.Optimizer.html#deeperwin.kfac_ferminet_alpha.optimizer.Optimizer._step">[docs]</a>  <span class="k">def</span> <span class="nf">_step</span><span class="p">(</span>
+      <span class="bp">self</span><span class="p">,</span>
+      <span class="n">params</span><span class="p">:</span> <span class="n">Parameters</span><span class="p">,</span>
+      <span class="n">state</span><span class="p">:</span> <span class="n">State</span><span class="p">,</span>
+      <span class="n">rng</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+      <span class="n">batch</span><span class="p">:</span> <span class="n">Batch</span><span class="p">,</span>
+      <span class="n">func_state</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">FuncState</span><span class="p">],</span>
+      <span class="n">batch_size</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+      <span class="n">learning_rate</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
+      <span class="n">momentum</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
+      <span class="n">damping</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
+  <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">Parameters</span><span class="p">,</span> <span class="n">State</span><span class="p">,</span> <span class="n">FuncState</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]],</span>
+             <span class="n">Tuple</span><span class="p">[</span><span class="n">Parameters</span><span class="p">,</span> <span class="n">State</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]]:</span>
+    <span class="sd">&quot;&quot;&quot;This is the non-jitted version of a single step.&quot;&quot;&quot;</span>
+    <span class="c1"># Unpack and set the state</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">damping</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+      <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">estimator</span><span class="o">.</span><span class="n">damping</span> <span class="ow">is</span> <span class="kc">None</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">estimator</span><span class="o">.</span><span class="n">damping</span> <span class="o">=</span> <span class="n">damping</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">estimator</span><span class="o">.</span><span class="n">damping</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+
+    <span class="c1"># Preprocess the batch and construct correctly the function arguments</span>
+    <span class="n">batch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch_process_func</span><span class="p">(</span><span class="n">batch</span><span class="p">)</span>
+    <span class="n">rng</span><span class="p">,</span> <span class="n">func_rng</span> <span class="o">=</span> <span class="n">jnr</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">rng</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">value_func_has_rng</span> <span class="k">else</span> <span class="p">(</span><span class="n">rng</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="n">func_args</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">make_func_args</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">func_state</span><span class="p">,</span> <span class="n">func_rng</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span>
+                                     <span class="bp">self</span><span class="o">.</span><span class="n">value_func_has_state</span><span class="p">,</span>
+                                     <span class="bp">self</span><span class="o">.</span><span class="n">value_func_has_rng</span><span class="p">)</span>
+
+    <span class="c1"># Compute the batch size</span>
+    <span class="k">if</span> <span class="n">batch_size</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+      <span class="n">batch_size</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">tree_flatten</span><span class="p">(</span><span class="n">batch</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="c1"># Compute schedules if applicable</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">learning_rate_schedule</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+      <span class="k">assert</span> <span class="n">learning_rate</span> <span class="ow">is</span> <span class="kc">None</span>
+      <span class="n">learning_rate</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">learning_rate_schedule</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">step_counter</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">assert</span> <span class="n">learning_rate</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">momentum_schedule</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+      <span class="k">assert</span> <span class="n">momentum</span> <span class="ow">is</span> <span class="kc">None</span>
+      <span class="n">momentum</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">momentum_schedule</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">step_counter</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">assert</span> <span class="n">momentum</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">damping_schedule</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+      <span class="k">assert</span> <span class="n">damping</span> <span class="ow">is</span> <span class="kc">None</span>
+      <span class="n">damping</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">damping_schedule</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">step_counter</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">assert</span> <span class="n">damping</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+
+    <span class="c1"># Compute current loss and gradients</span>
+    <span class="n">out</span><span class="p">,</span> <span class="n">grads</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value_and_grad_func</span><span class="p">(</span><span class="o">*</span><span class="n">func_args</span><span class="p">)</span>
+    <span class="n">loss</span><span class="p">,</span> <span class="n">new_func_state</span><span class="p">,</span> <span class="n">aux</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">extract_func_outputs</span><span class="p">(</span>
+        <span class="n">out</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">value_func_has_aux</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">value_func_has_state</span><span class="p">)</span>
+    <span class="c1"># Sync loss and grads</span>
+    <span class="n">loss</span><span class="p">,</span> <span class="n">grads</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">pmean_if_pmap</span><span class="p">((</span><span class="n">loss</span><span class="p">,</span> <span class="n">grads</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">pmap_axis_name</span><span class="p">)</span>
+
+    <span class="c1"># Update curvature estimate</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">estimator</span><span class="o">.</span><span class="n">update_curvature_matrix_estimate</span><span class="p">(</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">curvature_ema</span><span class="p">,</span>
+        <span class="mf">1.0</span><span class="p">,</span>
+        <span class="n">batch_size</span><span class="p">,</span>
+        <span class="n">rng</span><span class="p">,</span>
+        <span class="n">func_args</span><span class="p">,</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pmap_axis_name</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Optionally update the inverse estimate</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">estimator</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span>
+        <span class="n">lax</span><span class="o">.</span><span class="n">cond</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">step_counter</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">inverse_update_period</span> <span class="o">==</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="k">lambda</span> <span class="n">s</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">estimator</span><span class="o">.</span><span class="n">update_curvature_estimate_inverse</span><span class="p">(</span>  <span class="c1"># pylint: disable=g-long-lambda</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">pmap_axis_name</span><span class="p">,</span> <span class="n">s</span><span class="p">),</span>
+            <span class="k">lambda</span> <span class="n">s</span><span class="p">:</span> <span class="n">s</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">estimator</span><span class="o">.</span><span class="n">pop_state</span><span class="p">()))</span>
+
+    <span class="c1"># Compute proposed directions</span>
+    <span class="n">vectors</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">propose_directions</span><span class="p">(</span>
+        <span class="n">grads</span><span class="p">,</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">velocities</span><span class="p">,</span>
+        <span class="n">learning_rate</span><span class="p">,</span>
+        <span class="n">momentum</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1"># The learning rate is defined as the negative of the coefficient by which</span>
+    <span class="c1"># we multiply the gradients, while the momentum is the coefficient by</span>
+    <span class="c1"># which we multiply the velocities.</span>
+    <span class="n">neg_learning_rate</span> <span class="o">=</span> <span class="o">-</span><span class="n">learning_rate</span>
+    <span class="c1"># Compute the coefficients of the update vectors</span>
+    <span class="k">assert</span> <span class="n">neg_learning_rate</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">momentum</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+    <span class="n">coefficients</span> <span class="o">=</span> <span class="p">(</span><span class="n">neg_learning_rate</span><span class="p">,</span> <span class="n">momentum</span><span class="p">)</span>
+
+    <span class="c1"># Update velocities and compute new delta</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">velocities</span><span class="p">,</span> <span class="n">delta</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">velocities_and_delta</span><span class="p">(</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">velocities</span><span class="p">,</span>
+        <span class="n">vectors</span><span class="p">,</span>
+        <span class="n">coefficients</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Update parameters: params = params + delta</span>
+    <span class="n">params</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">tree_multimap</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">add</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">delta</span><span class="p">)</span>
+
+    <span class="c1"># Optionally compute the reduction ratio and update the damping</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">estimator</span><span class="o">.</span><span class="n">damping</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">rho</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">nan</span>
+
+    <span class="c1"># Statistics with useful information</span>
+    <span class="n">stats</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+    <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;step&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">step_counter</span>
+    <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;loss&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">loss</span>
+    <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;learning_rate&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">coefficients</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;momentum&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">coefficients</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;damping&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">damping</span>
+    <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;rho&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">rho</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">value_func_has_aux</span><span class="p">:</span>
+      <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;aux&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">aux</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">step_counter</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">step_counter</span> <span class="o">+</span> <span class="mi">1</span>
+
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">value_func_has_state</span><span class="p">:</span>
+      <span class="k">return</span> <span class="n">params</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pop_state</span><span class="p">(),</span> <span class="n">new_func_state</span><span class="p">,</span> <span class="n">stats</span><span class="p">,</span> <span class="n">vectors</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="c1">#TODO: Return also grads?!</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">assert</span> <span class="n">new_func_state</span> <span class="ow">is</span> <span class="kc">None</span>
+      <span class="k">return</span> <span class="n">params</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pop_state</span><span class="p">(),</span> <span class="n">stats</span></div>
+
+<div class="viewcode-block" id="Optimizer.init"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.optimizer.Optimizer.html#deeperwin.kfac_ferminet_alpha.optimizer.Optimizer.init">[docs]</a>  <span class="k">def</span> <span class="nf">init</span><span class="p">(</span>
+      <span class="bp">self</span><span class="p">,</span>
+      <span class="n">params</span><span class="p">:</span> <span class="n">Parameters</span><span class="p">,</span>
+      <span class="n">rng</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+      <span class="n">batch</span><span class="p">:</span> <span class="n">Batch</span><span class="p">,</span>
+      <span class="n">func_state</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">FuncState</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+  <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">State</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Initializes the optimizer and returns the appropriate optimizer state.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">finalized</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">finalize</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">rng</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">func_state</span><span class="p">)</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_jit_init</span><span class="p">(</span><span class="n">rng</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Optimizer.step"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.optimizer.Optimizer.html#deeperwin.kfac_ferminet_alpha.optimizer.Optimizer.step">[docs]</a>  <span class="k">def</span> <span class="nf">step</span><span class="p">(</span>
+      <span class="bp">self</span><span class="p">,</span>
+      <span class="n">params</span><span class="p">:</span> <span class="n">Parameters</span><span class="p">,</span>
+      <span class="n">state</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+      <span class="n">rng</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+      <span class="n">data_iterator</span><span class="p">:</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span>
+      <span class="n">func_state</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+      <span class="n">learning_rate</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+      <span class="n">momentum</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+      <span class="n">damping</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+      <span class="n">batch_size</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+      <span class="n">global_step_int</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+  <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">Parameters</span><span class="p">,</span> <span class="n">State</span><span class="p">,</span> <span class="n">FuncState</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]],</span>
+             <span class="n">Tuple</span><span class="p">[</span><span class="n">Parameters</span><span class="p">,</span> <span class="n">State</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]]:</span>
+    <span class="sd">&quot;&quot;&quot;Performs a single update step using the optimizer.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      params: The parameters of the model.</span>
+<span class="sd">      state: The state of the optimizer.</span>
+<span class="sd">      rng: A Jax PRNG key.</span>
+<span class="sd">      data_iterator: An iterator that returns a batch of data.</span>
+<span class="sd">      func_state: Any function state that gets passed in and returned.</span>
+<span class="sd">      learning_rate: This must be provided when</span>
+<span class="sd">        `use_adaptive_learning_rate=False` and `learning_rate_schedule=None`.</span>
+<span class="sd">      momentum: This must be provided when</span>
+<span class="sd">        `use_adaptive_momentum=False` and `momentum_schedule=None`.</span>
+<span class="sd">      damping: This must be provided when</span>
+<span class="sd">        `use_adaptive_damping=False` and `damping_schedule=None`.</span>
+<span class="sd">      batch_size: The batch size to use for KFAC. The default behaviour when it</span>
+<span class="sd">        is None is to use the leading dimension of the first data array.</span>
+<span class="sd">      global_step_int: The global step as a python int. Note that this must</span>
+<span class="sd">        match the step inte  rnal to the optimizer that is part of its state.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">      (params, state, stats)</span>
+<span class="sd">      where:</span>
+<span class="sd">          params: The updated model parameters.</span>
+<span class="sd">          state: The updated optimizer state.</span>
+<span class="sd">          stats: A dictionary of key statistics provided to be logged.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">step_counter_int</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">verify_args_and_get_step_counter</span><span class="p">(</span>
+        <span class="n">params</span><span class="o">=</span><span class="n">params</span><span class="p">,</span>
+        <span class="n">state</span><span class="o">=</span><span class="n">state</span><span class="p">,</span>
+        <span class="n">rng</span><span class="o">=</span><span class="n">rng</span><span class="p">,</span>
+        <span class="n">data_iterator</span><span class="o">=</span><span class="n">data_iterator</span><span class="p">,</span>
+        <span class="n">func_state</span><span class="o">=</span><span class="n">func_state</span><span class="p">,</span>
+        <span class="n">learning_rate</span><span class="o">=</span><span class="n">learning_rate</span><span class="p">,</span>
+        <span class="n">momentum</span><span class="o">=</span><span class="n">momentum</span><span class="p">,</span>
+        <span class="n">damping</span><span class="o">=</span><span class="n">damping</span><span class="p">,</span>
+        <span class="n">global_step_int</span><span class="o">=</span><span class="n">global_step_int</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">step_counter_int</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+      <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_burnin_steps</span><span class="p">):</span>
+        <span class="n">rng</span><span class="p">,</span> <span class="n">rng_burn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rng_split</span><span class="p">(</span><span class="n">rng</span><span class="p">)</span>
+        <span class="n">batch</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">data_iterator</span><span class="p">)</span>
+        <span class="n">state</span><span class="p">,</span> <span class="n">func_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_jit_burnin</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">state</span><span class="p">,</span> <span class="n">rng_burn</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span>
+                                             <span class="n">func_state</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">)</span>
+
+      <span class="c1"># On the first step we always treat the momentum as 0.0</span>
+      <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">momentum_schedule</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">momentum</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">zeros</span><span class="p">([])</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">multi_device</span><span class="p">:</span>
+          <span class="n">momentum</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">replicate_all_local_devices</span><span class="p">(</span><span class="n">momentum</span><span class="p">)</span>
+
+    <span class="n">batch</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">data_iterator</span><span class="p">)</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_jit_step</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">state</span><span class="p">,</span> <span class="n">rng</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">func_state</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">,</span>
+                          <span class="n">learning_rate</span><span class="p">,</span> <span class="n">momentum</span><span class="p">,</span> <span class="n">damping</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Optimizer.propose_directions"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.optimizer.Optimizer.html#deeperwin.kfac_ferminet_alpha.optimizer.Optimizer.propose_directions">[docs]</a>  <span class="k">def</span> <span class="nf">propose_directions</span><span class="p">(</span>
+      <span class="bp">self</span><span class="p">,</span>
+      <span class="n">grads</span><span class="p">:</span> <span class="n">Parameters</span><span class="p">,</span>
+      <span class="n">velocities</span><span class="p">:</span> <span class="n">Parameters</span><span class="p">,</span>
+      <span class="n">learning_rate</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
+      <span class="n">momentum</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
+  <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Parameters</span><span class="p">,</span> <span class="n">Parameters</span><span class="p">]:</span>
+    <span class="sd">&quot;&quot;&quot;Computes the vector proposals for the next step.&quot;&quot;&quot;</span>
+    <span class="k">del</span> <span class="n">momentum</span>  <span class="c1"># not used in this, but could be used in subclasses</span>
+    <span class="n">preconditioned_grads</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">estimator</span><span class="o">.</span><span class="n">multiply_matpower</span><span class="p">(</span><span class="n">grads</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">norm_constraint</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+      <span class="k">assert</span> <span class="n">learning_rate</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+      <span class="n">sq_norm_grads</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">inner_product</span><span class="p">(</span><span class="n">preconditioned_grads</span><span class="p">,</span> <span class="n">grads</span><span class="p">)</span>
+      <span class="n">sq_norm_scaled_grads</span> <span class="o">=</span> <span class="n">sq_norm_grads</span> <span class="o">*</span> <span class="n">learning_rate</span><span class="o">**</span><span class="mi">2</span>
+
+      <span class="n">sq_preconditioned_grads</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">inner_product</span><span class="p">(</span><span class="n">preconditioned_grads</span><span class="p">,</span> <span class="n">preconditioned_grads</span><span class="p">)</span> <span class="o">*</span> <span class="n">learning_rate</span><span class="o">**</span><span class="mi">2</span>
+      <span class="n">fixed_regularization</span> <span class="o">=</span> <span class="mf">0.00001</span>
+      <span class="n">reg</span> <span class="o">=</span> <span class="o">-</span> <span class="n">sq_norm_scaled_grads</span> <span class="o">/</span> <span class="n">sq_preconditioned_grads</span>
+      <span class="n">reg</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">reg</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span> <span class="o">+</span> <span class="n">fixed_regularization</span>
+      <span class="n">sq_norm_scaled_grads</span> <span class="o">=</span> <span class="n">sq_norm_scaled_grads</span> <span class="o">+</span> <span class="n">reg</span><span class="o">*</span><span class="n">sq_preconditioned_grads</span>
+      <span class="c1"># We need to sync the norms here, because reduction can be</span>
+      <span class="c1"># non-deterministic. They specifically are on GPUs by default for better</span>
+      <span class="c1"># performance. Hence although grads and preconditioned_grads are synced,</span>
+      <span class="c1"># the inner_product operation can still produce different answers on</span>
+      <span class="c1"># different devices.</span>
+      <span class="n">sq_norm_scaled_grads</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">pmean_if_pmap</span><span class="p">(</span><span class="n">sq_norm_scaled_grads</span><span class="p">,</span>
+                                                 <span class="bp">self</span><span class="o">.</span><span class="n">pmap_axis_name</span><span class="p">)</span>
+
+      <span class="n">max_coefficient</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">norm_constraint</span> <span class="o">/</span> <span class="n">sq_norm_scaled_grads</span><span class="p">)</span>
+      <span class="n">coefficient</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">minimum</span><span class="p">(</span><span class="n">max_coefficient</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+      <span class="n">preconditioned_grads</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">scalar_mul</span><span class="p">(</span><span class="n">preconditioned_grads</span><span class="p">,</span> <span class="n">coefficient</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">preconditioned_grads</span><span class="p">,</span> <span class="n">velocities</span></div>
+
+<div class="viewcode-block" id="Optimizer.velocities_and_delta"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.optimizer.Optimizer.html#deeperwin.kfac_ferminet_alpha.optimizer.Optimizer.velocities_and_delta">[docs]</a>  <span class="k">def</span> <span class="nf">velocities_and_delta</span><span class="p">(</span>
+      <span class="bp">self</span><span class="p">,</span>
+      <span class="n">velocities</span><span class="p">:</span> <span class="n">Parameters</span><span class="p">,</span>
+      <span class="n">vectors</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Parameters</span><span class="p">],</span>
+      <span class="n">coefficients</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
+  <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Parameters</span><span class="p">]:</span>
+    <span class="sd">&quot;&quot;&quot;Computes the new velocities and delta (update to parameters).&quot;&quot;&quot;</span>
+    <span class="k">del</span> <span class="n">velocities</span>
+    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">vectors</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">coefficients</span><span class="p">)</span>
+    <span class="n">delta</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">scalar_mul</span><span class="p">(</span><span class="n">vectors</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">coefficients</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="k">for</span> <span class="n">vi</span><span class="p">,</span> <span class="n">wi</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">vectors</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span> <span class="n">coefficients</span><span class="p">[</span><span class="mi">1</span><span class="p">:]):</span>
+      <span class="n">delta</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">tree_multimap</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">add</span><span class="p">,</span> <span class="n">delta</span><span class="p">,</span> <span class="n">utils</span><span class="o">.</span><span class="n">scalar_mul</span><span class="p">(</span><span class="n">vi</span><span class="p">,</span> <span class="n">wi</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">delta</span><span class="p">,</span> <span class="n">delta</span></div></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Michael Scherbela, Leon Gerard, Rafael Reisenhofer.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

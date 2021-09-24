@@ -1,0 +1,6 @@
+deeperwin.kfac\_ferminet\_alpha.tag\_graph\_matcher.write\_env
+==============================================================
+
+.. currentmodule:: deeperwin.kfac_ferminet_alpha.tag_graph_matcher
+
+.. autofunction:: write_env

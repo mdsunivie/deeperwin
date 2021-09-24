@@ -1,0 +1,34 @@
+deeperwin.configuration.MCMCConfig
+==================================
+
+.. currentmodule:: deeperwin.configuration
+
+.. autoclass:: MCMCConfig
+   :members:
+   :show-inheritance:
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~MCMCConfig.populate_n_walkers_eval
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MCMCConfig.n_walkers_opt
+      ~MCMCConfig.n_walkers_eval
+      ~MCMCConfig.max_age_opt
+      ~MCMCConfig.max_age_eval
+      ~MCMCConfig.proposal
+   
+   

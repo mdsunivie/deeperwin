@@ -1,0 +1,6 @@
+deeperwin.model.build\_jastrow\_factor
+======================================
+
+.. currentmodule:: deeperwin.model
+
+.. autofunction:: build_jastrow_factor

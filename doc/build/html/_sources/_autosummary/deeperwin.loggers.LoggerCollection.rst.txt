@@ -1,0 +1,32 @@
+deeperwin.loggers.LoggerCollection
+==================================
+
+.. currentmodule:: deeperwin.loggers
+
+.. autoclass:: LoggerCollection
+   :members:
+   :show-inheritance:
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~LoggerCollection.__init__
+      ~LoggerCollection.build_loggers
+      ~LoggerCollection.log_checkpoint
+      ~LoggerCollection.log_metrics
+      ~LoggerCollection.log_params
+      ~LoggerCollection.log_tags
+      ~LoggerCollection.log_weights
+      ~LoggerCollection.on_run_begin
+      ~LoggerCollection.on_run_end
+   
+   
+
+   
+   
+   

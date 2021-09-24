@@ -1,0 +1,35 @@
+deeperwin.kfac\_ferminet\_alpha.tracer
+======================================
+
+.. automodule:: deeperwin.kfac_ferminet_alpha.tracer
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+   
+      construct_compute_losses_inputs
+      extract_tags
+      trace_estimator_vjp
+      trace_losses_matrix_vector_hvp
+      trace_losses_matrix_vector_jvp
+      trace_losses_matrix_vector_vjp
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+

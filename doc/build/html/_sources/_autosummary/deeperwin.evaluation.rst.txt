@@ -1,0 +1,31 @@
+deeperwin.evaluation
+====================
+
+.. automodule:: deeperwin.evaluation
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+   
+      build_evaluation_step
+      evaluate_wavefunction
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+

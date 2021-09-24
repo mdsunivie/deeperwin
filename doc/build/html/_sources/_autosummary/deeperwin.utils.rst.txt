@@ -1,0 +1,40 @@
+deeperwin.utils
+===============
+
+.. automodule:: deeperwin.utils
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+   
+      build_inverse_schedule
+      build_learning_rate_schedule
+      calculate_clipping_state
+      fit_morse_potential
+      getCodeVersion
+      get_builtin_optimizer
+      get_distance_matrix
+      get_el_ion_distance_matrix
+      get_full_distance_matrix
+      make_opt_state_picklable
+      morse_potential
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+

@@ -1,0 +1,30 @@
+deeperwin.configuration.StandardOptimizerConfig
+===============================================
+
+.. currentmodule:: deeperwin.configuration
+
+.. autoclass:: StandardOptimizerConfig
+   :members:
+   :show-inheritance:
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~StandardOptimizerConfig.name
+      ~StandardOptimizerConfig.order
+   
+   

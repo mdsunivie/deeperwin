@@ -1,0 +1,6 @@
+deeperwin.process\_molecules\_inter.get\_index
+==============================================
+
+.. currentmodule:: deeperwin.process_molecules_inter
+
+.. autofunction:: get_index

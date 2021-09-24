@@ -1,0 +1,35 @@
+deeperwin.loggers
+=================
+
+.. automodule:: deeperwin.loggers
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: custom_class.rst
+   
+      BasicLogger
+      DataLogger
+      LoggerCollection
+      PickleLogger
+      WandBLogger
+   
+   
+
+   
+   
+   
+
+
+

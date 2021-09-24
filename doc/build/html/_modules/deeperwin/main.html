@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>deeperwin.main &mdash; deeperwin 1.0.0 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/custom_style.css" type="text/css" />
+    <link rel="shortcut icon" href="../../_static/favicon.png"/>
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> deeperwin
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorial.html">DeepErwin Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api.html">Full documentation for developers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../indices.html">Indices and tables</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">deeperwin</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+      <li>deeperwin.main</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for deeperwin.main</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="kn">import</span> <span class="nn">argparse</span>
+<span class="kn">import</span> <span class="nn">itertools</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+
+<span class="kn">from</span> <span class="nn">deeperwin.configuration</span> <span class="kn">import</span> <span class="n">set_with_nested_key</span>
+<span class="kn">from</span> <span class="nn">deeperwin.dispatch</span> <span class="kn">import</span> <span class="o">*</span>
+
+
+<div class="viewcode-block" id="main"><a class="viewcode-back" href="../../_autosummary/deeperwin.main.main.html#deeperwin.main.main">[docs]</a><span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;JAX implementation of DeepErwin QMC code.&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;config_file&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;config.yml&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Path to input config file&quot;</span><span class="p">,</span> <span class="n">nargs</span><span class="o">=</span><span class="s2">&quot;?&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--parameter&#39;</span><span class="p">,</span> <span class="s1">&#39;-p&#39;</span><span class="p">,</span> <span class="n">nargs</span><span class="o">=</span><span class="s1">&#39;+&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;append&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="p">[])</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--force&#39;</span><span class="p">,</span> <span class="s1">&#39;-f&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Overwrite directories if they already exist&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--wandb-sweep&#39;</span><span class="p">,</span> <span class="n">nargs</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="p">[],</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Start a hyperparmeter sweep using wandb, with a given sweep-identifier, number of agents and number of runs per agent, e.g. --wandb-sweep schroedinger_univie/sweep_debug/cpxe3iq9 3 10&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--exclude-param-name&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Do not inject a shortened string for the parameter name into the experiment name, leading to shorter (but less self explanatory) experiment names.&quot;</span><span class="p">)</span>
+
+    <span class="c1"># args = parser.parse_args(</span>
+    <span class="c1">#    [&quot;config.yml&quot;, &quot;-p&quot;, &quot;optimization.n_epochs&quot;, &quot;100&quot;, &quot;-p&quot;, &quot;evaluation.n_epochs&quot;, &quot;30&quot;, &quot;40&quot;, &quot;-p&quot;,</span>
+    <span class="c1">#     &quot;experiment_name&quot;, &quot;LiveDemoExperiment&quot;, &quot;--exclude-param-name&quot;])</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+
+    <span class="n">wandb_sweep</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">wandb_sweep</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span>
+
+    <span class="c1"># load and parse config</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">config_file</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">raw_config</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">safe_load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+    <span class="n">parsed_config</span> <span class="o">=</span> <span class="n">Configuration</span><span class="o">.</span><span class="n">parse_obj</span><span class="p">(</span><span class="n">raw_config</span><span class="p">)</span>
+
+    <span class="c1"># load cli parameters</span>
+    <span class="n">cli_flags</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">param_tuple</span> <span class="ow">in</span> <span class="n">args</span><span class="o">.</span><span class="n">parameter</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">param_tuple</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Each parameter must have at least 1 value. No value for </span><span class="si">{</span><span class="n">param_tuple</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">cli_flags</span><span class="o">.</span><span class="n">append</span><span class="p">([(</span><span class="n">param_tuple</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">value</span><span class="p">)</span> <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">param_tuple</span><span class="p">[</span><span class="mi">1</span><span class="p">:]])</span>
+
+    <span class="c1"># prepare experiment directories</span>
+    <span class="n">experiment_dirs</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">experiment_configs</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">experiment_config_dicts</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">config_changes</span> <span class="ow">in</span> <span class="n">itertools</span><span class="o">.</span><span class="n">product</span><span class="p">(</span><span class="o">*</span><span class="n">cli_flags</span><span class="p">):</span>
+        <span class="n">config_dict</span><span class="p">,</span> <span class="n">parsed_config</span> <span class="o">=</span> <span class="n">Configuration</span><span class="o">.</span><span class="n">update_config</span><span class="p">(</span><span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">raw_config</span><span class="p">),</span> <span class="n">config_changes</span><span class="p">)</span>
+        <span class="n">experiment_config_dicts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">config_dict</span><span class="p">)</span>
+        <span class="n">experiment_configs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">parsed_config</span><span class="p">)</span>
+        <span class="n">experiment_dir</span> <span class="o">=</span> <span class="n">build_experiment_name</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">changes</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">changes</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">config_changes</span><span class="p">)</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">cli_flags</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">],</span> <span class="ow">not</span> <span class="n">args</span><span class="o">.</span><span class="n">exclude_param_name</span><span class="p">,</span>
+            <span class="n">parsed_config</span><span class="o">.</span><span class="n">experiment_name</span><span class="p">)</span>
+
+        <span class="n">experiment_dirs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">setup_experiment_dir</span><span class="p">(</span><span class="n">experiment_dir</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">force</span><span class="p">))</span>
+
+    <span class="c1"># prepare single job directories</span>
+    <span class="n">job_dirs</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">job_config_dicts</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">exp_dir</span><span class="p">,</span> <span class="n">exp_config_dict</span><span class="p">,</span> <span class="n">exp_config</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">experiment_dirs</span><span class="p">,</span> <span class="n">experiment_config_dicts</span><span class="p">,</span> <span class="n">experiment_configs</span><span class="p">):</span>
+        <span class="n">is_restart</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">exp_config</span><span class="o">.</span><span class="n">restart</span> <span class="ow">is</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="s2">&quot;physical&quot;</span> <span class="ow">in</span> <span class="n">exp_config_dict</span><span class="p">:</span>
+            <span class="n">n_molecules</span> <span class="o">=</span> <span class="mi">1</span> <span class="k">if</span> <span class="s2">&quot;changes&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">exp_config_dict</span><span class="p">[</span><span class="s2">&quot;physical&quot;</span><span class="p">]</span> <span class="k">else</span> <span class="nb">len</span><span class="p">(</span>
+                <span class="n">exp_config_dict</span><span class="p">[</span><span class="s2">&quot;physical&quot;</span><span class="p">][</span><span class="s2">&quot;changes&quot;</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">n_molecules</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="n">n_molecules</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">wandb_sweep</span><span class="p">:</span>
+            <span class="n">wandb_sweep</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="p">(</span><span class="s2">&quot;Wandb sweep only compatible with single molecule computations. Wandb sweep will not be started.&quot;</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">n_molecules</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">is_restart</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Restarts with multiple molecular geometries are currently not supported.&quot;</span><span class="p">)</span>
+
+        <span class="c1"># check if experiment is restart</span>
+        <span class="k">if</span> <span class="n">is_restart</span><span class="p">:</span>
+            <span class="n">restart_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="n">exp_config</span><span class="o">.</span><span class="n">restart</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">exp_config</span><span class="o">.</span><span class="n">restart</span><span class="o">.</span><span class="n">recursive</span><span class="p">:</span>
+                <span class="n">paths_restart</span> <span class="o">=</span> <span class="n">find_runs_rec</span><span class="p">(</span><span class="n">restart_path</span><span class="p">,</span> <span class="n">include_checkpoints</span><span class="o">=</span><span class="n">exp_config</span><span class="o">.</span><span class="n">restart</span><span class="o">.</span><span class="n">checkpoints</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">paths_restart</span> <span class="o">=</span> <span class="p">[</span><span class="n">restart_path</span><span class="p">]</span> <span class="k">if</span> <span class="n">contains_run</span><span class="p">(</span><span class="n">restart_path</span><span class="p">)</span> <span class="k">else</span> <span class="p">[]</span>
+
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">paths_restart</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">((</span><span class="sa">f</span><span class="s2">&quot;No run(s) found in restart directory </span><span class="si">{</span><span class="n">restart_path</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">))</span>
+
+            <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">paths_restart</span><span class="p">:</span>
+                <span class="n">job_config_dict</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">exp_config_dict</span><span class="p">)</span>
+                <span class="n">job_config_dict</span> <span class="o">=</span> <span class="n">set_with_nested_key</span><span class="p">(</span><span class="n">job_config_dict</span><span class="p">,</span> <span class="s2">&quot;restart.recursive&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+                <span class="n">job_config_dict</span> <span class="o">=</span> <span class="n">set_with_nested_key</span><span class="p">(</span><span class="n">job_config_dict</span><span class="p">,</span> <span class="s2">&quot;restart.path&quot;</span><span class="p">,</span>
+                                                      <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">restart_path</span><span class="p">,</span> <span class="n">p</span><span class="p">))</span>
+                <span class="k">if</span> <span class="n">p</span> <span class="o">==</span> <span class="s2">&quot;.&quot;</span><span class="p">:</span>
+                    <span class="n">job_dirs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">exp_dir</span><span class="p">)</span>
+                    <span class="n">job_config_dicts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">job_config_dict</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">job_config_dict</span> <span class="o">=</span> <span class="n">set_with_nested_key</span><span class="p">(</span><span class="n">job_config_dict</span><span class="p">,</span> <span class="s2">&quot;experiment_name&quot;</span><span class="p">,</span>
+                                                          <span class="n">exp_config</span><span class="o">.</span><span class="n">experiment_name</span> <span class="o">+</span> <span class="s2">&quot;_&quot;</span> <span class="o">+</span> <span class="n">p</span><span class="p">)</span>
+                    <span class="n">job_dirs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">setup_job_dir</span><span class="p">(</span><span class="n">exp_dir</span><span class="p">,</span> <span class="n">p</span><span class="p">))</span>
+                    <span class="n">job_config_dicts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">job_config_dict</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">n_molecules</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">exp_config</span><span class="o">.</span><span class="n">optimization</span><span class="o">.</span><span class="n">interdependent</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">wandb_sweep</span><span class="p">:</span>
+                <span class="n">dump_config_dict</span><span class="p">(</span><span class="n">exp_dir</span><span class="p">,</span> <span class="n">exp_config_dict</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">exp_config_dict</span><span class="p">[</span><span class="s2">&quot;physical&quot;</span><span class="p">][</span><span class="s2">&quot;changes&quot;</span><span class="p">]):</span>
+                    <span class="n">job_name</span> <span class="o">=</span> <span class="n">idx_to_job_name</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span>
+
+                    <span class="n">job_config_dict</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">exp_config_dict</span><span class="p">)</span>
+                    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">p</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                        <span class="n">job_config_dict</span><span class="p">[</span><span class="s2">&quot;physical&quot;</span><span class="p">][</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="n">k</span><span class="p">])</span>
+                    <span class="n">job_config_dict</span><span class="p">[</span><span class="s2">&quot;physical&quot;</span><span class="p">][</span><span class="s2">&quot;changes&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+                    <span class="n">job_config_dict</span> <span class="o">=</span> <span class="n">set_with_nested_key</span><span class="p">(</span><span class="n">job_config_dict</span><span class="p">,</span> <span class="s2">&quot;experiment_name&quot;</span><span class="p">,</span> <span class="n">exp_dir</span> <span class="o">+</span> <span class="s2">&quot;_&quot;</span> <span class="o">+</span> <span class="n">job_name</span><span class="p">)</span>
+
+                    <span class="n">job_dirs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">setup_job_dir</span><span class="p">(</span><span class="n">exp_dir</span><span class="p">,</span> <span class="n">job_name</span><span class="p">))</span>
+                    <span class="n">job_config_dicts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">job_config_dict</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">wandb_sweep</span><span class="p">:</span>
+                    <span class="n">sweep_id</span><span class="p">,</span> <span class="n">n_agents</span><span class="p">,</span> <span class="n">n_runs_per_agent</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">wandb_sweep</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">int</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">wandb_sweep</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="nb">int</span><span class="p">(</span>
+                        <span class="n">args</span><span class="o">.</span><span class="n">wandb_sweep</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+                    <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_agents</span><span class="p">):</span>
+                        <span class="n">job_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;agent</span><span class="si">{</span><span class="n">n</span><span class="si">:</span><span class="s2">02d</span><span class="si">}</span><span class="s2">&quot;</span>
+
+                        <span class="n">job_config_dict</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">exp_config_dict</span><span class="p">)</span>
+                        <span class="n">job_config_dict</span> <span class="o">=</span> <span class="n">set_with_nested_key</span><span class="p">(</span><span class="n">job_config_dict</span><span class="p">,</span> <span class="s2">&quot;experiment_name&quot;</span><span class="p">,</span>
+                                                              <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">exp_dir</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">job_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+                        <span class="n">job_dirs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">setup_job_dir</span><span class="p">(</span><span class="n">exp_dir</span><span class="p">,</span> <span class="n">job_name</span><span class="p">))</span>
+                        <span class="n">job_config_dicts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">job_config_dict</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">exp_config_dict</span> <span class="o">=</span> <span class="n">set_with_nested_key</span><span class="p">(</span><span class="n">exp_config_dict</span><span class="p">,</span> <span class="s2">&quot;experiment_name&quot;</span><span class="p">,</span> <span class="n">exp_dir</span><span class="p">)</span>
+
+                    <span class="n">job_dirs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">exp_dir</span><span class="p">)</span>
+                    <span class="n">job_config_dicts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">exp_config_dict</span><span class="p">)</span>
+
+    <span class="c1"># dispatch runs</span>
+    <span class="k">for</span> <span class="n">job_dir</span><span class="p">,</span> <span class="n">job_config_dict</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">job_dirs</span><span class="p">,</span> <span class="n">job_config_dicts</span><span class="p">):</span>
+        <span class="c1"># dump config dict</span>
+        <span class="n">dump_config_dict</span><span class="p">(</span><span class="n">job_dir</span><span class="p">,</span> <span class="n">job_config_dict</span><span class="p">)</span>
+
+        <span class="c1"># parse job config</span>
+        <span class="n">job_config</span> <span class="o">=</span> <span class="n">Configuration</span><span class="o">.</span><span class="n">parse_obj</span><span class="p">(</span><span class="n">job_config_dict</span><span class="p">)</span>
+
+        <span class="c1"># define which script will run</span>
+        <span class="k">if</span> <span class="n">wandb_sweep</span><span class="p">:</span>
+            <span class="n">command</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;python&quot;</span><span class="p">,</span> <span class="s2">&quot;-m&quot;</span><span class="p">,</span> <span class="s2">&quot;wandb&quot;</span><span class="p">,</span> <span class="s2">&quot;agent&quot;</span><span class="p">,</span> <span class="s2">&quot;--count&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">n_runs_per_agent</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">sweep_id</span><span class="p">)]</span>
+        <span class="k">elif</span> <span class="n">job_config</span><span class="o">.</span><span class="n">optimization</span><span class="o">.</span><span class="n">interdependent</span><span class="p">:</span>
+            <span class="n">command</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;python&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">get_fname_fullpath</span><span class="p">(</span><span class="s2">&quot;process_molecules_inter.py&quot;</span><span class="p">)),</span> <span class="s2">&quot;config.yml&quot;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">command</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;python&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">get_fname_fullpath</span><span class="p">(</span><span class="s2">&quot;process_molecule.py&quot;</span><span class="p">)),</span> <span class="s2">&quot;config.yml&quot;</span><span class="p">]</span>
+
+        <span class="n">dispatch_job</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">job_dir</span><span class="p">,</span> <span class="n">job_config</span><span class="p">)</span></div>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Michael Scherbela, Leon Gerard, Rafael Reisenhofer.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>deeperwin.kfac_ferminet_alpha.utils &mdash; deeperwin 1.0.0 documentation</title>
+      <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/custom_style.css" type="text/css" />
+    <link rel="shortcut icon" href="../../../_static/favicon.png"/>
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
+        <script src="../../../_static/jquery.js"></script>
+        <script src="../../../_static/underscore.js"></script>
+        <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../../index.html" class="icon icon-home"> deeperwin
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorial.html">DeepErwin Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Full documentation for developers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../indices.html">Indices and tables</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">deeperwin</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+      <li>deeperwin.kfac_ferminet_alpha.utils</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for deeperwin.kfac_ferminet_alpha.utils</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright 2020 DeepMind Technologies Limited.</span>
+<span class="c1">#</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1"># https://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="sd">&quot;&quot;&quot;Utilities related to multi-device operations.&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">collections</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">TypeVar</span><span class="p">,</span> <span class="n">Union</span>
+<span class="kn">import</span> <span class="nn">dataclasses</span>
+<span class="kn">import</span> <span class="nn">jax</span>
+<span class="kn">from</span> <span class="nn">jax</span> <span class="kn">import</span> <span class="n">core</span>
+<span class="kn">from</span> <span class="nn">jax</span> <span class="kn">import</span> <span class="n">lax</span>
+<span class="kn">import</span> <span class="nn">jax.numpy</span> <span class="k">as</span> <span class="nn">jnp</span>
+<span class="kn">from</span> <span class="nn">jax.scipy</span> <span class="kn">import</span> <span class="n">linalg</span>
+<span class="kn">import</span> <span class="nn">jax.tree_util</span> <span class="k">as</span> <span class="nn">tree_util</span>
+
+<span class="n">T</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s2">&quot;T&quot;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="wrap_if_pmap"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.utils.wrap_if_pmap.html#deeperwin.kfac_ferminet_alpha.utils.wrap_if_pmap">[docs]</a><span class="k">def</span> <span class="nf">wrap_if_pmap</span><span class="p">(</span><span class="n">p_func</span><span class="p">):</span>
+
+  <span class="k">def</span> <span class="nf">p_func_if_pmap</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">axis_name</span><span class="p">):</span>
+    <span class="k">try</span><span class="p">:</span>
+      <span class="n">core</span><span class="o">.</span><span class="n">axis_frame</span><span class="p">(</span><span class="n">axis_name</span><span class="p">)</span>
+      <span class="k">return</span> <span class="n">p_func</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">axis_name</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">NameError</span><span class="p">:</span>
+      <span class="k">return</span> <span class="n">obj</span>
+
+  <span class="k">return</span> <span class="n">p_func_if_pmap</span></div>
+
+
+<span class="n">pmean_if_pmap</span> <span class="o">=</span> <span class="n">wrap_if_pmap</span><span class="p">(</span><span class="n">lax</span><span class="o">.</span><span class="n">pmean</span><span class="p">)</span>
+<span class="n">psum_if_pmap</span> <span class="o">=</span> <span class="n">wrap_if_pmap</span><span class="p">(</span><span class="n">lax</span><span class="o">.</span><span class="n">psum</span><span class="p">)</span>
+<span class="n">compute_mean</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">pmap</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">lax</span><span class="o">.</span><span class="n">pmean</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="s2">&quot;i&quot;</span><span class="p">),</span> <span class="n">axis_name</span><span class="o">=</span><span class="s2">&quot;i&quot;</span><span class="p">)</span>
+<span class="n">compute_sum</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">pmap</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">lax</span><span class="o">.</span><span class="n">psum</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="s2">&quot;i&quot;</span><span class="p">),</span> <span class="n">axis_name</span><span class="o">=</span><span class="s2">&quot;i&quot;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="get_first"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.utils.get_first.html#deeperwin.kfac_ferminet_alpha.utils.get_first">[docs]</a><span class="k">def</span> <span class="nf">get_first</span><span class="p">(</span><span class="n">obj</span><span class="p">:</span> <span class="n">T</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">T</span><span class="p">:</span>
+  <span class="k">return</span> <span class="n">jax</span><span class="o">.</span><span class="n">tree_map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">obj</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="get_mean"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.utils.get_mean.html#deeperwin.kfac_ferminet_alpha.utils.get_mean">[docs]</a><span class="k">def</span> <span class="nf">get_mean</span><span class="p">(</span><span class="n">obj</span><span class="p">:</span> <span class="n">T</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">T</span><span class="p">:</span>
+  <span class="k">return</span> <span class="n">get_first</span><span class="p">(</span><span class="n">compute_mean</span><span class="p">(</span><span class="n">obj</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="get_sum"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.utils.get_sum.html#deeperwin.kfac_ferminet_alpha.utils.get_sum">[docs]</a><span class="k">def</span> <span class="nf">get_sum</span><span class="p">(</span><span class="n">obj</span><span class="p">:</span> <span class="n">T</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">T</span><span class="p">:</span>
+  <span class="k">return</span> <span class="n">get_first</span><span class="p">(</span><span class="n">compute_sum</span><span class="p">(</span><span class="n">obj</span><span class="p">))</span></div>
+
+
+<span class="n">broadcast_all_local_devices</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">pmap</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="replicate_all_local_devices"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.utils.replicate_all_local_devices.html#deeperwin.kfac_ferminet_alpha.utils.replicate_all_local_devices">[docs]</a><span class="k">def</span> <span class="nf">replicate_all_local_devices</span><span class="p">(</span><span class="n">obj</span><span class="p">:</span> <span class="n">T</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">T</span><span class="p">:</span>
+  <span class="n">n</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">local_device_count</span><span class="p">()</span>
+  <span class="n">obj_stacked</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">tree_map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">x</span><span class="p">]</span> <span class="o">*</span> <span class="n">n</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span> <span class="n">obj</span><span class="p">)</span>
+  <span class="k">return</span> <span class="n">broadcast_all_local_devices</span><span class="p">(</span><span class="n">obj_stacked</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="make_different_rng_key_on_all_devices"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.utils.make_different_rng_key_on_all_devices.html#deeperwin.kfac_ferminet_alpha.utils.make_different_rng_key_on_all_devices">[docs]</a><span class="k">def</span> <span class="nf">make_different_rng_key_on_all_devices</span><span class="p">(</span><span class="n">rng</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+  <span class="n">rng</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">fold_in</span><span class="p">(</span><span class="n">rng</span><span class="p">,</span> <span class="n">jax</span><span class="o">.</span><span class="n">host_id</span><span class="p">())</span>
+  <span class="n">rng</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">rng</span><span class="p">,</span> <span class="n">jax</span><span class="o">.</span><span class="n">local_device_count</span><span class="p">())</span>
+  <span class="k">return</span> <span class="n">broadcast_all_local_devices</span><span class="p">(</span><span class="n">rng</span><span class="p">)</span></div>
+
+
+<span class="n">p_split</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">pmap</span><span class="p">(</span><span class="k">lambda</span> <span class="n">key</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">jax</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">key</span><span class="p">)))</span>
+
+
+<div class="viewcode-block" id="scalar_mul"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.utils.scalar_mul.html#deeperwin.kfac_ferminet_alpha.utils.scalar_mul">[docs]</a><span class="k">def</span> <span class="nf">scalar_mul</span><span class="p">(</span><span class="n">obj</span><span class="p">:</span> <span class="n">T</span><span class="p">,</span> <span class="n">scalar</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">T</span><span class="p">:</span>
+  <span class="k">return</span> <span class="n">jax</span><span class="o">.</span><span class="n">tree_map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span> <span class="o">*</span> <span class="n">scalar</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="scalar_div"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.utils.scalar_div.html#deeperwin.kfac_ferminet_alpha.utils.scalar_div">[docs]</a><span class="k">def</span> <span class="nf">scalar_div</span><span class="p">(</span><span class="n">obj</span><span class="p">:</span> <span class="n">T</span><span class="p">,</span> <span class="n">scalar</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">T</span><span class="p">:</span>
+  <span class="k">return</span> <span class="n">jax</span><span class="o">.</span><span class="n">tree_map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span> <span class="o">/</span> <span class="n">scalar</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="make_func_args"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.utils.make_func_args.html#deeperwin.kfac_ferminet_alpha.utils.make_func_args">[docs]</a><span class="k">def</span> <span class="nf">make_func_args</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">func_state</span><span class="p">,</span> <span class="n">rng</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">has_state</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+                   <span class="n">has_rng</span><span class="p">:</span> <span class="nb">bool</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;Correctly puts all arguments to the function together.&quot;&quot;&quot;</span>
+  <span class="n">func_args</span> <span class="o">=</span> <span class="p">(</span><span class="n">params</span><span class="p">,)</span>
+  <span class="k">if</span> <span class="n">has_state</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">func_state</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;The `func_state` is None, but the argument `has_state` &quot;</span>
+                       <span class="s2">&quot;is True.&quot;</span><span class="p">)</span>
+    <span class="n">func_args</span> <span class="o">+=</span> <span class="p">(</span><span class="n">func_state</span><span class="p">,)</span>
+  <span class="k">if</span> <span class="n">has_rng</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">rng</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;The `rng` is None, but the argument `has_rng` is True.&quot;</span><span class="p">)</span>
+    <span class="n">func_args</span> <span class="o">+=</span> <span class="p">(</span><span class="n">rng</span><span class="p">,)</span>
+  <span class="n">func_args</span> <span class="o">+=</span> <span class="p">(</span><span class="n">batch</span><span class="p">,)</span>
+  <span class="k">return</span> <span class="n">func_args</span></div>
+
+
+<div class="viewcode-block" id="extract_func_outputs"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.utils.extract_func_outputs.html#deeperwin.kfac_ferminet_alpha.utils.extract_func_outputs">[docs]</a><span class="k">def</span> <span class="nf">extract_func_outputs</span><span class="p">(</span>
+    <span class="n">raw_outputs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+    <span class="n">has_aux</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+    <span class="n">has_state</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+  <span class="sd">&quot;&quot;&quot;Given the function output returns separately the loss, func_state, aux.&quot;&quot;&quot;</span>
+  <span class="k">if</span> <span class="ow">not</span> <span class="n">has_aux</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">has_state</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">raw_outputs</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+  <span class="n">loss</span><span class="p">,</span> <span class="n">other</span> <span class="o">=</span> <span class="n">raw_outputs</span>
+  <span class="k">if</span> <span class="n">has_aux</span> <span class="ow">and</span> <span class="n">has_state</span><span class="p">:</span>
+    <span class="n">func_state</span><span class="p">,</span> <span class="n">aux</span> <span class="o">=</span> <span class="n">other</span>
+  <span class="k">elif</span> <span class="n">has_aux</span><span class="p">:</span>
+    <span class="n">func_state</span><span class="p">,</span> <span class="n">aux</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">other</span>
+  <span class="k">else</span><span class="p">:</span>
+    <span class="n">func_state</span><span class="p">,</span> <span class="n">aux</span> <span class="o">=</span> <span class="n">other</span><span class="p">,</span> <span class="kc">None</span>
+  <span class="k">return</span> <span class="n">loss</span><span class="p">,</span> <span class="n">func_state</span><span class="p">,</span> <span class="n">aux</span></div>
+
+
+<div class="viewcode-block" id="inner_product"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.utils.inner_product.html#deeperwin.kfac_ferminet_alpha.utils.inner_product">[docs]</a><span class="k">def</span> <span class="nf">inner_product</span><span class="p">(</span><span class="n">obj1</span><span class="p">:</span> <span class="n">T</span><span class="p">,</span> <span class="n">obj2</span><span class="p">:</span> <span class="n">T</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+  <span class="k">if</span> <span class="n">jax</span><span class="o">.</span><span class="n">tree_structure</span><span class="p">(</span><span class="n">obj1</span><span class="p">)</span> <span class="o">!=</span> <span class="n">jax</span><span class="o">.</span><span class="n">tree_structure</span><span class="p">(</span><span class="n">obj2</span><span class="p">):</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;The two structures are not identical.&quot;</span><span class="p">)</span>
+  <span class="n">elements_product</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">tree_multimap</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">x</span> <span class="o">*</span> <span class="n">y</span><span class="p">),</span> <span class="n">obj1</span><span class="p">,</span> <span class="n">obj2</span><span class="p">)</span>
+  <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="n">jax</span><span class="o">.</span><span class="n">tree_flatten</span><span class="p">(</span><span class="n">elements_product</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span></div>
+
+
+<div class="viewcode-block" id="psd_inv_cholesky"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.utils.psd_inv_cholesky.html#deeperwin.kfac_ferminet_alpha.utils.psd_inv_cholesky">[docs]</a><span class="k">def</span> <span class="nf">psd_inv_cholesky</span><span class="p">(</span><span class="n">matrix</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">damping</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+  <span class="k">assert</span> <span class="n">matrix</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">2</span>
+  <span class="n">identity</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="n">matrix</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+  <span class="n">matrix</span> <span class="o">=</span> <span class="n">matrix</span> <span class="o">+</span> <span class="n">damping</span> <span class="o">*</span> <span class="n">identity</span>
+  <span class="k">return</span> <span class="n">linalg</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">matrix</span><span class="p">,</span> <span class="n">identity</span><span class="p">,</span> <span class="n">sym_pos</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="solve_maybe_small"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.utils.solve_maybe_small.html#deeperwin.kfac_ferminet_alpha.utils.solve_maybe_small">[docs]</a><span class="k">def</span> <span class="nf">solve_maybe_small</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+  <span class="sd">&quot;&quot;&quot;Computes a^-1 b more efficiently for small matrices.&quot;&quot;&quot;</span>
+  <span class="k">assert</span> <span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span> <span class="o">==</span> <span class="n">b</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+  <span class="n">d</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+  <span class="k">if</span> <span class="n">d</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">a</span>
+  <span class="k">elif</span> <span class="n">d</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">b</span> <span class="o">/</span> <span class="n">a</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+  <span class="k">elif</span> <span class="n">d</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+    <span class="n">det</span> <span class="o">=</span> <span class="n">a</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">a</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">a</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">a</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+    <span class="n">b_0</span> <span class="o">=</span> <span class="n">a</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">b</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">a</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">b</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+    <span class="n">b_1</span> <span class="o">=</span> <span class="n">a</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">b</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">a</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">b</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">b_0</span><span class="p">,</span> <span class="n">b_1</span><span class="p">],</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="n">det</span>
+  <span class="k">elif</span> <span class="n">d</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
+  <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="pi_adjusted_inverse"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.utils.pi_adjusted_inverse.html#deeperwin.kfac_ferminet_alpha.utils.pi_adjusted_inverse">[docs]</a><span class="k">def</span> <span class="nf">pi_adjusted_inverse</span><span class="p">(</span>
+    <span class="n">factor_0</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">factor_1</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">damping</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">pmap_axis_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+  <span class="sd">&quot;&quot;&quot;Performs inversion with pi-adjusted damping.&quot;&quot;&quot;</span>
+  <span class="c1"># Compute the norms of each factor</span>
+  <span class="n">norm_0</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">trace</span><span class="p">(</span><span class="n">factor_0</span><span class="p">)</span>
+  <span class="n">norm_1</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">trace</span><span class="p">(</span><span class="n">factor_1</span><span class="p">)</span>
+
+  <span class="c1"># We need to sync the norms here, because reduction can be non-deterministic.</span>
+  <span class="c1"># They specifically are on GPUs by default for better performance.</span>
+  <span class="c1"># Hence although factor_0 and factor_1 are synced, the trace operation above</span>
+  <span class="c1"># can still produce different answers on different devices.</span>
+  <span class="n">norm_0</span><span class="p">,</span> <span class="n">norm_1</span> <span class="o">=</span> <span class="n">pmean_if_pmap</span><span class="p">((</span><span class="n">norm_0</span><span class="p">,</span> <span class="n">norm_1</span><span class="p">),</span> <span class="n">axis_name</span><span class="o">=</span><span class="n">pmap_axis_name</span><span class="p">)</span>
+
+  <span class="c1"># Compute the overall scale</span>
+  <span class="n">scale</span> <span class="o">=</span> <span class="n">norm_0</span> <span class="o">*</span> <span class="n">norm_1</span>
+
+  <span class="k">def</span> <span class="nf">regular_inverse</span><span class="p">(</span>
+      <span class="n">operand</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+    <span class="n">factor0</span><span class="p">,</span> <span class="n">factor1</span><span class="p">,</span> <span class="n">norm0</span><span class="p">,</span> <span class="n">norm1</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">d</span> <span class="o">=</span> <span class="n">operand</span>
+    <span class="c1"># Special cases with one or two scalar factors</span>
+    <span class="k">if</span> <span class="n">factor0</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">factor1</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+      <span class="n">value</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">factor0</span><span class="p">)</span> <span class="o">/</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+      <span class="k">return</span> <span class="n">value</span><span class="p">,</span> <span class="n">value</span>
+    <span class="k">if</span> <span class="n">factor0</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+      <span class="n">factor1_normed</span> <span class="o">=</span> <span class="n">factor1</span> <span class="o">/</span> <span class="n">norm1</span>
+      <span class="n">damping1</span> <span class="o">=</span> <span class="n">d</span> <span class="o">/</span> <span class="n">norm1</span>
+      <span class="n">factor1_inv</span> <span class="o">=</span> <span class="n">psd_inv_cholesky</span><span class="p">(</span><span class="n">factor1_normed</span><span class="p">,</span> <span class="n">damping1</span><span class="p">)</span>
+      <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">s</span><span class="p">),</span> <span class="n">factor1_inv</span>
+    <span class="k">if</span> <span class="n">factor1</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+      <span class="n">factor0_normed</span> <span class="o">=</span> <span class="n">factor0</span> <span class="o">/</span> <span class="n">norm0</span>
+      <span class="n">damping0</span> <span class="o">=</span> <span class="n">d</span> <span class="o">/</span> <span class="n">norm0</span>
+      <span class="n">factor0_inv</span> <span class="o">=</span> <span class="n">psd_inv_cholesky</span><span class="p">(</span><span class="n">factor0_normed</span><span class="p">,</span> <span class="n">damping0</span><span class="p">)</span>
+      <span class="k">return</span> <span class="n">factor0_inv</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">s</span><span class="p">)</span>
+
+    <span class="c1"># Invert first factor</span>
+    <span class="n">factor0_normed</span> <span class="o">=</span> <span class="n">factor0</span> <span class="o">/</span> <span class="n">norm0</span>
+    <span class="n">damping0</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">d</span> <span class="o">*</span> <span class="n">factor1</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="p">(</span><span class="n">s</span> <span class="o">*</span> <span class="n">factor0</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+    <span class="n">factor0_inv</span> <span class="o">=</span> <span class="n">psd_inv_cholesky</span><span class="p">(</span><span class="n">factor0_normed</span><span class="p">,</span> <span class="n">damping0</span><span class="p">)</span> <span class="o">/</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+
+    <span class="c1"># Invert second factor</span>
+    <span class="n">factor1_normed</span> <span class="o">=</span> <span class="n">factor1</span> <span class="o">/</span> <span class="n">norm1</span>
+    <span class="n">damping1</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">d</span> <span class="o">*</span> <span class="n">factor0</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="p">(</span><span class="n">s</span> <span class="o">*</span> <span class="n">factor1</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+    <span class="n">factor1_inv</span> <span class="o">=</span> <span class="n">psd_inv_cholesky</span><span class="p">(</span><span class="n">factor1_normed</span><span class="p">,</span> <span class="n">damping1</span><span class="p">)</span> <span class="o">/</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">factor0_inv</span><span class="p">,</span> <span class="n">factor1_inv</span>
+
+  <span class="k">def</span> <span class="nf">zero_inverse</span><span class="p">(</span>
+      <span class="n">operand</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="n">factor_0</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">/</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">operand</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]),</span>
+            <span class="n">jnp</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="n">factor_1</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">/</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">operand</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span>
+
+  <span class="c1"># In the special case where for some reason one of the factors is zero, then</span>
+  <span class="c1"># the correct inverse of `(0 kron A + lambda I)` is</span>
+  <span class="c1"># `(I/sqrt(lambda) kron (I/sqrt(lambda)`. However, because one of the norms is</span>
+  <span class="c1"># zero, then `pi` and `1/pi` would be 0 and infinity leading to NaN values.</span>
+  <span class="c1"># Hence, we need to make this check explicitly.</span>
+  <span class="k">return</span> <span class="n">lax</span><span class="o">.</span><span class="n">cond</span><span class="p">(</span>
+      <span class="n">jnp</span><span class="o">.</span><span class="n">greater</span><span class="p">(</span><span class="n">scale</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+      <span class="n">regular_inverse</span><span class="p">,</span>
+      <span class="n">zero_inverse</span><span class="p">,</span>
+      <span class="n">operand</span><span class="o">=</span><span class="p">(</span><span class="n">factor_0</span><span class="p">,</span> <span class="n">factor_1</span><span class="p">,</span> <span class="n">norm_0</span><span class="p">,</span> <span class="n">norm_1</span><span class="p">,</span> <span class="n">scale</span><span class="p">,</span> <span class="n">damping</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="convert_value_and_grad_to_value_func"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.utils.convert_value_and_grad_to_value_func.html#deeperwin.kfac_ferminet_alpha.utils.convert_value_and_grad_to_value_func">[docs]</a><span class="k">def</span> <span class="nf">convert_value_and_grad_to_value_func</span><span class="p">(</span>
+    <span class="n">value_and_grad_func</span><span class="p">,</span>
+    <span class="n">has_aux</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;Converts a value_and_grad function to value_func only.&quot;&quot;&quot;</span>
+
+  <span class="k">def</span> <span class="nf">value_func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+
+    <span class="n">out</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">value_and_grad_func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">has_aux</span><span class="p">:</span>
+      <span class="k">return</span> <span class="n">out</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">return</span> <span class="n">out</span>
+
+  <span class="k">return</span> <span class="n">value_func</span></div>
+
+
+<div class="viewcode-block" id="check_structure_shapes_and_dtype"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.utils.check_structure_shapes_and_dtype.html#deeperwin.kfac_ferminet_alpha.utils.check_structure_shapes_and_dtype">[docs]</a><span class="k">def</span> <span class="nf">check_structure_shapes_and_dtype</span><span class="p">(</span><span class="n">obj1</span><span class="p">:</span> <span class="n">T</span><span class="p">,</span> <span class="n">obj2</span><span class="p">:</span> <span class="n">T</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+  <span class="sd">&quot;&quot;&quot;Verifies that the two objects have the same pytree structure.&quot;&quot;&quot;</span>
+  <span class="k">assert</span> <span class="n">jax</span><span class="o">.</span><span class="n">tree_structure</span><span class="p">(</span><span class="n">obj1</span><span class="p">)</span> <span class="o">==</span> <span class="n">jax</span><span class="o">.</span><span class="n">tree_structure</span><span class="p">(</span><span class="n">obj2</span><span class="p">)</span>
+  <span class="k">for</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">jax</span><span class="o">.</span><span class="n">tree_flatten</span><span class="p">(</span><span class="n">obj1</span><span class="p">)[</span><span class="mi">0</span><span class="p">],</span> <span class="n">jax</span><span class="o">.</span><span class="n">tree_flatten</span><span class="p">(</span><span class="n">obj2</span><span class="p">)[</span><span class="mi">0</span><span class="p">]):</span>
+    <span class="k">assert</span> <span class="n">v1</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="n">v2</span><span class="o">.</span><span class="n">shape</span>
+    <span class="k">assert</span> <span class="n">v1</span><span class="o">.</span><span class="n">dtype</span> <span class="o">==</span> <span class="n">v2</span><span class="o">.</span><span class="n">dtype</span></div>
+
+
+<div class="viewcode-block" id="check_first_dim_is_batch_size"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.utils.check_first_dim_is_batch_size.html#deeperwin.kfac_ferminet_alpha.utils.check_first_dim_is_batch_size">[docs]</a><span class="k">def</span> <span class="nf">check_first_dim_is_batch_size</span><span class="p">(</span><span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+  <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">arg</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">args</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">arg</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">batch_size</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Expecting first dimension of arg[</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">] with shape &quot;</span>
+                       <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">arg</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> to be equal to the batch size &quot;</span>
+                       <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">batch_size</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="py_tree_registered_dataclass"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.utils.py_tree_registered_dataclass.html#deeperwin.kfac_ferminet_alpha.utils.py_tree_registered_dataclass">[docs]</a><span class="k">def</span> <span class="nf">py_tree_registered_dataclass</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;Creates a new dataclass type and registers it as a pytree node.&quot;&quot;&quot;</span>
+  <span class="n">dcls</span> <span class="o">=</span> <span class="n">dataclasses</span><span class="o">.</span><span class="n">dataclass</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+  <span class="n">tree_util</span><span class="o">.</span><span class="n">register_pytree_node</span><span class="p">(</span>
+      <span class="n">dcls</span><span class="p">,</span>
+      <span class="k">lambda</span> <span class="n">instance</span><span class="p">:</span> <span class="p">(</span>  <span class="c1"># pylint: disable=g-long-lambda</span>
+          <span class="p">[</span><span class="nb">getattr</span><span class="p">(</span><span class="n">instance</span><span class="p">,</span> <span class="n">f</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+           <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">dataclasses</span><span class="o">.</span><span class="n">fields</span><span class="p">(</span><span class="n">instance</span><span class="p">)],</span> <span class="kc">None</span><span class="p">),</span>
+      <span class="k">lambda</span> <span class="n">_</span><span class="p">,</span> <span class="n">instance_args</span><span class="p">:</span> <span class="n">dcls</span><span class="p">(</span><span class="o">*</span><span class="n">instance_args</span><span class="p">))</span>
+  <span class="k">return</span> <span class="n">dcls</span></div>
+
+
+<div class="viewcode-block" id="WeightedMovingAverage"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.utils.WeightedMovingAverage.html#deeperwin.kfac_ferminet_alpha.utils.WeightedMovingAverage">[docs]</a><span class="k">class</span> <span class="nc">WeightedMovingAverage</span><span class="p">:</span>
+  <span class="sd">&quot;&quot;&quot;A wrapped class for a variable for which we keep exponential moving average.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="WeightedMovingAverage.__init__"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.utils.WeightedMovingAverage.html#deeperwin.kfac_ferminet_alpha.utils.WeightedMovingAverage.__init__">[docs]</a>  <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">array</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_weight</span> <span class="o">=</span> <span class="n">weight</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_array</span> <span class="o">=</span> <span class="n">array</span></div>
+
+  <span class="nd">@staticmethod</span>
+  <span class="k">def</span> <span class="nf">zero</span><span class="p">(</span><span class="n">shape</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="s2">&quot;WeightedMovingAverage&quot;</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">WeightedMovingAverage</span><span class="p">(</span><span class="n">weight</span><span class="o">=</span><span class="n">jnp</span><span class="o">.</span><span class="n">zeros</span><span class="p">([]),</span> <span class="n">array</span><span class="o">=</span><span class="n">jnp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="p">))</span>
+
+  <span class="nd">@property</span>
+  <span class="k">def</span> <span class="nf">weight</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_weight</span>
+
+  <span class="nd">@property</span>
+  <span class="k">def</span> <span class="nf">value</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_array</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">_weight</span>
+
+  <span class="nd">@property</span>
+  <span class="k">def</span> <span class="nf">raw_value</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_array</span>
+
+  <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">old_weight_multiplier</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+             <span class="n">new_weight</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_weight</span> <span class="o">=</span> <span class="n">old_weight_multiplier</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_weight</span> <span class="o">+</span> <span class="n">new_weight</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_array</span> <span class="o">=</span> <span class="n">old_weight_multiplier</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_array</span> <span class="o">+</span> <span class="n">new_weight</span> <span class="o">*</span> <span class="n">value</span>
+
+  <span class="k">def</span> <span class="nf">sync</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pmap_axis_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_array</span> <span class="o">=</span> <span class="n">pmean_if_pmap</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_array</span><span class="p">,</span> <span class="n">pmap_axis_name</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">return</span> <span class="p">(</span><span class="sa">f</span><span class="s2">&quot;ExponentialMovingAverage(weight=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_weight</span><span class="si">}</span><span class="s2">, &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;array=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_array</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="fm">__str__</span><span class="p">()</span></div>
+
+
+<span class="n">tree_util</span><span class="o">.</span><span class="n">register_pytree_node</span><span class="p">(</span>
+    <span class="n">WeightedMovingAverage</span><span class="p">,</span>
+    <span class="k">lambda</span> <span class="n">instance</span><span class="p">:</span> <span class="p">((</span><span class="n">instance</span><span class="o">.</span><span class="n">weight</span><span class="p">,</span> <span class="n">instance</span><span class="o">.</span><span class="n">raw_value</span><span class="p">),</span> <span class="kc">None</span><span class="p">),</span>
+    <span class="k">lambda</span> <span class="n">_</span><span class="p">,</span> <span class="n">instance_args</span><span class="p">:</span> <span class="n">WeightedMovingAverage</span><span class="p">(</span><span class="o">*</span><span class="n">instance_args</span><span class="p">),</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="Stateful"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.utils.Stateful.html#deeperwin.kfac_ferminet_alpha.utils.Stateful">[docs]</a><span class="k">class</span> <span class="nc">Stateful</span><span class="p">:</span>
+  <span class="sd">&quot;&quot;&quot;A class for stateful objects.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="Stateful.__init__"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.utils.Stateful.html#deeperwin.kfac_ferminet_alpha.utils.Stateful.__init__">[docs]</a>  <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stateful_fields_names</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">()):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">__stateful_fields_names</span> <span class="o">=</span> <span class="n">stateful_fields_names</span></div>
+
+  <span class="k">def</span> <span class="nf">_add_stateful_fields_names</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">__stateful_fields_names</span> <span class="o">+=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Stateful.get_state"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.utils.Stateful.html#deeperwin.kfac_ferminet_alpha.utils.Stateful.get_state">[docs]</a>  <span class="k">def</span> <span class="nf">get_state</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+    <span class="sd">&quot;&quot;&quot;Returns the state of the object.&quot;&quot;&quot;</span>
+    <span class="n">state</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__stateful_fields_names</span><span class="p">:</span>
+      <span class="n">state</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">Stateful</span><span class="o">.</span><span class="n">_get_state_from_instance</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">state</span></div>
+
+<div class="viewcode-block" id="Stateful.set_state"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.utils.Stateful.html#deeperwin.kfac_ferminet_alpha.utils.Stateful.set_state">[docs]</a>  <span class="k">def</span> <span class="nf">set_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Sets the state of the object with the provided value and returns the object.&quot;&quot;&quot;</span>
+    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__stateful_fields_names</span><span class="p">:</span>
+      <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span>
+              <span class="n">Stateful</span><span class="o">.</span><span class="n">_set_state_to_instance</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">),</span> <span class="n">value</span><span class="p">[</span><span class="n">name</span><span class="p">]))</span>
+    <span class="k">return</span> <span class="bp">self</span></div>
+
+<div class="viewcode-block" id="Stateful.clear_state"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.utils.Stateful.html#deeperwin.kfac_ferminet_alpha.utils.Stateful.clear_state">[docs]</a>  <span class="k">def</span> <span class="nf">clear_state</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Clears the state of the object.&quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__stateful_fields_names</span><span class="p">:</span>
+      <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span>
+              <span class="n">Stateful</span><span class="o">.</span><span class="n">_clear_state_from_instance</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">)))</span></div>
+
+<div class="viewcode-block" id="Stateful.pop_state"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.utils.Stateful.html#deeperwin.kfac_ferminet_alpha.utils.Stateful.pop_state">[docs]</a>  <span class="k">def</span> <span class="nf">pop_state</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+    <span class="sd">&quot;&quot;&quot;Returns the current state of the object, while simultaneously clearing it.&quot;&quot;&quot;</span>
+    <span class="n">state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_state</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">clear_state</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">state</span></div>
+
+<div class="viewcode-block" id="Stateful._get_state_from_instance"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.utils.Stateful.html#deeperwin.kfac_ferminet_alpha.utils.Stateful._get_state_from_instance">[docs]</a>  <span class="nd">@staticmethod</span>
+  <span class="k">def</span> <span class="nf">_get_state_from_instance</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Recursively gets the state of the object and returns it.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">Stateful</span><span class="p">):</span>
+      <span class="k">return</span> <span class="n">obj</span><span class="o">.</span><span class="n">get_state</span><span class="p">()</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+      <span class="k">return</span> <span class="p">[</span><span class="n">Stateful</span><span class="o">.</span><span class="n">_get_state_from_instance</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">obj</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+      <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">Stateful</span><span class="o">.</span><span class="n">_get_state_from_instance</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">obj</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">collections</span><span class="o">.</span><span class="n">OrderedDict</span><span class="p">):</span>
+      <span class="k">return</span> <span class="n">collections</span><span class="o">.</span><span class="n">OrderedDict</span><span class="p">(</span>
+          <span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">Stateful</span><span class="o">.</span><span class="n">_get_state_from_instance</span><span class="p">(</span><span class="n">v</span><span class="p">))</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">obj</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+      <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span>
+          <span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">Stateful</span><span class="o">.</span><span class="n">_get_state_from_instance</span><span class="p">(</span><span class="n">v</span><span class="p">))</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">obj</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+    <span class="k">return</span> <span class="n">obj</span></div>
+
+<div class="viewcode-block" id="Stateful._set_state_to_instance"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.utils.Stateful.html#deeperwin.kfac_ferminet_alpha.utils.Stateful._set_state_to_instance">[docs]</a>  <span class="nd">@staticmethod</span>
+  <span class="k">def</span> <span class="nf">_set_state_to_instance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Recursively sets the state of the object and returns it.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">Stateful</span><span class="p">):</span>
+      <span class="n">obj</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+      <span class="k">return</span> <span class="n">obj</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+      <span class="k">if</span> <span class="n">obj</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+      <span class="k">return</span> <span class="p">[</span>
+          <span class="n">Stateful</span><span class="o">.</span><span class="n">_set_state_to_instance</span><span class="p">(</span><span class="n">obj_i</span><span class="p">,</span> <span class="n">value_i</span><span class="p">)</span>
+          <span class="k">for</span> <span class="n">obj_i</span><span class="p">,</span> <span class="n">value_i</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+      <span class="p">]</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+      <span class="k">if</span> <span class="n">obj</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+      <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span>
+          <span class="n">Stateful</span><span class="o">.</span><span class="n">_set_state_to_instance</span><span class="p">(</span><span class="n">obj_i</span><span class="p">,</span> <span class="n">value_i</span><span class="p">)</span>
+          <span class="k">for</span> <span class="n">obj_i</span><span class="p">,</span> <span class="n">value_i</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">value</span><span class="p">))</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">collections</span><span class="o">.</span><span class="n">OrderedDict</span><span class="p">):</span>
+      <span class="k">if</span> <span class="n">obj</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">((</span><span class="n">k</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">value</span><span class="p">)</span>
+      <span class="k">return</span> <span class="n">collections</span><span class="o">.</span><span class="n">OrderedDict</span><span class="p">(</span>
+          <span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">Stateful</span><span class="o">.</span><span class="n">_set_state_to_instance</span><span class="p">(</span><span class="n">obj</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> <span class="n">value</span><span class="p">[</span><span class="n">k</span><span class="p">]))</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">obj</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+      <span class="n">obj</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">((</span><span class="n">k</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">value</span><span class="p">)</span>
+      <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span>
+          <span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">Stateful</span><span class="o">.</span><span class="n">_set_state_to_instance</span><span class="p">(</span><span class="n">obj</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> <span class="n">value</span><span class="p">[</span><span class="n">k</span><span class="p">]))</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">obj</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">value</span></div>
+
+<div class="viewcode-block" id="Stateful._clear_state_from_instance"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.utils.Stateful.html#deeperwin.kfac_ferminet_alpha.utils.Stateful._clear_state_from_instance">[docs]</a>  <span class="nd">@staticmethod</span>
+  <span class="k">def</span> <span class="nf">_clear_state_from_instance</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Recursively clears the state of the object and returns it.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">Stateful</span><span class="p">):</span>
+      <span class="n">obj</span><span class="o">.</span><span class="n">clear_state</span><span class="p">()</span>
+      <span class="k">return</span> <span class="n">obj</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+      <span class="k">return</span> <span class="p">[</span><span class="n">Stateful</span><span class="o">.</span><span class="n">_clear_state_from_instance</span><span class="p">(</span><span class="n">obj_i</span><span class="p">)</span> <span class="k">for</span> <span class="n">obj_i</span> <span class="ow">in</span> <span class="n">obj</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+      <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">Stateful</span><span class="o">.</span><span class="n">_clear_state_from_instance</span><span class="p">(</span><span class="n">obj_i</span><span class="p">)</span> <span class="k">for</span> <span class="n">obj_i</span> <span class="ow">in</span> <span class="n">obj</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">collections</span><span class="o">.</span><span class="n">OrderedDict</span><span class="p">):</span>
+      <span class="k">return</span> <span class="n">collections</span><span class="o">.</span><span class="n">OrderedDict</span><span class="p">(</span>
+          <span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">Stateful</span><span class="o">.</span><span class="n">_clear_state_from_instance</span><span class="p">(</span><span class="n">obj</span><span class="p">[</span><span class="n">k</span><span class="p">]))</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">obj</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+      <span class="k">return</span> <span class="nb">dict</span><span class="p">((</span><span class="n">k</span><span class="p">,</span> <span class="n">Stateful</span><span class="o">.</span><span class="n">_clear_state_from_instance</span><span class="p">(</span><span class="n">obj</span><span class="p">[</span><span class="n">k</span><span class="p">]))</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">obj</span><span class="p">)</span>
+    <span class="k">return</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="Stateful.infer_class_state"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.utils.Stateful.html#deeperwin.kfac_ferminet_alpha.utils.Stateful.infer_class_state">[docs]</a>  <span class="nd">@staticmethod</span>
+  <span class="k">def</span> <span class="nf">infer_class_state</span><span class="p">(</span><span class="n">class_type</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Infers a stateful class state attributes from class annotations.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">class_type</span><span class="p">,</span> <span class="n">Stateful</span><span class="p">):</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+          <span class="sa">f</span><span class="s2">&quot;In order to annotate a class as stateful it must inherit &quot;</span>
+          <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">Stateful</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">class_type</span> <span class="o">=</span> <span class="n">dataclasses</span><span class="o">.</span><span class="n">dataclass</span><span class="p">(</span>
+        <span class="n">class_type</span><span class="p">,</span> <span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="nb">repr</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">eq</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>  <span class="c1"># pytype: disable=wrong-keyword-args</span>
+    <span class="n">fields_names</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">field</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">dataclasses</span><span class="o">.</span><span class="n">fields</span><span class="p">(</span><span class="n">class_type</span><span class="p">))</span>
+    <span class="n">original_init</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">class_type</span><span class="p">,</span> <span class="s2">&quot;__init__&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">original_init</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+
+      <span class="k">def</span> <span class="nf">injected_init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>  <span class="c1"># pylint: disable=bad-super-call</span>
+        <span class="n">Stateful</span><span class="o">.</span><span class="n">_add_stateful_fields_names</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fields_names</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">field_name</span> <span class="ow">in</span> <span class="n">fields_names</span><span class="p">:</span>
+          <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">field_name</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">field_name</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+      <span class="nb">setattr</span><span class="p">(</span><span class="n">class_type</span><span class="p">,</span> <span class="s2">&quot;__init__&quot;</span><span class="p">,</span> <span class="n">injected_init</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+
+      <span class="k">def</span> <span class="nf">injected_init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">original_init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">Stateful</span><span class="o">.</span><span class="n">_add_stateful_fields_names</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fields_names</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">field_name</span> <span class="ow">in</span> <span class="n">fields_names</span><span class="p">:</span>
+          <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">field_name</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">field_name</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+      <span class="nb">setattr</span><span class="p">(</span><span class="n">class_type</span><span class="p">,</span> <span class="s2">&quot;__init__&quot;</span><span class="p">,</span> <span class="n">injected_init</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">class_type</span></div></div>
+
+
+<div class="viewcode-block" id="compute_sq_norm_relative_abs_diff"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.utils.compute_sq_norm_relative_abs_diff.html#deeperwin.kfac_ferminet_alpha.utils.compute_sq_norm_relative_abs_diff">[docs]</a><span class="k">def</span> <span class="nf">compute_sq_norm_relative_abs_diff</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">pmap_axis_name</span><span class="p">):</span>
+  <span class="n">sq_norm</span> <span class="o">=</span> <span class="n">inner_product</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span>
+  <span class="n">synced_sq_norm</span> <span class="o">=</span> <span class="n">psum_if_pmap</span><span class="p">(</span><span class="n">sq_norm</span><span class="p">,</span> <span class="n">pmap_axis_name</span><span class="p">)</span>
+  <span class="n">synced_sq_norm</span> <span class="o">=</span> <span class="p">(</span><span class="n">synced_sq_norm</span> <span class="o">-</span> <span class="n">sq_norm</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">jax</span><span class="o">.</span><span class="n">device_count</span><span class="p">()</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">)</span>
+  <span class="n">sq_norm_abs_diff</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">sq_norm</span> <span class="o">-</span> <span class="n">synced_sq_norm</span><span class="p">)</span>
+  <span class="k">return</span> <span class="n">sq_norm_abs_diff</span> <span class="o">/</span> <span class="n">sq_norm</span></div>
+
+
+<div class="viewcode-block" id="product"><a class="viewcode-back" href="../../../_autosummary/deeperwin.kfac_ferminet_alpha.utils.product.html#deeperwin.kfac_ferminet_alpha.utils.product">[docs]</a><span class="k">def</span> <span class="nf">product</span><span class="p">(</span><span class="n">iterable_object</span><span class="p">):</span>
+  <span class="n">x</span> <span class="o">=</span> <span class="mi">1</span>
+  <span class="k">for</span> <span class="n">element</span> <span class="ow">in</span> <span class="n">iterable_object</span><span class="p">:</span>
+    <span class="n">x</span> <span class="o">*=</span> <span class="n">element</span>
+  <span class="k">return</span> <span class="n">x</span></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Michael Scherbela, Leon Gerard, Rafael Reisenhofer.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,6 @@
+deeperwin.hamiltonian.get\_kinetic\_energy
+==========================================
+
+.. currentmodule:: deeperwin.hamiltonian
+
+.. autofunction:: get_kinetic_energy

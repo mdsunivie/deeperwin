@@ -1,0 +1,29 @@
+deeperwin.loggers.WandBLogger
+=============================
+
+.. currentmodule:: deeperwin.loggers
+
+.. autoclass:: WandBLogger
+   :members:
+   :show-inheritance:
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~WandBLogger.__init__
+      ~WandBLogger.log_metrics
+      ~WandBLogger.log_params
+      ~WandBLogger.log_tags
+      ~WandBLogger.on_run_begin
+      ~WandBLogger.on_run_end
+   
+   
+
+   
+   
+   

@@ -1,0 +1,6 @@
+deeperwin.kfac\_ferminet\_alpha.utils.extract\_func\_outputs
+============================================================
+
+.. currentmodule:: deeperwin.kfac_ferminet_alpha.utils
+
+.. autofunction:: extract_func_outputs

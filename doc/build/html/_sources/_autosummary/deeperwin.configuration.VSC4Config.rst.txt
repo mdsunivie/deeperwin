@@ -1,0 +1,29 @@
+deeperwin.configuration.VSC4Config
+==================================
+
+.. currentmodule:: deeperwin.configuration
+
+.. autoclass:: VSC4Config
+   :members:
+   :show-inheritance:
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~VSC4Config.queue
+   
+   

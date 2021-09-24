@@ -1,0 +1,6 @@
+deeperwin.kfac\_ferminet\_alpha.utils.psum\_if\_pmap
+====================================================
+
+.. currentmodule:: deeperwin.kfac_ferminet_alpha.utils
+
+.. autofunction:: psum_if_pmap

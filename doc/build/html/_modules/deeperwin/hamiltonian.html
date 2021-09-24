@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>deeperwin.hamiltonian &mdash; deeperwin 1.0.0 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/custom_style.css" type="text/css" />
+    <link rel="shortcut icon" href="../../_static/favicon.png"/>
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> deeperwin
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorial.html">DeepErwin Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api.html">Full documentation for developers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../indices.html">Indices and tables</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">deeperwin</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+      <li>deeperwin.hamiltonian</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for deeperwin.hamiltonian</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">logging</span>
+
+<span class="kn">import</span> <span class="nn">jax</span>
+<span class="kn">from</span> <span class="nn">jax</span> <span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">jnp</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">deeperwin.configuration</span> <span class="kn">import</span> <span class="n">ClippingConfig</span><span class="p">,</span> <span class="n">ForceEvaluationConfig</span>
+<span class="kn">from</span> <span class="nn">deeperwin.mcmc</span> <span class="kn">import</span> <span class="n">MCMCState</span>
+<span class="kn">from</span> <span class="nn">deeperwin.utils</span> <span class="kn">import</span> <span class="n">get_el_ion_distance_matrix</span><span class="p">,</span> <span class="n">get_full_distance_matrix</span>
+
+
+<div class="viewcode-block" id="get_el_el_potential_energy"><a class="viewcode-back" href="../../_autosummary/deeperwin.hamiltonian.get_el_el_potential_energy.html#deeperwin.hamiltonian.get_el_el_potential_energy">[docs]</a><span class="k">def</span> <span class="nf">get_el_el_potential_energy</span><span class="p">(</span><span class="n">r_el</span><span class="p">):</span>
+    <span class="n">n_el</span> <span class="o">=</span> <span class="n">r_el</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">eye</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="n">n_el</span><span class="p">)</span>
+    <span class="n">dist_matrix</span> <span class="o">=</span> <span class="n">get_full_distance_matrix</span><span class="p">(</span><span class="n">r_el</span><span class="p">)</span>
+    <span class="n">E_pot</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">triu</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="n">dist_matrix</span> <span class="o">+</span> <span class="n">eye</span><span class="p">),</span> <span class="n">k</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># add eye to diagonal to prevent div/0</span>
+    <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">E_pot</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">])</span></div>
+
+
+<div class="viewcode-block" id="get_ion_ion_potential_energy"><a class="viewcode-back" href="../../_autosummary/deeperwin.hamiltonian.get_ion_ion_potential_energy.html#deeperwin.hamiltonian.get_ion_ion_potential_energy">[docs]</a><span class="k">def</span> <span class="nf">get_ion_ion_potential_energy</span><span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="n">Z</span><span class="p">):</span>
+    <span class="n">n_ions</span> <span class="o">=</span> <span class="n">R</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">eye</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="n">n_ions</span><span class="p">)</span>
+    <span class="n">dist_matrix</span> <span class="o">=</span> <span class="n">get_full_distance_matrix</span><span class="p">(</span><span class="n">R</span><span class="p">)</span>
+    <span class="n">charge_matrix</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">Z</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">Z</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">E_pot</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">triu</span><span class="p">(</span><span class="n">charge_matrix</span> <span class="o">/</span> <span class="p">(</span><span class="n">dist_matrix</span> <span class="o">+</span> <span class="n">eye</span><span class="p">),</span> <span class="n">k</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># add eye to diagonal to prevent div/0</span>
+    <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">E_pot</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">])</span></div>
+
+
+<div class="viewcode-block" id="get_kinetic_energy"><a class="viewcode-back" href="../../_autosummary/deeperwin.hamiltonian.get_kinetic_energy.html#deeperwin.hamiltonian.get_kinetic_energy">[docs]</a><span class="k">def</span> <span class="nf">get_kinetic_energy</span><span class="p">(</span><span class="n">log_psi_squared</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">R</span><span class="p">,</span> <span class="n">Z</span><span class="p">,</span> <span class="n">trainable_params</span><span class="p">,</span> <span class="n">fixed_params</span><span class="p">):</span>
+    <span class="n">n_coords</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span> <span class="o">*</span> <span class="n">r</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">eye</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="n">n_coords</span><span class="p">)</span>
+    <span class="n">grad_psi_func</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">r</span><span class="p">:</span> <span class="n">jax</span><span class="o">.</span><span class="n">grad</span><span class="p">(</span><span class="n">log_psi_squared</span><span class="p">,</span> <span class="n">argnums</span><span class="o">=</span><span class="mi">0</span><span class="p">)(</span>
+        <span class="n">r</span><span class="o">.</span><span class="n">reshape</span><span class="p">([</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">]),</span> <span class="n">R</span><span class="p">,</span> <span class="n">Z</span><span class="p">,</span> <span class="n">trainable_params</span><span class="p">,</span> <span class="n">fixed_params</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_loop_body</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">laplacian</span><span class="p">):</span>
+        <span class="n">g_i</span><span class="p">,</span> <span class="n">G_ii</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">jvp</span><span class="p">(</span><span class="n">grad_psi_func</span><span class="p">,</span> <span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">flatten</span><span class="p">(),),</span> <span class="p">(</span><span class="n">eye</span><span class="p">[</span><span class="n">i</span><span class="p">],))</span>
+        <span class="k">return</span> <span class="n">laplacian</span> <span class="o">+</span> <span class="n">G_ii</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">g_i</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span>
+
+    <span class="k">return</span> <span class="o">-</span><span class="mf">0.25</span> <span class="o">*</span> <span class="n">jax</span><span class="o">.</span><span class="n">lax</span><span class="o">.</span><span class="n">fori_loop</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">n_coords</span><span class="p">,</span> <span class="n">_loop_body</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="get_kinetic_energy_fwd_diff"><a class="viewcode-back" href="../../_autosummary/deeperwin.hamiltonian.get_kinetic_energy_fwd_diff.html#deeperwin.hamiltonian.get_kinetic_energy_fwd_diff">[docs]</a><span class="k">def</span> <span class="nf">get_kinetic_energy_fwd_diff</span><span class="p">(</span><span class="n">log_psi_squared</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">R</span><span class="p">,</span> <span class="n">Z</span><span class="p">,</span> <span class="n">trainable_params</span><span class="p">,</span> <span class="n">fixed_params</span><span class="p">):</span>
+    <span class="n">n_coords</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span> <span class="o">*</span> <span class="n">r</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">eye</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="n">n_coords</span><span class="p">)</span>
+    <span class="n">func</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">r</span><span class="p">:</span> <span class="n">log_psi_squared</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">reshape</span><span class="p">([</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">]),</span> <span class="n">R</span><span class="p">,</span> <span class="n">Z</span><span class="p">,</span> <span class="n">trainable_params</span><span class="p">,</span> <span class="n">fixed_params</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_loop_body</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">laplace</span><span class="p">):</span>
+        <span class="n">g</span><span class="p">,</span> <span class="n">G</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">jvp</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x_</span><span class="p">:</span> <span class="n">jax</span><span class="o">.</span><span class="n">jvp</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="p">(</span><span class="n">x_</span><span class="p">,),</span> <span class="p">(</span><span class="n">eye</span><span class="p">[</span><span class="n">i</span><span class="p">],))[</span><span class="mi">1</span><span class="p">],</span> <span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">flatten</span><span class="p">(),),</span> <span class="p">(</span><span class="n">eye</span><span class="p">[</span><span class="n">i</span><span class="p">],))</span>
+        <span class="k">return</span> <span class="n">laplace</span> <span class="o">+</span> <span class="n">G</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">g</span> <span class="o">**</span> <span class="mi">2</span>
+
+    <span class="k">return</span> <span class="o">-</span><span class="mf">0.25</span> <span class="o">*</span> <span class="n">jax</span><span class="o">.</span><span class="n">lax</span><span class="o">.</span><span class="n">fori_loop</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">n_coords</span><span class="p">,</span> <span class="n">_loop_body</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="get_potential_energy"><a class="viewcode-back" href="../../_autosummary/deeperwin.hamiltonian.get_potential_energy.html#deeperwin.hamiltonian.get_potential_energy">[docs]</a><span class="k">def</span> <span class="nf">get_potential_energy</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">R</span><span class="p">,</span> <span class="n">Z</span><span class="p">):</span>
+    <span class="n">_</span><span class="p">,</span> <span class="n">dist_el_ion</span> <span class="o">=</span> <span class="n">get_el_ion_distance_matrix</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">R</span><span class="p">)</span>
+    <span class="n">E_pot_el_ions</span> <span class="o">=</span> <span class="o">-</span><span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">Z</span> <span class="o">/</span> <span class="n">dist_el_ion</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">E_pot_el_el</span> <span class="o">=</span> <span class="n">get_el_el_potential_energy</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+    <span class="n">E_pot_ion_ion</span> <span class="o">=</span> <span class="n">get_ion_ion_potential_energy</span><span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="n">Z</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">E_pot_el_el</span> <span class="o">+</span> <span class="n">E_pot_el_ions</span> <span class="o">+</span> <span class="n">E_pot_ion_ion</span></div>
+
+
+<div class="viewcode-block" id="get_local_energy"><a class="viewcode-back" href="../../_autosummary/deeperwin.hamiltonian.get_local_energy.html#deeperwin.hamiltonian.get_local_energy">[docs]</a><span class="k">def</span> <span class="nf">get_local_energy</span><span class="p">(</span><span class="n">log_psi_squared</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">R</span><span class="p">,</span> <span class="n">Z</span><span class="p">,</span> <span class="n">trainable_params</span><span class="p">,</span> <span class="n">fixed_params</span><span class="p">,</span> <span class="n">use_fwd_fwd_hessian</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">use_fwd_fwd_hessian</span><span class="p">:</span>
+        <span class="n">_ekin_batched</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">vmap</span><span class="p">(</span><span class="n">get_kinetic_energy_fwd_diff</span><span class="p">,</span> <span class="n">in_axes</span><span class="o">=</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">_ekin_batched</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">vmap</span><span class="p">(</span><span class="n">get_kinetic_energy</span><span class="p">,</span> <span class="n">in_axes</span><span class="o">=</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
+
+    <span class="n">Ekin</span> <span class="o">=</span> <span class="n">_ekin_batched</span><span class="p">(</span><span class="n">log_psi_squared</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">R</span><span class="p">,</span> <span class="n">Z</span><span class="p">,</span> <span class="n">trainable_params</span><span class="p">,</span> <span class="n">fixed_params</span><span class="p">)</span>
+    <span class="n">Epot</span> <span class="o">=</span> <span class="n">get_potential_energy</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">R</span><span class="p">,</span> <span class="n">Z</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">Ekin</span> <span class="o">+</span> <span class="n">Epot</span></div>
+
+
+<div class="viewcode-block" id="clip_energies"><a class="viewcode-back" href="../../_autosummary/deeperwin.hamiltonian.clip_energies.html#deeperwin.hamiltonian.clip_energies">[docs]</a><span class="k">def</span> <span class="nf">clip_energies</span><span class="p">(</span><span class="n">E</span><span class="p">,</span> <span class="n">center</span><span class="p">,</span> <span class="n">width</span><span class="p">,</span> <span class="n">clipping_config</span><span class="p">:</span> <span class="n">ClippingConfig</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">clipping_config</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;hard&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">E</span><span class="p">,</span> <span class="n">center</span> <span class="o">-</span> <span class="n">width</span><span class="p">,</span> <span class="n">center</span> <span class="o">+</span> <span class="n">width</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">clipping_config</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;tanh&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">center</span> <span class="o">+</span> <span class="n">jnp</span><span class="o">.</span><span class="n">tanh</span><span class="p">((</span><span class="n">E</span> <span class="o">-</span> <span class="n">center</span><span class="p">)</span> <span class="o">/</span> <span class="n">width</span><span class="p">)</span> <span class="o">*</span> <span class="n">width</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported config-value for optimization.clipping.name: </span><span class="si">{</span><span class="n">clipping_config</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+<span class="k">def</span> <span class="nf">_calculate_forces_directly</span><span class="p">(</span><span class="n">diff_el_ion</span><span class="p">,</span> <span class="n">d_el_ion</span><span class="p">,</span> <span class="n">Z</span><span class="p">,</span> <span class="n">R_cut</span><span class="p">):</span>
+    <span class="n">d_el_ion</span> <span class="o">=</span> <span class="n">d_el_ion</span> <span class="o">/</span> <span class="n">jnp</span><span class="o">.</span><span class="n">tanh</span><span class="p">(</span><span class="n">d_el_ion</span><span class="o">/</span><span class="n">R_cut</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">Z</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span> <span class="o">*</span> <span class="n">diff_el_ion</span> <span class="o">/</span> <span class="n">d_el_ion</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span> <span class="o">**</span> <span class="mi">3</span>
+
+<span class="k">def</span> <span class="nf">_calculate_ion_ion_forces</span><span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="n">Z</span><span class="p">):</span>
+    <span class="n">EPSILON</span> <span class="o">=</span> <span class="mf">1e-8</span>
+    <span class="n">diff</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">)</span> <span class="o">-</span> <span class="n">jnp</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="o">-</span><span class="mi">3</span><span class="p">)</span>
+    <span class="n">dist</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">diff</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">Z_matrix</span> <span class="o">=</span> <span class="n">Z</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span> <span class="o">*</span> <span class="n">Z</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:]</span> <span class="o">-</span> <span class="n">jnp</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">Z</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">forces</span> <span class="o">=</span> <span class="n">diff</span> <span class="o">*</span> <span class="n">Z_matrix</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span> <span class="o">/</span> <span class="p">(</span><span class="n">dist</span> <span class="o">+</span> <span class="n">EPSILON</span><span class="p">)</span> <span class="o">**</span> <span class="mi">3</span> <span class="c1"># tiny EPS ensures that the diagonal (self-interaction) has 0 contribution</span>
+    <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">forces</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">_calculate_forces_polynomial_fit</span><span class="p">(</span><span class="n">diff_el_ion</span><span class="p">,</span> <span class="n">d_el_ion</span><span class="p">,</span> <span class="n">Z</span><span class="p">,</span> <span class="n">R_core</span><span class="p">,</span> <span class="n">poly_coeffs</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculate hellman-feynman forces on ions :math:`Z_m \left(\frac{1}{N} \sum_{k} \sum_i \frac{r^k_i-R_m}{|r^k_i - R_m|^3}\right)`.</span>
+<span class="sd">    Does not include ion-ion forces.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># forces = [batch x n_el x n_ions x xyz]</span>
+    <span class="n">d_el_ion</span> <span class="o">=</span> <span class="n">d_el_ion</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
+    <span class="n">forces_outer</span> <span class="o">=</span> <span class="n">diff_el_ion</span> <span class="o">/</span> <span class="n">d_el_ion</span> <span class="o">**</span> <span class="mi">3</span>
+    <span class="n">poly_degree</span> <span class="o">=</span> <span class="n">poly_coeffs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">j</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">poly_degree</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">j</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">j</span><span class="p">,</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+    <span class="n">force_moments</span> <span class="o">=</span> <span class="p">(</span><span class="n">diff_el_ion</span> <span class="o">/</span> <span class="n">d_el_ion</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">d_el_ion</span> <span class="o">/</span> <span class="n">R_core</span><span class="p">)</span> <span class="o">**</span> <span class="n">j</span>
+    <span class="n">forces_core</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">poly_coeffs</span> <span class="o">*</span> <span class="n">force_moments</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># sum over moments</span>
+    <span class="n">forces</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">d_el_ion</span> <span class="o">&lt;</span> <span class="n">R_core</span><span class="p">,</span> <span class="n">forces_core</span><span class="p">,</span> <span class="n">forces_outer</span><span class="p">)</span>
+    <span class="n">forces</span> <span class="o">=</span> <span class="n">forces</span> <span class="o">*</span> <span class="n">Z</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">forces</span>
+
+<div class="viewcode-block" id="calculate_forces"><a class="viewcode-back" href="../../_autosummary/deeperwin.hamiltonian.calculate_forces.html#deeperwin.hamiltonian.calculate_forces">[docs]</a><span class="k">def</span> <span class="nf">calculate_forces</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">R</span><span class="p">,</span> <span class="n">Z</span><span class="p">,</span> <span class="n">log_psi_sqr</span><span class="p">,</span> <span class="n">log_sqr_func</span><span class="p">,</span> <span class="n">func_params</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">ForceEvaluationConfig</span><span class="p">,</span> <span class="n">poly_coeffs</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculates the forces following closely the work of https://doi.org/10.1103/PhysRevLett.94.036404 by using antithetic sampling and per default fitting a polynomial</span>
+<span class="sd">    to the force density close to the nuclei.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># [batch x electron x ion x xyz]</span>
+
+    <span class="n">diff_el_ion</span><span class="p">,</span> <span class="n">r_el_ion</span> <span class="o">=</span> <span class="n">get_el_ion_distance_matrix</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">R</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">use_polynomial</span><span class="p">:</span>
+        <span class="n">force_function</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_calculate_forces_polynomial_fit</span><span class="p">,</span> <span class="n">R_core</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">R_core</span><span class="p">,</span> <span class="n">poly_coeffs</span><span class="o">=</span><span class="n">poly_coeffs</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">force_function</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_calculate_forces_directly</span><span class="p">,</span> <span class="n">R_cut</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">R_cut</span><span class="p">)</span>
+    <span class="n">forces</span> <span class="o">=</span> <span class="n">force_function</span><span class="p">(</span><span class="n">diff_el_ion</span><span class="p">,</span> <span class="n">r_el_ion</span><span class="p">,</span> <span class="n">Z</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">use_antithetic_sampling</span><span class="p">:</span>
+        <span class="n">ind_closest_ion</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">r_el_ion</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">d_closest_ion</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">r_el_ion</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">diff_to_closest_ion</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">vmap</span><span class="p">(</span><span class="n">jax</span><span class="o">.</span><span class="n">vmap</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span><span class="n">ind</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="n">ind</span><span class="p">]))(</span><span class="n">diff_el_ion</span><span class="p">,</span> <span class="n">ind_closest_ion</span><span class="p">)</span> <span class="c1"># vmap over number of electrons and batch-size</span>
+        <span class="n">is_core_electron</span> <span class="o">=</span> <span class="n">d_closest_ion</span> <span class="o">&lt;</span> <span class="n">config</span><span class="o">.</span><span class="n">R_core</span>
+
+        <span class="n">r_mirrored</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">is_core_electron</span><span class="p">,</span> <span class="n">r</span> <span class="o">-</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">diff_to_closest_ion</span><span class="p">,</span> <span class="n">r</span><span class="p">)</span>
+        <span class="n">diff_el_ion_mirrored</span><span class="p">,</span> <span class="n">r_el_ion_mirrored</span> <span class="o">=</span> <span class="n">get_el_ion_distance_matrix</span><span class="p">(</span><span class="n">r_mirrored</span><span class="p">,</span> <span class="n">R</span><span class="p">)</span>
+        <span class="n">mirrored_weight</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">log_sqr_func</span><span class="p">(</span><span class="n">r_mirrored</span><span class="p">,</span> <span class="n">R</span><span class="p">,</span> <span class="n">Z</span><span class="p">,</span> <span class="o">*</span><span class="n">func_params</span><span class="p">)</span> <span class="o">-</span> <span class="n">log_psi_sqr</span><span class="p">)</span>
+
+        <span class="n">forces_mirrored</span> <span class="o">=</span> <span class="n">force_function</span><span class="p">(</span><span class="n">diff_el_ion_mirrored</span><span class="p">,</span> <span class="n">r_el_ion_mirrored</span><span class="p">,</span> <span class="n">Z</span><span class="p">)</span>
+        <span class="n">forces</span> <span class="o">=</span> <span class="p">(</span><span class="n">forces</span> <span class="o">+</span> <span class="n">forces_mirrored</span> <span class="o">*</span> <span class="n">mirrored_weight</span><span class="p">[:,</span><span class="kc">None</span><span class="p">,</span><span class="kc">None</span><span class="p">,</span><span class="kc">None</span><span class="p">])</span> <span class="o">*</span> <span class="mf">0.5</span>
+
+    <span class="n">force</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">forces</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="c1"># sum over electrons, average over batch</span>
+    <span class="k">return</span> <span class="n">force</span> <span class="o">+</span> <span class="n">_calculate_ion_ion_forces</span><span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="n">Z</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="log_mcmc_debug_info"><a class="viewcode-back" href="../../_autosummary/deeperwin.hamiltonian.log_mcmc_debug_info.html#deeperwin.hamiltonian.log_mcmc_debug_info">[docs]</a><span class="k">def</span> <span class="nf">log_mcmc_debug_info</span><span class="p">(</span><span class="n">epoch_nr</span><span class="p">,</span> <span class="n">mcmc_old</span><span class="p">:</span> <span class="n">MCMCState</span><span class="p">,</span> <span class="n">mcmc_new</span><span class="p">:</span> <span class="n">MCMCState</span><span class="p">):</span>
+    <span class="n">dist</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">mcmc_new</span><span class="o">.</span><span class="n">r</span> <span class="o">-</span> <span class="n">mcmc_old</span><span class="o">.</span><span class="n">r</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;Epoch </span><span class="si">{</span><span class="n">epoch_nr</span><span class="si">:</span><span class="s2">&gt;4d</span><span class="si">}</span><span class="s2"> MCMC: scale = </span><span class="si">{</span><span class="n">mcmc_new</span><span class="o">.</span><span class="n">stepsize</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">, stepsize mean=</span><span class="si">{</span><span class="n">jnp</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">dist</span><span class="p">)</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">, std=</span><span class="si">{</span><span class="n">jnp</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">dist</span><span class="p">)</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="p">)</span></div>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="k">pass</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Michael Scherbela, Leon Gerard, Rafael Reisenhofer.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

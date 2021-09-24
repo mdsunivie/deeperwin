@@ -1,0 +1,6 @@
+deeperwin.kfac\_ferminet\_alpha.utils.compute\_sum
+==================================================
+
+.. currentmodule:: deeperwin.kfac_ferminet_alpha.utils
+
+.. autofunction:: compute_sum

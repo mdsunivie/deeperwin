@@ -1,0 +1,6 @@
+deeperwin.configuration.set\_with\_nested\_key
+==============================================
+
+.. currentmodule:: deeperwin.configuration
+
+.. autofunction:: set_with_nested_key

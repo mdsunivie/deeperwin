@@ -1,0 +1,35 @@
+deeperwin.register\_curvature.RepeatedDenseBlock
+================================================
+
+.. currentmodule:: deeperwin.register_curvature
+
+.. autoclass:: RepeatedDenseBlock
+   :members:
+   :show-inheritance:
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~RepeatedDenseBlock.compute_extra_scale
+      ~RepeatedDenseBlock.update_curvature_matrix_estimate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~RepeatedDenseBlock.inputs_factor
+      ~RepeatedDenseBlock.inputs_factor_inverse
+      ~RepeatedDenseBlock.outputs_factor
+      ~RepeatedDenseBlock.outputs_factor_inverse
+      ~RepeatedDenseBlock.extra_scale
+   
+   

@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>deeperwin.mcmc.MetropolisHastingsMonteCarlo &mdash; deeperwin 1.0.0 documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/custom_style.css" type="text/css" />
+    <link rel="shortcut icon" href="../_static/favicon.png"/>
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="deeperwin.model" href="deeperwin.model.html" />
+    <link rel="prev" title="deeperwin.mcmc.MCMCState" href="deeperwin.mcmc.MCMCState.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> deeperwin
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorial.html">DeepErwin Tutorial</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../api.html">Full documentation for developers</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="deeperwin.html">deeperwin</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.ase_bindings.html">deeperwin.ase_bindings</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.bfgs.html">deeperwin.bfgs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.configuration.html">deeperwin.configuration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.dispatch.html">deeperwin.dispatch</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.evaluation.html">deeperwin.evaluation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.hamiltonian.html">deeperwin.hamiltonian</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.kfac.html">deeperwin.kfac</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.html">deeperwin.kfac_ferminet_alpha</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.loggers.html">deeperwin.loggers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.main.html">deeperwin.main</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="deeperwin.mcmc.html">deeperwin.mcmc</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.mcmc.calculate_metrics.html">deeperwin.mcmc.calculate_metrics</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.mcmc.resize_nr_of_walkers.html">deeperwin.mcmc.resize_nr_of_walkers</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.mcmc.MCMCState.html">deeperwin.mcmc.MCMCState</a></li>
+<li class="toctree-l4 current"><a class="current reference internal" href="#">deeperwin.mcmc.MetropolisHastingsMonteCarlo</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.model.html">deeperwin.model</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.optimization.html">deeperwin.optimization</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.orbitals.html">deeperwin.orbitals</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.process_molecule.html">deeperwin.process_molecule</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.process_molecules_inter.html">deeperwin.process_molecules_inter</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.register_curvature.html">deeperwin.register_curvature</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.sweep_agent.html">deeperwin.sweep_agent</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.utils.html">deeperwin.utils</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../indices.html">Indices and tables</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">deeperwin</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../api.html">Full documentation for developers</a> &raquo;</li>
+          <li><a href="deeperwin.html">deeperwin</a> &raquo;</li>
+          <li><a href="deeperwin.mcmc.html">deeperwin.mcmc</a> &raquo;</li>
+      <li>deeperwin.mcmc.MetropolisHastingsMonteCarlo</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/_autosummary/deeperwin.mcmc.MetropolisHastingsMonteCarlo.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="deeperwin-mcmc-metropolishastingsmontecarlo">
+<h1>deeperwin.mcmc.MetropolisHastingsMonteCarlo<a class="headerlink" href="#deeperwin-mcmc-metropolishastingsmontecarlo" title="Permalink to this headline"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="deeperwin.mcmc.MetropolisHastingsMonteCarlo">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">deeperwin.mcmc.</span></span><span class="sig-name descname"><span class="pre">MetropolisHastingsMonteCarlo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mcmc_config</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="deeperwin.configuration.MCMCConfig.html#deeperwin.configuration.MCMCConfig" title="deeperwin.configuration.MCMCConfig"><span class="pre">deeperwin.configuration.MCMCConfig</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/deeperwin/mcmc.html#MetropolisHastingsMonteCarlo"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.mcmc.MetropolisHastingsMonteCarlo" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Class that performs monte carlo steps.</p>
+<p>This class holds the MCMC logic and configuration, but does not hold the actual state (e.g. electron positions, psi², etc).
+The actual state is stored in an MCMCState object.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="deeperwin.mcmc.MetropolisHastingsMonteCarlo.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mcmc_config</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="deeperwin.configuration.MCMCConfig.html#deeperwin.configuration.MCMCConfig" title="deeperwin.configuration.MCMCConfig"><span class="pre">deeperwin.configuration.MCMCConfig</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/deeperwin/mcmc.html#MetropolisHastingsMonteCarlo.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.mcmc.MetropolisHastingsMonteCarlo.__init__" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#deeperwin.mcmc.MetropolisHastingsMonteCarlo.__init__" title="deeperwin.mcmc.MetropolisHastingsMonteCarlo.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(mcmc_config)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">adjust_stepsize</span></code>(stepsize, acceptance_rate)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_mcmc_step</span></code>(func, func_params, state, method)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">run_burn_in_eval</span></code>(func, func_params, state)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">run_burn_in_opt</span></code>(func, func_params, state)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">run_inter_steps</span></code>(func, func_params, state[, ...])</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="deeperwin.mcmc.MCMCState.html" class="btn btn-neutral float-left" title="deeperwin.mcmc.MCMCState" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="deeperwin.model.html" class="btn btn-neutral float-right" title="deeperwin.model" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Michael Scherbela, Leon Gerard, Rafael Reisenhofer.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

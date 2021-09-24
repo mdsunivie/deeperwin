@@ -1,0 +1,73 @@
+deeperwin.configuration
+=======================
+
+.. automodule:: deeperwin.configuration
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+   
+      build_nested_dict
+      get_attribute_by_nested_key
+      set_with_nested_key
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: custom_class.rst
+   
+      AdamOptimizerConfig
+      BFGSOptimizerConfig
+      BasicLoggerConfig
+      CASSCFConfig
+      ClippingConfig
+      ComputationConfig
+      ConfigModel
+      Configuration
+      CuspCorrectionConfig
+      DGXConfig
+      DeepErwinModelConfig
+      DummyEmbeddingConfig
+      EvaluationConfig
+      FixedLRSchedule
+      ForceEvaluationConfig
+      IntermediateEvaluationConfig
+      InverseLRScheduleConfig
+      KFACOptimizerConfig
+      LoggerBaseConfig
+      LoggingConfig
+      MCMCConfig
+      MCMCLangevinProposalConfig
+      MCMCSimpleProposalConfig
+      NetworkConfig
+      OptimizationConfig
+      PhysicalConfig
+      PhysicalConfigChange
+      PickleLoggerConfig
+      RestartConfig
+      SimpleSchnetConfig
+      StandardOptimizerConfig
+      VSC3Config
+      VSC4Config
+      WandBConfig
+   
+   
+
+   
+   
+   
+
+
+

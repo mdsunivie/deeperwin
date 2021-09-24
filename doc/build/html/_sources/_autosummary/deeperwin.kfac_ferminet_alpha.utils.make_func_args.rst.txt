@@ -1,0 +1,6 @@
+deeperwin.kfac\_ferminet\_alpha.utils.make\_func\_args
+======================================================
+
+.. currentmodule:: deeperwin.kfac_ferminet_alpha.utils
+
+.. autofunction:: make_func_args

@@ -1,0 +1,6 @@
+deeperwin.kfac\_ferminet\_alpha.tracer.extract\_tags
+====================================================
+
+.. currentmodule:: deeperwin.kfac_ferminet_alpha.tracer
+
+.. autofunction:: extract_tags

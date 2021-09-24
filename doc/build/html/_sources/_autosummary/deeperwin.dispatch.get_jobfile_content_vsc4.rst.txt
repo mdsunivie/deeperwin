@@ -1,0 +1,6 @@
+deeperwin.dispatch.get\_jobfile\_content\_vsc4
+==============================================
+
+.. currentmodule:: deeperwin.dispatch
+
+.. autofunction:: get_jobfile_content_vsc4

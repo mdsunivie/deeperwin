@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>deeperwin.orbitals &mdash; deeperwin 1.0.0 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/custom_style.css" type="text/css" />
+    <link rel="shortcut icon" href="../../_static/favicon.png"/>
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> deeperwin
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorial.html">DeepErwin Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api.html">Full documentation for developers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../indices.html">Indices and tables</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">deeperwin</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+      <li>deeperwin.orbitals</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for deeperwin.orbitals</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Module containing the calculation of a physical baseline model (e.g. CASSCF).</span>
+
+<span class="sd">This module provides functionality to calculate a basline solution using pySCF and functions to</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+
+<span class="kn">import</span> <span class="nn">jax.numpy</span> <span class="k">as</span> <span class="nn">jnp</span>
+<span class="kn">import</span> <span class="nn">pyscf</span>
+<span class="kn">import</span> <span class="nn">pyscf.mcscf</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">deeperwin.configuration</span> <span class="kn">import</span> <span class="n">PhysicalConfig</span><span class="p">,</span> <span class="n">CASSCFConfig</span>
+<span class="kn">from</span> <span class="nn">deeperwin.configuration</span> <span class="kn">import</span> <span class="n">CuspCorrectionConfig</span>
+<span class="kn">from</span> <span class="nn">deeperwin.utils</span> <span class="kn">import</span> <span class="n">get_el_ion_distance_matrix</span>
+
+<span class="c1">#################################################################################</span>
+<span class="c1">############################ Orbital functions ##################################</span>
+<span class="c1">#################################################################################</span>
+
+<div class="viewcode-block" id="eval_gaussian_orbital"><a class="viewcode-back" href="../../_autosummary/deeperwin.orbitals.eval_gaussian_orbital.html#deeperwin.orbitals.eval_gaussian_orbital">[docs]</a><span class="k">def</span> <span class="nf">eval_gaussian_orbital</span><span class="p">(</span><span class="n">el_ion_diff</span><span class="p">,</span> <span class="n">el_ion_dist</span><span class="p">,</span> <span class="n">ind_nuc</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">weights</span><span class="p">,</span> <span class="n">angular_momenta</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Evaluate a single orbital on multiple points in space r.</span>
+
+<span class="sd">    Each orbital is evaluated at N points in 3D space.</span>
+<span class="sd">    Each orbital consist of k gaussians centered around a nucleus at position R.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        el_ion_diff: Position where orbital is evaluated, relative to nucleus, shape [3]</span>
+<span class="sd">        el_ion_dist: norm of difference, i.e. distance between electron position and the nucleus; shape []</span>
+<span class="sd">        alpha: Gaussian decay coefficients [k]</span>
+<span class="sd">        weights: Linear expansion coeffs of orbitals [k]</span>
+<span class="sd">        angular_momenta: Integers describing the power of each cartesian coordinate, shape [3]</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Array of shape [N]</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">r_sqr</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">el_ion_dist</span> <span class="o">**</span> <span class="mi">2</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># shape [1]</span>
+    <span class="n">pre_fac</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">el_ion_diff</span> <span class="o">**</span> <span class="n">angular_momenta</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># shape []</span>
+    <span class="n">phi_gto</span> <span class="o">=</span> <span class="n">pre_fac</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">weights</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">alpha</span> <span class="o">*</span> <span class="n">r_sqr</span><span class="p">),</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">phi_gto</span></div>
+
+
+<div class="viewcode-block" id="eval_atomic_orbitals"><a class="viewcode-back" href="../../_autosummary/deeperwin.orbitals.eval_atomic_orbitals.html#deeperwin.orbitals.eval_atomic_orbitals">[docs]</a><span class="k">def</span> <span class="nf">eval_atomic_orbitals</span><span class="p">(</span><span class="n">el_ion_diff</span><span class="p">,</span> <span class="n">el_ion_dist</span><span class="p">,</span> <span class="n">orbitals</span><span class="p">,</span> <span class="n">ao_cusp_params</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Args:</span>
+<span class="sd">        el_ion_diff: shape [N_batch x n_el x N_ion x 3]</span>
+<span class="sd">        el_ion_dist: shape [N_batch x n_el x N_ion]</span>
+<span class="sd">        orbitals:</span>
+
+<span class="sd">    Returns:</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">outputs</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">ao</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">orbitals</span><span class="p">):</span>
+        <span class="n">ind_nuc</span> <span class="o">=</span> <span class="n">ao</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">diff</span> <span class="o">=</span> <span class="n">el_ion_diff</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">ind_nuc</span><span class="p">,</span> <span class="p">:]</span>
+        <span class="n">dist</span> <span class="o">=</span> <span class="n">el_ion_dist</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">ind_nuc</span><span class="p">]</span>
+        <span class="n">gto</span> <span class="o">=</span> <span class="n">eval_gaussian_orbital</span><span class="p">(</span><span class="n">diff</span><span class="p">,</span> <span class="n">dist</span><span class="p">,</span> <span class="o">*</span><span class="n">ao</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">ao_cusp_params</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">ao_cusp_params</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">):</span>
+            <span class="n">r_c</span> <span class="o">=</span> <span class="n">ao_cusp_params</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">sto</span> <span class="o">=</span> <span class="n">_eval_cusp_atomic_orbital</span><span class="p">(</span><span class="n">dist</span><span class="p">,</span> <span class="o">*</span><span class="n">ao_cusp_params</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+            <span class="n">weight_gto</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">sign</span><span class="p">(</span><span class="n">dist</span> <span class="o">-</span> <span class="n">r_c</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">weight_sto</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="n">weight_gto</span>
+            <span class="n">gto</span> <span class="o">=</span> <span class="n">weight_gto</span> <span class="o">*</span> <span class="n">gto</span> <span class="o">+</span> <span class="n">weight_sto</span> <span class="o">*</span> <span class="n">sto</span>
+        <span class="n">outputs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">gto</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">outputs</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span></div>
+
+<span class="k">def</span> <span class="nf">_eval_cusp_molecular_orbital</span><span class="p">(</span><span class="n">dist</span><span class="p">,</span> <span class="n">r_c</span><span class="p">,</span> <span class="n">offset</span><span class="p">,</span> <span class="n">sign</span><span class="p">,</span> <span class="n">poly</span><span class="p">):</span>
+    <span class="n">dist</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">minimum</span><span class="p">(</span><span class="n">dist</span><span class="p">,</span> <span class="n">r_c</span><span class="p">)</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+    <span class="n">r_n</span> <span class="o">=</span> <span class="n">dist</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span> <span class="o">**</span> <span class="n">n</span>
+    <span class="n">p_r</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">r_n</span> <span class="o">*</span> <span class="n">poly</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">psi</span> <span class="o">=</span> <span class="n">offset</span> <span class="o">+</span> <span class="n">sign</span><span class="o">*</span><span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">p_r</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">psi</span>
+
+<span class="k">def</span> <span class="nf">_eval_cusp_atomic_orbital</span><span class="p">(</span><span class="n">dist</span><span class="p">,</span> <span class="n">r_c</span><span class="p">,</span> <span class="n">offset</span><span class="p">,</span> <span class="n">sign</span><span class="p">,</span> <span class="n">poly</span><span class="p">):</span>
+    <span class="n">dist</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">minimum</span><span class="p">(</span><span class="n">dist</span><span class="p">,</span> <span class="n">r_c</span><span class="p">)</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+    <span class="n">r_n</span> <span class="o">=</span> <span class="n">dist</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span> <span class="o">**</span> <span class="n">n</span>
+    <span class="n">p_r</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">r_n</span><span class="p">,</span> <span class="n">poly</span><span class="p">)</span>
+    <span class="n">psi</span> <span class="o">=</span> <span class="n">offset</span> <span class="o">+</span> <span class="n">sign</span><span class="o">*</span><span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">p_r</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">psi</span>
+
+<div class="viewcode-block" id="evaluate_molecular_orbitals"><a class="viewcode-back" href="../../_autosummary/deeperwin.orbitals.evaluate_molecular_orbitals.html#deeperwin.orbitals.evaluate_molecular_orbitals">[docs]</a><span class="k">def</span> <span class="nf">evaluate_molecular_orbitals</span><span class="p">(</span><span class="n">el_ion_diff</span><span class="p">,</span> <span class="n">el_ion_dist</span><span class="p">,</span> <span class="n">atomic_orbitals</span><span class="p">,</span> <span class="n">mo_coeff</span><span class="p">,</span> <span class="n">cusp_params</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">cusp_type</span><span class="o">=</span><span class="s2">&quot;mo&quot;</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">cusp_type</span> <span class="o">==</span> <span class="s2">&quot;mo&quot;</span><span class="p">:</span>
+        <span class="n">aos</span> <span class="o">=</span> <span class="n">eval_atomic_orbitals</span><span class="p">(</span><span class="n">el_ion_diff</span><span class="p">,</span> <span class="n">el_ion_dist</span><span class="p">,</span> <span class="n">atomic_orbitals</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">aos</span> <span class="o">=</span> <span class="n">eval_atomic_orbitals</span><span class="p">(</span><span class="n">el_ion_diff</span><span class="p">,</span> <span class="n">el_ion_dist</span><span class="p">,</span> <span class="n">atomic_orbitals</span><span class="p">,</span> <span class="n">cusp_params</span><span class="p">)</span>
+    <span class="n">mos</span> <span class="o">=</span> <span class="n">aos</span> <span class="o">@</span> <span class="n">mo_coeff</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">cusp_params</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">cusp_type</span> <span class="o">==</span> <span class="s2">&quot;mo&quot;</span><span class="p">):</span>
+        <span class="n">r_c</span><span class="p">,</span> <span class="n">offset</span><span class="p">,</span> <span class="n">sign</span><span class="p">,</span> <span class="n">poly</span><span class="p">,</span> <span class="n">coeff_1s</span> <span class="o">=</span> <span class="n">cusp_params</span>
+        <span class="n">sto_mask</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">heaviside</span><span class="p">(</span><span class="n">r_c</span> <span class="o">-</span> <span class="n">el_ion_dist</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)[</span><span class="o">...</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
+        <span class="n">sto</span> <span class="o">=</span> <span class="n">_eval_cusp_molecular_orbital</span><span class="p">(</span><span class="n">el_ion_dist</span><span class="p">,</span> <span class="n">r_c</span><span class="p">,</span> <span class="n">offset</span><span class="p">,</span> <span class="n">sign</span><span class="p">,</span> <span class="n">poly</span><span class="p">)</span> <span class="o">-</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">aos</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span> <span class="o">*</span> <span class="n">coeff_1s</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">sto</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">sto</span><span class="o">*</span><span class="n">sto_mask</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">2</span><span class="p">)</span>     <span class="c1"># sum over all ions, masking only the once that are within r_c of an electron</span>
+        <span class="n">mos</span> <span class="o">=</span> <span class="n">mos</span> <span class="o">+</span> <span class="n">sto</span> <span class="c1"># subtract GTO-part of 1s orbitals and replace by STO-part</span>
+    <span class="k">return</span> <span class="n">mos</span></div>
+
+
+<span class="c1">#################################################################################</span>
+<span class="c1">####################### Compile-time helper functions ###########################</span>
+<span class="c1">#################################################################################</span>
+
+<div class="viewcode-block" id="build_pyscf_molecule"><a class="viewcode-back" href="../../_autosummary/deeperwin.orbitals.build_pyscf_molecule.html#deeperwin.orbitals.build_pyscf_molecule">[docs]</a><span class="k">def</span> <span class="nf">build_pyscf_molecule</span><span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="n">Z</span><span class="p">,</span> <span class="n">charge</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">spin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">basis_set</span><span class="o">=</span><span class="s1">&#39;6-311G&#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Args:</span>
+<span class="sd">        R: ion positions, shape [Nx3]</span>
+<span class="sd">        Z: ion charges, shape [N]</span>
+<span class="sd">        charge: integer</span>
+<span class="sd">        spin: integer; number of excess spin-up electrons</span>
+<span class="sd">        basis_set (str): basis set identifier</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        pyscf.Molecule</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">molecule</span> <span class="o">=</span> <span class="n">pyscf</span><span class="o">.</span><span class="n">gto</span><span class="o">.</span><span class="n">Mole</span><span class="p">()</span>
+    <span class="n">molecule</span><span class="o">.</span><span class="n">atom</span> <span class="o">=</span> <span class="p">[[</span><span class="n">Z_</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">R_</span><span class="p">)]</span> <span class="k">for</span> <span class="n">R_</span><span class="p">,</span> <span class="n">Z_</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="n">Z</span><span class="p">)]</span>
+    <span class="n">molecule</span><span class="o">.</span><span class="n">unit</span> <span class="o">=</span> <span class="s2">&quot;bohr&quot;</span>
+    <span class="n">molecule</span><span class="o">.</span><span class="n">basis</span> <span class="o">=</span> <span class="n">basis_set</span>
+    <span class="n">molecule</span><span class="o">.</span><span class="n">cart</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">molecule</span><span class="o">.</span><span class="n">spin</span> <span class="o">=</span> <span class="n">spin</span>  <span class="c1"># 2*n_up - n_down</span>
+    <span class="n">molecule</span><span class="o">.</span><span class="n">charge</span> <span class="o">=</span> <span class="n">charge</span>
+    <span class="n">molecule</span><span class="o">.</span><span class="n">output</span> <span class="o">=</span> <span class="s2">&quot;/dev/null&quot;</span>
+    <span class="n">molecule</span><span class="o">.</span><span class="n">verbose</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># suppress output to console</span>
+    <span class="n">molecule</span><span class="o">.</span><span class="n">max_memory</span> <span class="o">=</span> <span class="mf">10e3</span>  <span class="c1"># maximum memory in megabytes (i.e. 10e3 = 10GB)</span>
+    <span class="n">molecule</span><span class="o">.</span><span class="n">build</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">molecule</span></div>
+
+
+<span class="k">def</span> <span class="nf">_get_gto_normalization_factor</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">angular_momenta</span><span class="p">):</span>
+    <span class="n">l_tot</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">angular_momenta</span><span class="p">)</span>
+    <span class="n">fac_alpha</span> <span class="o">=</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">alpha</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span> <span class="o">**</span> <span class="p">(</span><span class="mi">3</span> <span class="o">/</span> <span class="mi">4</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mi">8</span> <span class="o">*</span> <span class="n">alpha</span><span class="p">)</span> <span class="o">**</span> <span class="p">(</span><span class="n">l_tot</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+
+    <span class="n">fac</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">factorial</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">angular_momenta</span><span class="p">])</span>
+    <span class="n">fac2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">factorial</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">angular_momenta</span><span class="p">])</span>
+    <span class="n">fac_exponent</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">fac</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">fac2</span><span class="p">))</span>
+    <span class="n">factor</span> <span class="o">=</span> <span class="n">fac_alpha</span> <span class="o">*</span> <span class="n">fac_exponent</span>
+    <span class="k">return</span> <span class="n">factor</span>
+
+
+<span class="k">def</span> <span class="nf">_get_atomic_orbital_basis_functions</span><span class="p">(</span><span class="n">molecule</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Args:</span>
+<span class="sd">        molecule: pyscf molecule object</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        orbitals: tuple of tuple, each containing index of nucleus, nuclear coordinate, exponential decay constant alpha, weights and angular momentum exponents</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">ao_labels</span> <span class="o">=</span> <span class="n">molecule</span><span class="o">.</span><span class="n">ao_labels</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+    <span class="n">n_basis</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">ao_labels</span><span class="p">)</span>
+    <span class="n">ind_basis</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">atomic_orbitals</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">ind_nuc</span><span class="p">,</span> <span class="p">(</span><span class="n">element</span><span class="p">,</span> <span class="n">atom_pos</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">molecule</span><span class="o">.</span><span class="n">_atom</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">gto_data</span> <span class="ow">in</span> <span class="n">molecule</span><span class="o">.</span><span class="n">_basis</span><span class="p">[</span><span class="n">element</span><span class="p">]:</span>
+            <span class="n">l</span> <span class="o">=</span> <span class="n">gto_data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">gto_data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">gto_data</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span>
+            <span class="n">alpha</span> <span class="o">=</span> <span class="n">gto_data</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span>
+            <span class="n">weights</span> <span class="o">=</span> <span class="n">gto_data</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">:]</span>
+            <span class="k">for</span> <span class="n">ind_contraction</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">weights</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]):</span>
+                <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="o">-</span><span class="n">l</span><span class="p">,</span> <span class="n">l</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+                    <span class="n">shape_string</span> <span class="o">=</span> <span class="n">ao_labels</span><span class="p">[</span><span class="n">ind_basis</span><span class="p">][</span><span class="mi">3</span><span class="p">]</span>  <span class="c1"># string of the form &#39;xxy&#39; or &#39;zz&#39;</span>
+                    <span class="n">angular_momenta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">shape_string</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="s1">&#39;z&#39;</span><span class="p">]],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+                    <span class="n">normalization</span> <span class="o">=</span> <span class="n">_get_gto_normalization_factor</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">angular_momenta</span><span class="p">)</span>
+                    <span class="n">atomic_orbitals</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">ind_nuc</span><span class="p">,</span>
+                                            <span class="n">alpha</span><span class="p">,</span>
+                                            <span class="n">weights</span><span class="p">[:,</span> <span class="n">ind_contraction</span><span class="p">]</span> <span class="o">*</span> <span class="n">normalization</span><span class="p">,</span>
+                                            <span class="n">angular_momenta</span><span class="p">])</span>
+                    <span class="n">ind_basis</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span>
+        <span class="n">atomic_orbitals</span><span class="p">)</span> <span class="o">==</span> <span class="n">n_basis</span><span class="p">,</span> <span class="s2">&quot;Could not properly construct basis functions. You probably tried to use a valence-only basis (e.g. cc-pVDZ) for an all-electron calculation.&quot;</span>  <span class="c1"># noqa</span>
+    <span class="k">return</span> <span class="n">atomic_orbitals</span>
+
+
+<div class="viewcode-block" id="get_baseline_solution"><a class="viewcode-back" href="../../_autosummary/deeperwin.orbitals.get_baseline_solution.html#deeperwin.orbitals.get_baseline_solution">[docs]</a><span class="k">def</span> <span class="nf">get_baseline_solution</span><span class="p">(</span><span class="n">physical_config</span><span class="p">:</span> <span class="n">PhysicalConfig</span><span class="p">,</span> <span class="n">casscf_config</span><span class="p">:</span> <span class="n">CASSCFConfig</span><span class="p">):</span>
+    <span class="n">R</span><span class="p">,</span> <span class="n">Z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">physical_config</span><span class="o">.</span><span class="n">R</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">physical_config</span><span class="o">.</span><span class="n">Z</span><span class="p">)</span>
+    <span class="n">charge</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">Z</span><span class="p">)</span> <span class="o">-</span> <span class="n">physical_config</span><span class="o">.</span><span class="n">n_electrons</span>
+    <span class="n">spin</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">physical_config</span><span class="o">.</span><span class="n">n_up</span> <span class="o">-</span> <span class="n">physical_config</span><span class="o">.</span><span class="n">n_electrons</span>
+
+    <span class="n">molecule</span> <span class="o">=</span> <span class="n">build_pyscf_molecule</span><span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="n">Z</span><span class="p">,</span> <span class="n">charge</span><span class="p">,</span> <span class="n">spin</span><span class="p">,</span> <span class="n">casscf_config</span><span class="o">.</span><span class="n">basis_set</span><span class="p">)</span>
+    <span class="n">atomic_orbitals</span> <span class="o">=</span> <span class="n">_get_atomic_orbital_basis_functions</span><span class="p">(</span><span class="n">molecule</span><span class="p">)</span>
+
+    <span class="n">hf</span> <span class="o">=</span> <span class="n">pyscf</span><span class="o">.</span><span class="n">scf</span><span class="o">.</span><span class="n">HF</span><span class="p">(</span><span class="n">molecule</span><span class="p">)</span>
+    <span class="n">hf</span><span class="o">.</span><span class="n">verbose</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># suppress output to console</span>
+    <span class="n">hf</span><span class="o">.</span><span class="n">kernel</span><span class="p">()</span>
+
+    <span class="n">casscf</span> <span class="o">=</span> <span class="n">pyscf</span><span class="o">.</span><span class="n">mcscf</span><span class="o">.</span><span class="n">UCASSCF</span><span class="p">(</span><span class="n">hf</span><span class="p">,</span> <span class="n">physical_config</span><span class="o">.</span><span class="n">n_cas_orbitals</span><span class="p">,</span> <span class="n">physical_config</span><span class="o">.</span><span class="n">n_cas_electrons</span><span class="p">)</span>
+    <span class="n">casscf</span><span class="o">.</span><span class="n">kernel</span><span class="p">()</span>
+
+    <span class="n">mo_coeff</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">casscf</span><span class="o">.</span><span class="n">mo_coeff</span><span class="p">)</span>  <span class="c1"># tuple of spin_up, spin_down</span>
+    <span class="n">ind_orbitals</span> <span class="o">=</span> <span class="n">_get_orbital_indices</span><span class="p">(</span><span class="n">casscf</span><span class="p">)</span>
+    <span class="n">ci_weights</span> <span class="o">=</span> <span class="n">casscf</span><span class="o">.</span><span class="n">ci</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+
+    <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total nuber of CASSCF-determinants before truncation: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">ci_weights</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">casscf_config</span><span class="o">.</span><span class="n">n_determinants</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">ci_weights</span><span class="p">):</span>
+        <span class="n">ind_largest</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">ci_weights</span><span class="p">))[::</span><span class="o">-</span><span class="mi">1</span><span class="p">][:</span><span class="n">casscf_config</span><span class="o">.</span><span class="n">n_determinants</span><span class="p">]</span>
+        <span class="n">share_captured</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">ci_weights</span><span class="p">[</span><span class="n">ind_largest</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">ci_weights</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Share of CI-weights captured by </span><span class="si">{</span><span class="n">casscf_config</span><span class="o">.</span><span class="n">n_determinants</span><span class="si">}</span><span class="s2"> dets: </span><span class="si">{</span><span class="n">share_captured</span><span class="si">:</span><span class="s2">.3%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">ci_weights</span> <span class="o">=</span> <span class="n">ci_weights</span><span class="p">[</span><span class="n">ind_largest</span><span class="p">]</span>
+        <span class="n">ci_weights</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">ci_weights</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">ci_weights</span> <span class="o">**</span> <span class="mi">2</span><span class="p">))</span>
+        <span class="n">ind_orbitals</span> <span class="o">=</span> <span class="n">ind_orbitals</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">ind_largest</span><span class="p">],</span> <span class="n">ind_orbitals</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">ind_largest</span><span class="p">]</span>
+
+    <span class="c1"># delete unused molecular orbitals (i.e. orbitals that appear in none of the selected determinants)</span>
+    <span class="k">for</span> <span class="n">spin</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">):</span>
+        <span class="n">n_mo_max</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">ind_orbitals</span><span class="p">[</span><span class="n">spin</span><span class="p">])</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="n">mo_coeff</span><span class="p">[</span><span class="n">spin</span><span class="p">]</span> <span class="o">=</span> <span class="n">mo_coeff</span><span class="p">[</span><span class="n">spin</span><span class="p">][:,</span> <span class="p">:</span><span class="n">n_mo_max</span><span class="p">]</span>
+
+    <span class="c1"># Calculate cusp-correction-parameters for molecular orbitals</span>
+    <span class="k">if</span> <span class="n">casscf_config</span><span class="o">.</span><span class="n">cusps</span><span class="o">.</span><span class="n">cusp_type</span> <span class="o">==</span> <span class="s2">&quot;mo&quot;</span><span class="p">:</span>
+        <span class="n">cusp_params</span> <span class="o">=</span> <span class="p">[</span><span class="n">calculate_molecular_orbital_cusp_params</span><span class="p">(</span><span class="n">atomic_orbitals</span><span class="p">,</span> <span class="n">mo_coeff</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">R</span><span class="p">,</span> <span class="n">Z</span><span class="p">,</span> <span class="n">casscf_config</span><span class="o">.</span><span class="n">cusps</span><span class="o">.</span><span class="n">r_cusp_el_ion_scale</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">)]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">cusp_params</span> <span class="o">=</span> <span class="p">[</span><span class="n">_calculate_ao_cusp_params</span><span class="p">(</span><span class="o">*</span><span class="n">ao</span><span class="p">,</span> <span class="n">physical_config</span><span class="o">.</span><span class="n">Z</span><span class="p">[</span><span class="n">ao</span><span class="p">[</span><span class="mi">0</span><span class="p">]])</span> <span class="k">for</span> <span class="n">ao</span> <span class="ow">in</span> <span class="n">atomic_orbitals</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="p">(</span><span class="n">atomic_orbitals</span><span class="p">,</span> <span class="n">cusp_params</span><span class="p">,</span> <span class="n">mo_coeff</span><span class="p">,</span> <span class="n">ind_orbitals</span><span class="p">,</span> <span class="n">ci_weights</span><span class="p">),</span> <span class="p">(</span><span class="n">hf</span><span class="o">.</span><span class="n">e_tot</span><span class="p">,</span> <span class="n">casscf</span><span class="o">.</span><span class="n">e_tot</span><span class="p">)</span></div>
+
+
+<span class="k">def</span> <span class="nf">_int_to_spin_tuple</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">==</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">x</span><span class="p">,)</span> <span class="o">*</span> <span class="mi">2</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">x</span>
+
+
+<span class="k">def</span> <span class="nf">_get_orbitals_by_cas_type</span><span class="p">(</span><span class="n">casscf</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Splits orbitals into fixed orbitals (that are either always occupied, or always unoccupied) and active orbitals (that are occupied in some determinants, and unoccupied in others).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        tuple containing</span>
+
+<span class="sd">        - **fixed_orbitals** (list of 2 lists): For each spin, a list of indices of fixed orbitals</span>
+<span class="sd">        - **active_orbitals** (list of 2 lists): For each spin, a list of indices of active orbitals</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">n_core</span> <span class="o">=</span> <span class="n">_int_to_spin_tuple</span><span class="p">(</span><span class="n">casscf</span><span class="o">.</span><span class="n">ncore</span><span class="p">)</span>
+    <span class="n">n_cas</span> <span class="o">=</span> <span class="n">_int_to_spin_tuple</span><span class="p">(</span><span class="n">casscf</span><span class="o">.</span><span class="n">ncas</span><span class="p">)</span>
+
+    <span class="n">active_orbitals</span> <span class="o">=</span> <span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">n_core</span><span class="p">[</span><span class="n">s</span><span class="p">],</span> <span class="n">n_core</span><span class="p">[</span><span class="n">s</span><span class="p">]</span> <span class="o">+</span> <span class="n">n_cas</span><span class="p">[</span><span class="n">s</span><span class="p">]))</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">)]</span>
+    <span class="n">fixed_orbitals</span> <span class="o">=</span> <span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">n_core</span><span class="p">[</span><span class="n">s</span><span class="p">]))</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">)]</span>
+    <span class="k">return</span> <span class="n">fixed_orbitals</span><span class="p">,</span> <span class="n">active_orbitals</span>
+
+
+<span class="k">def</span> <span class="nf">_get_orbital_indices</span><span class="p">(</span><span class="n">casscf</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Parse the output of the pySCF CASSCF calculation to determine which orbitals are included in which determinant.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        (list of 2 np.arrays): First array for spin-up, second array for spin-down. Each array has shape [N_determinants x n_electrons_of_spin] and contains the indices of occupied orbitals in each determinant.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">fixed</span><span class="p">,</span> <span class="n">active</span> <span class="o">=</span> <span class="n">_get_orbitals_by_cas_type</span><span class="p">(</span><span class="n">casscf</span><span class="p">)</span>
+
+    <span class="n">nelcas</span> <span class="o">=</span> <span class="n">_int_to_spin_tuple</span><span class="p">(</span><span class="n">casscf</span><span class="o">.</span><span class="n">nelecas</span><span class="p">)</span>
+    <span class="n">occ_up</span> <span class="o">=</span> <span class="n">pyscf</span><span class="o">.</span><span class="n">fci</span><span class="o">.</span><span class="n">cistring</span><span class="o">.</span><span class="n">_gen_occslst</span><span class="p">(</span><span class="n">active</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">nelcas</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">occ_down</span> <span class="o">=</span> <span class="n">pyscf</span><span class="o">.</span><span class="n">fci</span><span class="o">.</span><span class="n">cistring</span><span class="o">.</span><span class="n">_gen_occslst</span><span class="p">(</span><span class="n">active</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">nelcas</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+    <span class="n">orbitals_up</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">orbitals_dn</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">o_up</span> <span class="ow">in</span> <span class="n">occ_up</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">o_dn</span> <span class="ow">in</span> <span class="n">occ_down</span><span class="p">:</span>
+            <span class="n">orbitals_up</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fixed</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="n">o_up</span><span class="p">))</span>
+            <span class="n">orbitals_dn</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fixed</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="n">o_dn</span><span class="p">))</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">orbitals_up</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">),</span> <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">orbitals_dn</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)]</span>
+
+<span class="c1">##########################################################################################</span>
+<span class="c1">##################################### Cusp functions #####################################</span>
+<span class="c1">##########################################################################################</span>
+
+<div class="viewcode-block" id="build_el_el_cusp_correction"><a class="viewcode-back" href="../../_autosummary/deeperwin.orbitals.build_el_el_cusp_correction.html#deeperwin.orbitals.build_el_el_cusp_correction">[docs]</a><span class="k">def</span> <span class="nf">build_el_el_cusp_correction</span><span class="p">(</span><span class="n">n_electrons</span><span class="p">,</span> <span class="n">n_up</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">CuspCorrectionConfig</span><span class="p">):</span>
+    <span class="n">factor</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">([</span><span class="n">n_electrons</span><span class="p">,</span> <span class="n">n_electrons</span> <span class="o">-</span> <span class="mi">1</span><span class="p">])</span> <span class="o">*</span> <span class="mf">0.5</span>
+    <span class="n">factor</span><span class="p">[:</span><span class="n">n_up</span><span class="p">,</span> <span class="p">:</span><span class="n">n_up</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.25</span>
+    <span class="n">factor</span><span class="p">[</span><span class="n">n_up</span><span class="p">:,</span> <span class="n">n_up</span><span class="p">:]</span> <span class="o">=</span> <span class="mf">0.25</span>
+    <span class="n">A</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">r_cusp_el_el</span> <span class="o">**</span> <span class="mi">2</span>
+    <span class="n">B</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">r_cusp_el_el</span>
+    <span class="k">def</span> <span class="nf">el_el_cusp</span><span class="p">(</span><span class="n">el_el_dist</span><span class="p">):</span>
+        <span class="c1"># No factor 0.5 here, e.g. when comparing to NatChem 2020, [doi.org/10.1038/s41557-020-0544-y], because:</span>
+        <span class="c1"># A) We double-count electron-pairs because we take the full distance matrix (and not only the upper triangle)</span>
+        <span class="c1"># B) We model log(psi^2)=2*log(|psi|) vs log(|psi|) int NatChem 2020, i.e. the cusp correction needs a factor 2</span>
+        <span class="k">return</span> <span class="o">-</span><span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">factor</span> <span class="o">*</span> <span class="n">A</span><span class="o">/</span><span class="p">(</span><span class="n">el_el_dist</span><span class="o">+</span><span class="n">B</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">el_el_cusp</span></div>
+
+
+<span class="k">def</span> <span class="nf">_get_local_energy_of_cusp_orbital</span><span class="p">(</span><span class="n">r_c</span><span class="p">,</span> <span class="n">offset</span><span class="p">,</span> <span class="n">sign</span><span class="p">,</span> <span class="n">poly</span><span class="p">,</span> <span class="n">Z</span><span class="p">,</span> <span class="n">phi_others</span><span class="o">=</span><span class="mf">0.0</span><span class="p">):</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">1e-6</span><span class="p">,</span> <span class="n">r_c</span><span class="p">,</span> <span class="mi">100</span><span class="p">)[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
+    <span class="n">p_0</span> <span class="o">=</span> <span class="n">poly</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">poly</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">r</span> <span class="o">+</span> <span class="n">poly</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">*</span> <span class="n">r</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">poly</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">*</span> <span class="n">r</span> <span class="o">**</span> <span class="mi">3</span> <span class="o">+</span> <span class="n">poly</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span> <span class="o">*</span> <span class="n">r</span> <span class="o">**</span> <span class="mi">4</span>
+    <span class="n">p_1</span> <span class="o">=</span> <span class="n">poly</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">poly</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">*</span> <span class="n">r</span> <span class="o">+</span> <span class="mi">3</span> <span class="o">*</span> <span class="n">poly</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">*</span> <span class="n">r</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">4</span> <span class="o">*</span> <span class="n">poly</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span> <span class="o">*</span> <span class="n">r</span> <span class="o">**</span> <span class="mi">3</span>
+    <span class="n">p_2</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">poly</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="mi">6</span> <span class="o">*</span> <span class="n">poly</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">*</span> <span class="n">r</span> <span class="o">+</span> <span class="mi">12</span> <span class="o">*</span> <span class="n">poly</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span> <span class="o">*</span> <span class="n">r</span> <span class="o">**</span> <span class="mi">2</span>
+    <span class="n">prefac</span> <span class="o">=</span> <span class="n">sign</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">p_0</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">offset</span> <span class="o">+</span> <span class="n">sign</span><span class="o">*</span><span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">p_0</span><span class="p">)</span> <span class="o">+</span> <span class="n">phi_others</span><span class="p">)</span>
+    <span class="n">E_l</span> <span class="o">=</span> <span class="o">-</span><span class="n">prefac</span> <span class="o">*</span> <span class="p">(</span><span class="n">p_1</span><span class="o">/</span><span class="n">r</span> <span class="o">+</span><span class="mf">0.5</span> <span class="o">*</span><span class="n">p_2</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">p_1</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">-</span> <span class="n">Z</span><span class="o">/</span><span class="n">r</span>
+    <span class="n">penalty</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">nanvar</span><span class="p">(</span><span class="n">E_l</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="c1"># penalty = jnp.max(jnp.abs(E_l - E_l[-1]), axis=0)</span>
+    <span class="k">return</span> <span class="n">penalty</span>
+
+
+<span class="k">def</span> <span class="nf">_calculate_mo_cusp_params</span><span class="p">(</span><span class="n">phi_rc_0</span><span class="p">,</span> <span class="n">phi_rc_1</span><span class="p">,</span> <span class="n">phi_rc_2</span><span class="p">,</span> <span class="n">phi_0</span><span class="p">,</span> <span class="n">phi_0_others</span><span class="p">,</span> <span class="n">Z</span><span class="p">,</span> <span class="n">r_c</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">phi_0</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">1e-6</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">phi_rc_0</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">1e-6</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+    <span class="n">n_cusp_trials</span> <span class="o">=</span> <span class="mi">500</span>
+    <span class="n">phi_new_0</span> <span class="o">=</span> <span class="n">phi_0</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">logspace</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">n_cusp_trials</span><span class="o">//</span><span class="mi">2</span><span class="p">),</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">logspace</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">n_cusp_trials</span><span class="o">//</span><span class="mi">2</span><span class="p">)]))</span>
+
+    <span class="n">sign</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sign</span><span class="p">(</span><span class="n">phi_new_0</span> <span class="o">-</span> <span class="n">phi_rc_0</span><span class="p">)</span>
+    <span class="n">offset</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">phi_rc_0</span> <span class="o">-</span> <span class="n">phi_new_0</span> <span class="c1"># = &quot;C&quot;</span>
+    <span class="n">phi_rc_shifted</span> <span class="o">=</span> <span class="n">phi_rc_0</span> <span class="o">-</span> <span class="n">offset</span> <span class="c1"># = &quot;R(r_c)&quot;</span>
+
+    <span class="n">x1</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">phi_rc_shifted</span><span class="p">))</span>
+    <span class="n">x2</span> <span class="o">=</span> <span class="n">phi_rc_1</span> <span class="o">/</span> <span class="n">phi_rc_shifted</span>
+    <span class="n">x3</span> <span class="o">=</span> <span class="n">phi_rc_2</span> <span class="o">/</span> <span class="n">phi_rc_shifted</span>
+    <span class="n">x4</span> <span class="o">=</span> <span class="o">-</span><span class="n">Z</span> <span class="o">*</span> <span class="p">(</span><span class="n">phi_new_0</span> <span class="o">+</span> <span class="n">phi_0_others</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">phi_new_0</span> <span class="o">-</span> <span class="n">offset</span><span class="p">)</span>
+    <span class="n">x5</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">phi_new_0</span> <span class="o">-</span> <span class="n">offset</span><span class="p">))</span>
+
+    <span class="n">rc2</span> <span class="o">=</span> <span class="n">r_c</span><span class="o">*</span><span class="n">r_c</span>
+    <span class="n">rc3</span> <span class="o">=</span> <span class="n">rc2</span> <span class="o">*</span> <span class="n">r_c</span>
+    <span class="n">rc4</span> <span class="o">=</span> <span class="n">rc2</span> <span class="o">*</span> <span class="n">rc2</span>
+    <span class="n">poly</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+        <span class="n">x5</span><span class="p">,</span>
+        <span class="n">x4</span><span class="p">,</span>
+        <span class="mi">6</span><span class="o">*</span><span class="n">x1</span><span class="o">/</span><span class="n">rc2</span> <span class="o">-</span> <span class="mi">3</span><span class="o">*</span><span class="n">x2</span><span class="o">/</span><span class="n">r_c</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">x3</span> <span class="o">-</span><span class="mi">3</span><span class="o">*</span><span class="n">x4</span><span class="o">/</span><span class="n">r_c</span> <span class="o">-</span> <span class="mi">6</span><span class="o">*</span><span class="n">x5</span><span class="o">/</span><span class="n">rc2</span> <span class="o">-</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">x2</span><span class="o">*</span><span class="n">x2</span><span class="p">,</span>
+        <span class="o">-</span><span class="mi">8</span><span class="o">*</span><span class="n">x1</span><span class="o">/</span><span class="n">rc3</span> <span class="o">+</span> <span class="mi">5</span><span class="o">*</span><span class="n">x2</span><span class="o">/</span><span class="n">rc2</span> <span class="o">-</span> <span class="n">x3</span><span class="o">/</span><span class="n">r_c</span> <span class="o">+</span> <span class="mi">3</span><span class="o">*</span><span class="n">x4</span><span class="o">/</span><span class="n">rc2</span> <span class="o">+</span> <span class="mi">8</span><span class="o">*</span><span class="n">x5</span><span class="o">/</span><span class="n">rc3</span> <span class="o">+</span> <span class="n">x2</span><span class="o">*</span><span class="n">x2</span><span class="o">/</span><span class="n">r_c</span><span class="p">,</span>
+        <span class="mi">3</span><span class="o">*</span><span class="n">x1</span><span class="o">/</span><span class="n">rc4</span> <span class="o">-</span> <span class="mi">2</span><span class="o">*</span><span class="n">x2</span><span class="o">/</span><span class="n">rc3</span> <span class="o">+</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">x3</span><span class="o">/</span><span class="n">rc2</span> <span class="o">-</span> <span class="n">x4</span><span class="o">/</span><span class="n">rc3</span> <span class="o">-</span> <span class="mi">3</span><span class="o">*</span><span class="n">x5</span><span class="o">/</span><span class="n">rc4</span> <span class="o">-</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">x2</span><span class="o">*</span><span class="n">x2</span><span class="o">/</span><span class="n">rc2</span>
+    <span class="p">])</span>
+    <span class="n">E_loc_cusp</span> <span class="o">=</span> <span class="n">_get_local_energy_of_cusp_orbital</span><span class="p">(</span><span class="n">r_c</span><span class="p">,</span> <span class="n">offset</span><span class="p">,</span> <span class="n">sign</span><span class="p">,</span> <span class="n">poly</span><span class="p">,</span> <span class="n">Z</span><span class="p">,</span> <span class="n">phi_0_others</span><span class="p">)</span>
+    <span class="n">ind_opt</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">nanargmin</span><span class="p">(</span><span class="n">E_loc_cusp</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">offset</span><span class="p">[</span><span class="n">ind_opt</span><span class="p">],</span> <span class="n">sign</span><span class="p">[</span><span class="n">ind_opt</span><span class="p">],</span> <span class="n">poly</span><span class="p">[:,</span><span class="n">ind_opt</span><span class="p">]</span>
+
+<span class="k">def</span> <span class="nf">_calculate_ao_cusp_params</span><span class="p">(</span><span class="n">ind_nuc</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">gto_coeffs</span><span class="p">,</span> <span class="n">angular_momenta</span><span class="p">,</span> <span class="n">Z</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">sum</span><span class="p">(</span><span class="n">angular_momenta</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">r_c</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">minimum</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mi">1</span><span class="o">/</span><span class="n">Z</span><span class="p">)</span>
+    <span class="n">phi_rc_0</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">gto_coeffs</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">alpha</span> <span class="o">*</span> <span class="n">r_c</span> <span class="o">**</span> <span class="mi">2</span><span class="p">))</span>
+    <span class="n">phi_rc_1</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">gto_coeffs</span> <span class="o">*</span> <span class="p">(</span><span class="o">-</span><span class="mi">2</span> <span class="o">*</span> <span class="n">alpha</span> <span class="o">*</span> <span class="n">r_c</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">alpha</span> <span class="o">*</span> <span class="n">r_c</span> <span class="o">**</span> <span class="mi">2</span><span class="p">))</span>
+    <span class="n">phi_rc_2</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">gto_coeffs</span> <span class="o">*</span> <span class="p">(</span><span class="o">-</span><span class="mi">2</span> <span class="o">*</span> <span class="n">alpha</span> <span class="o">+</span> <span class="mi">4</span> <span class="o">*</span> <span class="p">(</span><span class="n">alpha</span> <span class="o">*</span> <span class="n">r_c</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">alpha</span> <span class="o">*</span> <span class="n">r_c</span> <span class="o">**</span> <span class="mi">2</span><span class="p">))</span>
+    <span class="n">phi_0</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">gto_coeffs</span><span class="p">)</span>
+
+    <span class="n">n_cusp_trials</span> <span class="o">=</span> <span class="mi">500</span>
+    <span class="n">phi_new_0</span> <span class="o">=</span> <span class="n">phi_0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">n_cusp_trials</span><span class="p">)</span>
+
+    <span class="n">sign</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sign</span><span class="p">(</span><span class="n">phi_new_0</span> <span class="o">-</span> <span class="n">phi_rc_0</span><span class="p">)</span>
+    <span class="n">offset</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">phi_rc_0</span> <span class="o">-</span> <span class="n">phi_new_0</span>
+    <span class="n">phi_shifted</span> <span class="o">=</span> <span class="n">phi_rc_0</span> <span class="o">-</span> <span class="n">offset</span>
+
+    <span class="n">p0</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">((</span><span class="n">phi_new_0</span> <span class="o">-</span> <span class="n">offset</span><span class="p">)</span> <span class="o">*</span> <span class="n">sign</span><span class="p">)</span>
+    <span class="n">p1</span> <span class="o">=</span> <span class="o">-</span><span class="n">Z</span> <span class="o">*</span> <span class="p">(</span><span class="n">offset</span> <span class="o">*</span> <span class="n">sign</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">p0</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">A</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">r_c</span> <span class="o">**</span> <span class="mi">2</span><span class="p">,</span> <span class="n">r_c</span> <span class="o">**</span> <span class="mi">3</span><span class="p">,</span> <span class="n">r_c</span> <span class="o">**</span> <span class="mi">4</span><span class="p">],</span>
+                   <span class="p">[</span><span class="mi">2</span> <span class="o">*</span> <span class="n">r_c</span><span class="p">,</span> <span class="mi">3</span> <span class="o">*</span> <span class="n">r_c</span> <span class="o">**</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">4</span> <span class="o">*</span> <span class="n">r_c</span> <span class="o">**</span> <span class="mi">3</span><span class="p">],</span>
+                   <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">6</span> <span class="o">*</span> <span class="n">r_c</span><span class="p">,</span> <span class="mi">12</span> <span class="o">*</span> <span class="n">r_c</span> <span class="o">**</span> <span class="mi">2</span><span class="p">]]</span>
+                  <span class="p">)</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+        <span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">phi_shifted</span> <span class="o">*</span> <span class="n">sign</span><span class="p">)</span> <span class="o">-</span> <span class="n">p0</span> <span class="o">-</span> <span class="n">p1</span> <span class="o">*</span> <span class="n">r_c</span><span class="p">,</span>
+        <span class="n">phi_rc_1</span> <span class="o">/</span> <span class="n">phi_shifted</span> <span class="o">-</span> <span class="n">p1</span><span class="p">,</span>
+        <span class="n">phi_rc_2</span> <span class="o">/</span> <span class="n">phi_shifted</span> <span class="o">-</span> <span class="p">(</span><span class="n">phi_rc_1</span> <span class="o">/</span> <span class="n">phi_shifted</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span>
+    <span class="p">])</span>
+    <span class="n">poly</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">p0</span><span class="p">,</span> <span class="n">p1</span><span class="p">]),</span> <span class="n">jnp</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">b</span><span class="p">)])</span>
+    <span class="n">E_loc_cusp</span> <span class="o">=</span> <span class="n">_get_local_energy_of_cusp_orbital</span><span class="p">(</span><span class="n">r_c</span><span class="p">,</span> <span class="n">offset</span><span class="p">,</span> <span class="n">sign</span><span class="p">,</span> <span class="n">poly</span><span class="p">,</span> <span class="n">Z</span><span class="p">,</span> <span class="n">phi_others</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+    <span class="n">ind_opt</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">nanargmin</span><span class="p">(</span><span class="n">E_loc_cusp</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">r_c</span><span class="p">,</span> <span class="n">offset</span><span class="p">[</span><span class="n">ind_opt</span><span class="p">],</span> <span class="n">sign</span><span class="p">[</span><span class="n">ind_opt</span><span class="p">],</span> <span class="n">poly</span><span class="p">[:,</span><span class="n">ind_opt</span><span class="p">]</span>
+
+<div class="viewcode-block" id="calculate_molecular_orbital_cusp_params"><a class="viewcode-back" href="../../_autosummary/deeperwin.orbitals.calculate_molecular_orbital_cusp_params.html#deeperwin.orbitals.calculate_molecular_orbital_cusp_params">[docs]</a><span class="k">def</span> <span class="nf">calculate_molecular_orbital_cusp_params</span><span class="p">(</span><span class="n">atomic_orbitals</span><span class="p">,</span> <span class="n">mo_coeff</span><span class="p">,</span> <span class="n">R</span><span class="p">,</span> <span class="n">Z</span><span class="p">,</span> <span class="n">r_cusp_scale</span><span class="p">):</span>
+    <span class="n">n_molecular_orbitals</span><span class="p">,</span> <span class="n">n_nuclei</span><span class="p">,</span> <span class="n">n_atomic_orbitals</span> <span class="o">=</span> <span class="n">mo_coeff</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="nb">len</span><span class="p">(</span><span class="n">R</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">atomic_orbitals</span><span class="p">)</span>
+    <span class="n">cusp_rc</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">minimum</span><span class="p">(</span><span class="n">r_cusp_scale</span> <span class="o">/</span> <span class="n">Z</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">)</span>
+    <span class="n">cusp_offset</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="n">n_nuclei</span><span class="p">,</span> <span class="n">n_molecular_orbitals</span><span class="p">])</span>
+    <span class="n">cusp_sign</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="n">n_nuclei</span><span class="p">,</span> <span class="n">n_molecular_orbitals</span><span class="p">])</span>
+    <span class="n">cusp_poly</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="n">n_nuclei</span><span class="p">,</span> <span class="n">n_molecular_orbitals</span><span class="p">,</span> <span class="mi">5</span><span class="p">])</span>
+    <span class="n">cusp_1s_coeffs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="n">n_nuclei</span><span class="p">,</span> <span class="n">n_atomic_orbitals</span><span class="p">,</span> <span class="n">n_molecular_orbitals</span><span class="p">])</span>
+    <span class="k">for</span> <span class="n">nuc_idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_nuclei</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">mo_idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_molecular_orbitals</span><span class="p">):</span>
+            <span class="n">diff</span><span class="p">,</span> <span class="n">dist</span> <span class="o">=</span> <span class="n">get_el_ion_distance_matrix</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">R</span><span class="p">[</span><span class="n">nuc_idx</span><span class="p">]),</span> <span class="n">R</span><span class="p">)</span>
+            <span class="n">ao</span> <span class="o">=</span> <span class="n">eval_atomic_orbitals</span><span class="p">(</span><span class="n">diff</span><span class="p">,</span> <span class="n">dist</span><span class="p">,</span> <span class="n">atomic_orbitals</span><span class="p">)</span>
+            <span class="n">is_centered_1s</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([(</span><span class="n">a</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">nuc_idx</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">a</span><span class="p">[</span><span class="mi">3</span><span class="p">])</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">atomic_orbitals</span><span class="p">])</span>
+            <span class="n">phi_0_1s</span> <span class="o">=</span> <span class="p">(</span><span class="n">is_centered_1s</span> <span class="o">*</span> <span class="n">ao</span><span class="p">)</span> <span class="o">@</span> <span class="n">mo_coeff</span><span class="p">[:,</span> <span class="n">mo_idx</span><span class="p">]</span>
+            <span class="n">phi_0_others</span> <span class="o">=</span> <span class="p">((</span><span class="mi">1</span><span class="o">-</span><span class="n">is_centered_1s</span><span class="p">)</span> <span class="o">*</span> <span class="n">ao</span><span class="p">)</span> <span class="o">@</span> <span class="n">mo_coeff</span><span class="p">[:,</span> <span class="n">mo_idx</span><span class="p">]</span>
+            <span class="n">phi_rc_0</span><span class="p">,</span> <span class="n">phi_rc_1</span><span class="p">,</span> <span class="n">phi_rc_2</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span>
+            <span class="n">r_c</span> <span class="o">=</span> <span class="n">cusp_rc</span><span class="p">[</span><span class="n">nuc_idx</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">_</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">weights</span><span class="p">,</span> <span class="n">_</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">atomic_orbitals</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">is_centered_1s</span><span class="p">[</span><span class="n">i</span><span class="p">]:</span>
+                    <span class="n">phi_rc_0</span> <span class="o">+=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">weights</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">alpha</span> <span class="o">*</span> <span class="n">r_c</span> <span class="o">**</span> <span class="mi">2</span><span class="p">))</span> <span class="o">*</span> <span class="n">mo_coeff</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">mo_idx</span><span class="p">]</span>
+                    <span class="n">phi_rc_1</span> <span class="o">+=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">weights</span> <span class="o">*</span> <span class="p">(</span><span class="o">-</span><span class="mi">2</span> <span class="o">*</span> <span class="n">alpha</span> <span class="o">*</span> <span class="n">r_c</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">alpha</span> <span class="o">*</span> <span class="n">r_c</span> <span class="o">**</span> <span class="mi">2</span><span class="p">))</span> <span class="o">*</span> <span class="n">mo_coeff</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">mo_idx</span><span class="p">]</span>
+                    <span class="n">phi_rc_2</span> <span class="o">+=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">weights</span> <span class="o">*</span> <span class="p">(</span><span class="o">-</span><span class="mi">2</span> <span class="o">*</span> <span class="n">alpha</span> <span class="o">+</span> <span class="mi">4</span> <span class="o">*</span> <span class="p">(</span><span class="n">alpha</span> <span class="o">*</span> <span class="n">r_c</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">alpha</span> <span class="o">*</span> <span class="n">r_c</span> <span class="o">**</span> <span class="mi">2</span><span class="p">))</span> <span class="o">*</span> <span class="n">mo_coeff</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">mo_idx</span><span class="p">]</span>
+            <span class="n">cusp_1s_coeffs</span><span class="p">[</span><span class="n">nuc_idx</span><span class="p">,</span> <span class="p">:,</span> <span class="n">mo_idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">is_centered_1s</span> <span class="o">*</span> <span class="n">mo_coeff</span><span class="p">[:,</span> <span class="n">mo_idx</span><span class="p">]</span> <span class="c1"># n_nuc x n_atomic_orbitals x n_molec_orbitals</span>
+            <span class="n">cusp_offset</span><span class="p">[</span><span class="n">nuc_idx</span><span class="p">,</span> <span class="n">mo_idx</span><span class="p">],</span> <span class="n">cusp_sign</span><span class="p">[</span><span class="n">nuc_idx</span><span class="p">,</span> <span class="n">mo_idx</span><span class="p">],</span> <span class="n">cusp_poly</span><span class="p">[</span><span class="n">nuc_idx</span><span class="p">,</span> <span class="n">mo_idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">_calculate_mo_cusp_params</span><span class="p">(</span><span class="n">phi_rc_0</span><span class="p">,</span>
+                                                                                                                             <span class="n">phi_rc_1</span><span class="p">,</span>
+                                                                                                                             <span class="n">phi_rc_2</span><span class="p">,</span>
+                                                                                                                             <span class="n">phi_0_1s</span><span class="p">,</span>
+                                                                                                                             <span class="n">phi_0_others</span><span class="p">,</span>
+                                                                                                                             <span class="n">Z</span><span class="p">[</span><span class="n">nuc_idx</span><span class="p">],</span>
+                                                                                                                             <span class="n">r_c</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">cusp_rc</span><span class="p">,</span> <span class="n">cusp_offset</span><span class="p">,</span> <span class="n">cusp_sign</span><span class="p">,</span> <span class="n">cusp_poly</span><span class="p">,</span> <span class="n">cusp_1s_coeffs</span></div>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+    <span class="kn">import</span> <span class="nn">jax</span>
+    <span class="kn">from</span> <span class="nn">configuration</span> <span class="kn">import</span> <span class="n">PhysicalConfig</span><span class="p">,</span> <span class="n">CASSCFConfig</span><span class="p">,</span> <span class="n">CuspCorrectionConfig</span>
+    <span class="n">physical_config</span> <span class="o">=</span> <span class="n">PhysicalConfig</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;LiH&#39;</span><span class="p">,</span> <span class="n">n_cas_electrons</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">n_cas_orbitals</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+    <span class="n">casscf_config_ao</span> <span class="o">=</span> <span class="n">CASSCFConfig</span><span class="p">(</span><span class="n">n_determinants</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">basis_set</span><span class="o">=</span><span class="s2">&quot;6311G&quot;</span><span class="p">,</span> <span class="n">cusps</span><span class="o">=</span><span class="n">CuspCorrectionConfig</span><span class="p">(</span><span class="n">cusp_type</span><span class="o">=</span><span class="s2">&quot;ao&quot;</span><span class="p">))</span>
+    <span class="n">casscf_config_mo</span> <span class="o">=</span> <span class="n">CASSCFConfig</span><span class="p">(</span><span class="n">n_determinants</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">basis_set</span><span class="o">=</span><span class="s2">&quot;6311G&quot;</span><span class="p">,</span> <span class="n">cusps</span><span class="o">=</span><span class="n">CuspCorrectionConfig</span><span class="p">(</span><span class="n">cusp_type</span><span class="o">=</span><span class="s2">&quot;mo&quot;</span><span class="p">))</span>
+
+
+    <span class="n">R</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">physical_config</span><span class="o">.</span><span class="n">R</span><span class="p">)</span>
+    <span class="n">Z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">physical_config</span><span class="o">.</span><span class="n">Z</span><span class="p">)</span>
+
+    <span class="p">(</span><span class="n">atomic_orbitals</span><span class="p">,</span> <span class="n">cusp_params_ao</span><span class="p">,</span> <span class="n">mo_coeff</span><span class="p">,</span> <span class="n">ind_orbitals</span><span class="p">,</span> <span class="n">ci_weights</span><span class="p">),</span> <span class="n">_</span> <span class="o">=</span> <span class="n">get_baseline_solution</span><span class="p">(</span><span class="n">physical_config</span><span class="p">,</span> <span class="n">casscf_config_ao</span><span class="p">)</span>
+    <span class="p">(</span><span class="n">atomic_orbitals</span><span class="p">,</span> <span class="n">cusp_params_mo</span><span class="p">,</span> <span class="n">mo_coeff</span><span class="p">,</span> <span class="n">ind_orbitals</span><span class="p">,</span> <span class="n">ci_weights</span><span class="p">),</span> <span class="n">_</span> <span class="o">=</span> <span class="n">get_baseline_solution</span><span class="p">(</span><span class="n">physical_config</span><span class="p">,</span> <span class="n">casscf_config_mo</span><span class="p">)</span>
+
+
+    <span class="n">ind_mo</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">assert</span> <span class="n">ind_mo</span> <span class="o">&lt;</span> <span class="n">mo_coeff</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">def</span> <span class="nf">phi_single_electron</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">cusp_params</span><span class="p">,</span> <span class="n">cusp_type</span><span class="p">):</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">2</span><span class="p">)</span> <span class="c1"># add pseudo-axis for multiple electrons</span>
+        <span class="n">diff</span> <span class="o">=</span> <span class="n">r</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,:]</span> <span class="o">-</span> <span class="n">R</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span><span class="o">...</span><span class="p">]</span>
+        <span class="n">dist</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">diff</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">cusp_params</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">cusp_type</span> <span class="o">==</span> <span class="s2">&quot;mo&quot;</span><span class="p">):</span>
+            <span class="n">cusp_params</span> <span class="o">=</span> <span class="n">cusp_params</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">evaluate_molecular_orbitals</span><span class="p">(</span><span class="n">diff</span><span class="p">,</span> <span class="n">dist</span><span class="p">,</span> <span class="n">atomic_orbitals</span><span class="p">,</span> <span class="n">mo_coeff</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">cusp_params</span><span class="p">,</span> <span class="n">cusp_type</span><span class="p">)[</span><span class="o">...</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span> <span class="n">ind_mo</span><span class="p">]</span>
+
+
+    <span class="k">def</span> <span class="nf">build_kinetic_energy</span><span class="p">(</span><span class="n">phi</span><span class="p">):</span>
+        <span class="k">def</span> <span class="nf">_ekin</span><span class="p">(</span><span class="n">r</span><span class="p">):</span>
+            <span class="n">eye</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+            <span class="n">grad_func</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">grad</span><span class="p">(</span><span class="n">phi</span><span class="p">)</span>
+    
+            <span class="k">def</span> <span class="nf">_loop_body</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">laplacian</span><span class="p">):</span>
+                <span class="n">_</span><span class="p">,</span> <span class="n">G_ii</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">jvp</span><span class="p">(</span><span class="n">grad_func</span><span class="p">,</span> <span class="p">(</span><span class="n">r</span><span class="p">,),</span> <span class="p">(</span><span class="n">eye</span><span class="p">[</span><span class="n">i</span><span class="p">],))</span>
+                <span class="k">return</span> <span class="n">laplacian</span> <span class="o">+</span> <span class="n">G_ii</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+    
+            <span class="k">return</span> <span class="o">-</span><span class="mf">0.5</span> <span class="o">*</span> <span class="n">jax</span><span class="o">.</span><span class="n">lax</span><span class="o">.</span><span class="n">fori_loop</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">_loop_body</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span> <span class="o">/</span> <span class="n">phi</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">jax</span><span class="o">.</span><span class="n">jit</span><span class="p">(</span><span class="n">jax</span><span class="o">.</span><span class="n">vmap</span><span class="p">(</span><span class="n">_ekin</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">calc_potential_energy</span><span class="p">(</span><span class="n">r</span><span class="p">):</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">dist</span> <span class="o">=</span> <span class="n">get_el_ion_distance_matrix</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">R</span><span class="p">)</span>
+        <span class="n">E</span> <span class="o">=</span> <span class="o">-</span><span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">Z</span><span class="o">/</span><span class="p">(</span><span class="n">dist</span><span class="o">+</span><span class="mf">1e-10</span><span class="p">),</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">E</span>
+
+    <span class="n">N_samples</span> <span class="o">=</span> <span class="mi">1001</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="n">N_samples</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
+    <span class="n">r</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="n">N_samples</span><span class="p">)</span>
+    <span class="n">phi_naive_func</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">r</span><span class="p">:</span> <span class="n">phi_single_electron</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;ao&quot;</span><span class="p">)</span>
+    <span class="n">phi_corr_func_ao</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">r</span><span class="p">:</span> <span class="n">phi_single_electron</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">cusp_params_ao</span><span class="p">,</span> <span class="s2">&quot;ao&quot;</span><span class="p">)</span>
+    <span class="n">phi_corr_func_mo</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">r</span><span class="p">:</span> <span class="n">phi_single_electron</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">cusp_params_mo</span><span class="p">,</span> <span class="s2">&quot;mo&quot;</span><span class="p">)</span>
+
+    <span class="n">Ekin_naive_func</span> <span class="o">=</span> <span class="n">build_kinetic_energy</span><span class="p">(</span><span class="n">phi_naive_func</span><span class="p">)</span>
+    <span class="n">Ekin_corr_func_ao</span> <span class="o">=</span> <span class="n">build_kinetic_energy</span><span class="p">(</span><span class="n">phi_corr_func_ao</span><span class="p">)</span>
+    <span class="n">Ekin_corr_func_mo</span> <span class="o">=</span> <span class="n">build_kinetic_energy</span><span class="p">(</span><span class="n">phi_corr_func_mo</span><span class="p">)</span>
+    <span class="n">phi_naive</span> <span class="o">=</span> <span class="n">phi_naive_func</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+    <span class="n">phi_corr_ao</span> <span class="o">=</span> <span class="n">phi_corr_func_ao</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+    <span class="n">phi_corr_mo</span> <span class="o">=</span> <span class="n">phi_corr_func_mo</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+
+
+    <span class="n">Eloc_naive</span> <span class="o">=</span> <span class="n">Ekin_naive_func</span><span class="p">(</span><span class="n">r</span><span class="p">)</span> <span class="o">+</span> <span class="n">calc_potential_energy</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+    <span class="n">Eloc_corr_ao</span> <span class="o">=</span> <span class="n">Ekin_corr_func_ao</span><span class="p">(</span><span class="n">r</span><span class="p">)</span> <span class="o">+</span> <span class="n">calc_potential_energy</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+    <span class="n">Eloc_corr_mo</span> <span class="o">=</span> <span class="n">Ekin_corr_func_mo</span><span class="p">(</span><span class="n">r</span><span class="p">)</span> <span class="o">+</span> <span class="n">calc_potential_energy</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="s2">&quot;all&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">r</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">phi_corr_ao</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Cusp corrected AO&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">r</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">phi_corr_mo</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Cusp corrected MO&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">r</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">phi_naive</span><span class="p">,</span> <span class="s1">&#39;--&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Naive&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">r</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">Eloc_corr_ao</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Cusp corrected AO&quot;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">r</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">Eloc_corr_mo</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Cusp corrected MO&quot;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">r</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">Eloc_naive</span><span class="p">,</span> <span class="s1">&#39;--&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Naive&quot;</span><span class="p">)</span>
+    <span class="c1"># plt.ylim([-60, 60])</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Michael Scherbela, Leon Gerard, Rafael Reisenhofer.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

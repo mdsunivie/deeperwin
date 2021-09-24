@@ -1,0 +1,6 @@
+deeperwin.register\_curvature.register\_repeated\_dense
+=======================================================
+
+.. currentmodule:: deeperwin.register_curvature
+
+.. autofunction:: register_repeated_dense

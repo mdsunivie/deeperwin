@@ -1,0 +1,6 @@
+deeperwin.dispatch.dispatch\_to\_vsc3
+=====================================
+
+.. currentmodule:: deeperwin.dispatch
+
+.. autofunction:: dispatch_to_vsc3

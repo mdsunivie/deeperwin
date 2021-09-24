@@ -1,0 +1,29 @@
+deeperwin.mcmc.MetropolisHastingsMonteCarlo
+===========================================
+
+.. currentmodule:: deeperwin.mcmc
+
+.. autoclass:: MetropolisHastingsMonteCarlo
+   :members:
+   :show-inheritance:
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~MetropolisHastingsMonteCarlo.__init__
+      ~MetropolisHastingsMonteCarlo.adjust_stepsize
+      ~MetropolisHastingsMonteCarlo.make_mcmc_step
+      ~MetropolisHastingsMonteCarlo.run_burn_in_eval
+      ~MetropolisHastingsMonteCarlo.run_burn_in_opt
+      ~MetropolisHastingsMonteCarlo.run_inter_steps
+   
+   
+
+   
+   
+   

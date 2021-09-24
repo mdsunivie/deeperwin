@@ -1,0 +1,45 @@
+deeperwin.kfac\_ferminet\_alpha.curvature\_blocks
+=================================================
+
+.. automodule:: deeperwin.kfac_ferminet_alpha.curvature_blocks
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+   
+      copy_default_tag_to_block
+      get_default_tag_to_block
+      set_default_tag_to_block
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: custom_class.rst
+   
+      CurvatureBlock
+      DenseTwoKroneckerFactored
+      NaiveDiagonal
+      ScaleAndShiftDiagonal
+      ScaleAndShiftFull
+      TwoKroneckerFactored
+   
+   
+
+   
+   
+   
+
+
+

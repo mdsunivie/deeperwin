@@ -1,0 +1,6 @@
+deeperwin.kfac\_ferminet\_alpha.tag\_graph\_matcher.clean\_jaxpr\_eqns
+======================================================================
+
+.. currentmodule:: deeperwin.kfac_ferminet_alpha.tag_graph_matcher
+
+.. autofunction:: clean_jaxpr_eqns

@@ -1,0 +1,39 @@
+deeperwin.kfac\_ferminet\_alpha.layers\_and\_loss\_tags.LayerTag
+================================================================
+
+.. currentmodule:: deeperwin.kfac_ferminet_alpha.layers_and_loss_tags
+
+.. autoclass:: LayerTag
+   :members:
+   :show-inheritance:
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~LayerTag.__init__
+      ~LayerTag.abstract_eval
+      ~LayerTag.batching
+      ~LayerTag.get_outputs
+      ~LayerTag.impl
+      ~LayerTag.split_all_inputs
+      ~LayerTag.transpose
+      ~LayerTag.xla_translation
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~LayerTag.num_inputs
+      ~LayerTag.num_outputs
+      ~LayerTag.name
+   
+   

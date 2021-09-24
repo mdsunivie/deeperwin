@@ -1,0 +1,43 @@
+deeperwin.kfac\_ferminet\_alpha
+===============================
+
+.. automodule:: deeperwin.kfac_ferminet_alpha
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+
+.. rubric:: Modules
+
+.. autosummary::
+   :toctree:
+   :template: custom_module.rst
+   :recursive:
+
+   deeperwin.kfac_ferminet_alpha.curvature_blocks
+   deeperwin.kfac_ferminet_alpha.distributions
+   deeperwin.kfac_ferminet_alpha.estimator
+   deeperwin.kfac_ferminet_alpha.example
+   deeperwin.kfac_ferminet_alpha.layers_and_loss_tags
+   deeperwin.kfac_ferminet_alpha.loss_functions
+   deeperwin.kfac_ferminet_alpha.optimizer
+   deeperwin.kfac_ferminet_alpha.setup
+   deeperwin.kfac_ferminet_alpha.tag_graph_matcher
+   deeperwin.kfac_ferminet_alpha.tests
+   deeperwin.kfac_ferminet_alpha.tracer
+   deeperwin.kfac_ferminet_alpha.utils
+

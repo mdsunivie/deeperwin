@@ -1,0 +1,32 @@
+deeperwin.kfac\_ferminet\_alpha.tests.common
+============================================
+
+.. automodule:: deeperwin.kfac_ferminet_alpha.tests.common
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+   
+      autoencoder
+      fully_connected_layer
+      init_autoencoder
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+

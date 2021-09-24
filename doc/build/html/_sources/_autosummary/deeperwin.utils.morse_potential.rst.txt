@@ -1,0 +1,6 @@
+deeperwin.utils.morse\_potential
+================================
+
+.. currentmodule:: deeperwin.utils
+
+.. autofunction:: morse_potential

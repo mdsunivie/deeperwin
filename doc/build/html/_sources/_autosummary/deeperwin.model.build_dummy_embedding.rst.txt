@@ -1,0 +1,6 @@
+deeperwin.model.build\_dummy\_embedding
+=======================================
+
+.. currentmodule:: deeperwin.model
+
+.. autofunction:: build_dummy_embedding

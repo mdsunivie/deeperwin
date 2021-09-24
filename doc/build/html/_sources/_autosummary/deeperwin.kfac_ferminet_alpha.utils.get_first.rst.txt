@@ -1,0 +1,6 @@
+deeperwin.kfac\_ferminet\_alpha.utils.get\_first
+================================================
+
+.. currentmodule:: deeperwin.kfac_ferminet_alpha.utils
+
+.. autofunction:: get_first

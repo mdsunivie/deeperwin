@@ -1,0 +1,6 @@
+deeperwin.optimization.optimize\_wavefunction
+=============================================
+
+.. currentmodule:: deeperwin.optimization
+
+.. autofunction:: optimize_wavefunction

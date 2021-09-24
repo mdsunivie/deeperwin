@@ -1,0 +1,33 @@
+deeperwin.bfgs
+==============
+
+.. automodule:: deeperwin.bfgs
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+   
+      build_bfgs_optimizer
+      calculate_hvp_by_2loop_recursion
+      calculate_metrics_bfgs
+      update_hessian_representation
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+

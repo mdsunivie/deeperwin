@@ -1,0 +1,17 @@
+# Config file manually specifying a molecule
+physical:
+  name: StretchedH2
+  R:
+    - [0, 0, 0]
+    - [0, 0, 1.6]
+  Z: [1, 1]
+  n_electrons: 2
+  n_up: 1
+  n_cas_electrons: 2
+  n_cas_orbitals: 2
+  el_ion_mapping: [0, 1]
+
+model:
+  baseline:
+    n_determinants: 1
+

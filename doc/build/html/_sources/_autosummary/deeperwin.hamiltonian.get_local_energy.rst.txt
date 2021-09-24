@@ -1,0 +1,6 @@
+deeperwin.hamiltonian.get\_local\_energy
+========================================
+
+.. currentmodule:: deeperwin.hamiltonian
+
+.. autofunction:: get_local_energy

@@ -1,0 +1,6 @@
+deeperwin.kfac\_ferminet\_alpha.tests.tracer\_test.autoencoder\_aux
+===================================================================
+
+.. currentmodule:: deeperwin.kfac_ferminet_alpha.tests.tracer_test
+
+.. autofunction:: autoencoder_aux

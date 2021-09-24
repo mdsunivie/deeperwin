@@ -1,0 +1,31 @@
+deeperwin.kfac\_ferminet\_alpha.distributions
+=============================================
+
+.. automodule:: deeperwin.kfac_ferminet_alpha.distributions
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: custom_class.rst
+   
+      MultivariateNormalDiag
+   
+   
+
+   
+   
+   
+
+
+

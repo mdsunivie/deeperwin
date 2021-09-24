@@ -1,0 +1,6 @@
+deeperwin.model.build\_simple\_schnet
+=====================================
+
+.. currentmodule:: deeperwin.model
+
+.. autofunction:: build_simple_schnet

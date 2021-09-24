@@ -1,0 +1,6 @@
+deeperwin.utils.fit\_morse\_potential
+=====================================
+
+.. currentmodule:: deeperwin.utils
+
+.. autofunction:: fit_morse_potential

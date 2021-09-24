@@ -1,0 +1,41 @@
+deeperwin.kfac\_ferminet\_alpha.loss\_functions.NegativeLogProbLoss
+===================================================================
+
+.. currentmodule:: deeperwin.kfac_ferminet_alpha.loss_functions
+
+.. autoclass:: NegativeLogProbLoss
+   :members:
+   :show-inheritance:
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~NegativeLogProbLoss.grad_of_evaluate_on_sample
+      ~NegativeLogProbLoss.multiply_fisher
+      ~NegativeLogProbLoss.multiply_fisher_factor
+      ~NegativeLogProbLoss.multiply_fisher_factor_replicated_one_hot
+      ~NegativeLogProbLoss.multiply_fisher_factor_replicated_one_hot_unweighted
+      ~NegativeLogProbLoss.multiply_fisher_factor_transpose
+      ~NegativeLogProbLoss.multiply_fisher_factor_transpose_unweighted
+      ~NegativeLogProbLoss.multiply_fisher_factor_unweighted
+      ~NegativeLogProbLoss.multiply_fisher_unweighted
+      ~NegativeLogProbLoss.sample
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~NegativeLogProbLoss.fisher_factor_inner_shape
+      ~NegativeLogProbLoss.inputs
+      ~NegativeLogProbLoss.params
+   
+   
