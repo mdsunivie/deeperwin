@@ -1,3 +1,7 @@
+# DEPRECATION NOTICE
+
+This is a deprecated, legacy version of the deeperwin codebase originally built using TensorFlow. **We highly recommend to switching to the master-branch, containing a faster, better and more accurate version of deeperwin based on JAX.**
+
 # DeepErwin
 
 DeepErwin is python package that implements and optimizes TF 2.x wave function models for numerical solutions to the multi-electron Schrödinger equation.
