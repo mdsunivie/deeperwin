@@ -21,7 +21,6 @@ The quickest way to get started with DeepErwin is to have a look at our [documen
 
 ## About
 
-DeepErwin is a collaborative effort of Rafael Reisenhofer, Philipp Grohs, Philipp Marquetand, Michael Scherbela, and Leon Gerard.\
+DeepErwin is a collaborative effort of Michael Scherbela, Rafael Reisenhofer, Leon Gerard, Philipp Marquetand, and Philipp Grohs.\
 The code was written by Michael Scherbela, Leon Gerard, and Rafael Reisenhofer.\
 If you have any questions, freel free to reach out via [e-mail](mailto:deeperwin.datascience@univie.ac.at).
-
