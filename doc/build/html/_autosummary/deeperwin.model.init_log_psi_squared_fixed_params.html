@@ -122,19 +122,17 @@
 <dl class="py function">
 <dt class="sig sig-object py" id="deeperwin.model.init_log_psi_squared_fixed_params">
 <span class="sig-prename descclassname"><span class="pre">deeperwin.model.</span></span><span class="sig-name descname"><span class="pre">init_log_psi_squared_fixed_params</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">casscf_config</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="deeperwin.configuration.CASSCFConfig.html#deeperwin.configuration.CASSCFConfig" title="deeperwin.configuration.CASSCFConfig"><span class="pre">deeperwin.configuration.CASSCFConfig</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">physical_config</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="deeperwin.configuration.PhysicalConfig.html#deeperwin.configuration.PhysicalConfig" title="deeperwin.configuration.PhysicalConfig"><span class="pre">deeperwin.configuration.PhysicalConfig</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/deeperwin/model.html#init_log_psi_squared_fixed_params"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.model.init_log_psi_squared_fixed_params" title="Permalink to this definition"></a></dt>
-<dd><p>Computes CASSCF baseline solution for DeepErwin model and initializes fixed parameters.</p>
+<dd><p>Computes CASSCF baseline solution for DeepErwin model and initializes fixed parameters.
+:param casscf_config: CASSCF hyperparmeters.
+:type casscf_config: CASSCFConfig
+:param physical_config: Description of the molecule.
+:type physical_config: PhysicalConfig</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>casscf_config</strong> (<a class="reference internal" href="deeperwin.configuration.CASSCFConfig.html#deeperwin.configuration.CASSCFConfig" title="deeperwin.configuration.CASSCFConfig"><em>CASSCFConfig</em></a>) – CASSCF hyperparmeters.</p></li>
-<li><p><strong>physical_config</strong> (<a class="reference internal" href="deeperwin.configuration.PhysicalConfig.html#deeperwin.configuration.PhysicalConfig" title="deeperwin.configuration.PhysicalConfig"><em>PhysicalConfig</em></a>) – Description of the molecule.</p></li>
-</ul>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Initial fixed parameters.</p>
 </dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>Initial fixed parameters.</p>
-</dd>
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p>(dict)</p>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>(dict)</p>
 </dd>
 </dl>
 </dd></dl>

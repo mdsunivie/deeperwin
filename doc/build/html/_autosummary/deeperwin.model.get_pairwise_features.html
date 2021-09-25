@@ -122,20 +122,19 @@
 <dl class="py function">
 <dt class="sig sig-object py" id="deeperwin.model.get_pairwise_features">
 <span class="sig-prename descclassname"><span class="pre">deeperwin.model.</span></span><span class="sig-name descname"><span class="pre">get_pairwise_features</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dist</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_config</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="deeperwin.configuration.DeepErwinModelConfig.html#deeperwin.configuration.DeepErwinModelConfig" title="deeperwin.configuration.DeepErwinModelConfig"><span class="pre">deeperwin.configuration.DeepErwinModelConfig</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dist_feat</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/deeperwin/model.html#get_pairwise_features"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.model.get_pairwise_features" title="Permalink to this definition"></a></dt>
-<dd><p>Computes pairwise features based on particle distances.</p>
+<dd><p>Computes pairwise features based on particle distances.
+:param dist: Pairwise particle distances.
+:type dist: array
+:param model_config: Hyperparameters of the DeepErwin model.
+:type model_config: DeepErwinModelConfig
+:param dist_feat: Flag that controls the usage of features of the form dist^n.
+:type dist_feat: bool</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>dist</strong> (<em>array</em>) – Pairwise particle distances.</p></li>
-<li><p><strong>model_config</strong> (<a class="reference internal" href="deeperwin.configuration.DeepErwinModelConfig.html#deeperwin.configuration.DeepErwinModelConfig" title="deeperwin.configuration.DeepErwinModelConfig"><em>DeepErwinModelConfig</em></a>) – Hyperparameters of the DeepErwin model.</p></li>
-<li><p><strong>dist_feat</strong> (<em>bool</em>) – Flag that controls the usage of features of the form dist^n.</p></li>
-</ul>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Pairwise distance features.</p>
 </dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>Pairwise distance features.</p>
-</dd>
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p>(array)</p>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>(array)</p>
 </dd>
 </dl>
 </dd></dl>

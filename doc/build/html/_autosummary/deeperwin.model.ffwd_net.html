@@ -122,7 +122,24 @@
 <dl class="py function">
 <dt class="sig sig-object py" id="deeperwin.model.ffwd_net">
 <span class="sig-prename descclassname"><span class="pre">deeperwin.model.</span></span><span class="sig-name descname"><span class="pre">ffwd_net</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">params</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">linear_output</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">register</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/deeperwin/model.html#ffwd_net"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.model.ffwd_net" title="Permalink to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>Computes the output of a fully-connected feed-forward neural network with a tanh non-linearity.
+:param params: Weights and biases of the network.
+:type params: array
+:param X: Input
+:type X: array
+:param linear_output: If false, the non-linearity is applied to the output layer.
+:type linear_output: bool
+:param register: Flag that controls whether the single layers are being registered. Important for K-FAC implementation.
+:type register: bool</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Output</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>(array)</p>
+</dd>
+</dl>
+</dd></dl>
 
 </section>
 

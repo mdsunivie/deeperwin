@@ -150,22 +150,22 @@
 <td><p></p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.model.dense_layer.html#deeperwin.model.dense_layer" title="deeperwin.model.dense_layer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dense_layer</span></code></a>(X, W, b, register)</p></td>
-<td><p></p></td>
+<td><p>Computes a single dense linear layer, i.e. Y = W * X + b :param X: Input :type X: array :param W: Weights :type W: array :param b: Bias :type b: array :param register: Flag that controls whether the layer is registered.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="deeperwin.model.ffwd_net.html#deeperwin.model.ffwd_net" title="deeperwin.model.ffwd_net"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ffwd_net</span></code></a>(params, X[, linear_output, register])</p></td>
-<td><p></p></td>
+<td><p>Computes the output of a fully-connected feed-forward neural network with a tanh non-linearity.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.model.get_number_of_params.html#deeperwin.model.get_number_of_params" title="deeperwin.model.get_number_of_params"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_number_of_params</span></code></a>(nested_params)</p></td>
-<td><p></p></td>
+<td><p>Yields the number of parameters in a nested structure.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="deeperwin.model.get_pairwise_features.html#deeperwin.model.get_pairwise_features" title="deeperwin.model.get_pairwise_features"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_pairwise_features</span></code></a>(dist, model_config[, ...])</p></td>
 <td><p>Computes pairwise features based on particle distances.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.model.get_rbf_features.html#deeperwin.model.get_rbf_features" title="deeperwin.model.get_rbf_features"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_rbf_features</span></code></a>(dist, n_features, sigma_pauli)</p></td>
-<td><p>Maps distances to a set of gaussians, which can then be used as a kind of &quot;one-hot-encoding&quot; of the distance :param r: Tensor of shape [batch-dimensions x 1] representing pairwise distances :type r: tf.Tensor</p></td>
+<td><p>Computes radial basis features based on Gaussians with different means from pairwise distances.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="deeperwin.model.init_ffwd_net.html#deeperwin.model.init_ffwd_net" title="deeperwin.model.init_ffwd_net"><code class="xref py py-obj docutils literal notranslate"><span class="pre">init_ffwd_net</span></code></a>(n_neurons, input_dim[, n_parallel])</p></td>
-<td><p></p></td>
+<td><p>Initializes the parameters for a fully-connected feed-forward neural network.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.model.init_log_psi_squared_fixed_params.html#deeperwin.model.init_log_psi_squared_fixed_params" title="deeperwin.model.init_log_psi_squared_fixed_params"><code class="xref py py-obj docutils literal notranslate"><span class="pre">init_log_psi_squared_fixed_params</span></code></a>(...)</p></td>
 <td><p>Computes CASSCF baseline solution for DeepErwin model and initializes fixed parameters.</p></td>
@@ -177,7 +177,7 @@
 <td><p></p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="deeperwin.model.scale.html#deeperwin.model.scale" title="deeperwin.model.scale"><code class="xref py py-obj docutils literal notranslate"><span class="pre">scale</span></code></a>(X, params, register)</p></td>
-<td><p></p></td>
+<td><p>Computes Y = exp(params) * X.</p></td>
 </tr>
 </tbody>
 </table>

@@ -122,24 +122,24 @@
 <dl class="py function">
 <dt class="sig sig-object py" id="deeperwin.model.build_log_psi_squared">
 <span class="sig-prename descclassname"><span class="pre">deeperwin.model.</span></span><span class="sig-name descname"><span class="pre">build_log_psi_squared</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="deeperwin.configuration.DeepErwinModelConfig.html#deeperwin.configuration.DeepErwinModelConfig" title="deeperwin.configuration.DeepErwinModelConfig"><span class="pre">deeperwin.configuration.DeepErwinModelConfig</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">physical_config</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="deeperwin.configuration.PhysicalConfig.html#deeperwin.configuration.PhysicalConfig" title="deeperwin.configuration.PhysicalConfig"><span class="pre">deeperwin.configuration.PhysicalConfig</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">init_fixed_params</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'log_psi_squared_deeperwin'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/deeperwin/model.html#build_log_psi_squared"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.model.build_log_psi_squared" title="Permalink to this definition"></a></dt>
-<dd><p>Builds log(psi(.)^2) for a wavefunction psi that is based on the DeepErwin model and initializes the respective trainable and fixed parameters.</p>
+<dd><p>Builds log(psi(.)^2) for a wavefunction psi that is based on the DeepErwin model and initializes the respective trainable and fixed parameters.
+:param config: Hyperparameters of the DeepErwin model.
+:type config: DeepErwinModelConfig
+:param physical_config: Description of the molecule.
+:type physical_config: PhysicalConfig
+:param init_fixed_params: If false, fixed parameters will not be initialized. In particular, this includes the computation of CASSCF baseline results.
+:type init_fixed_params: bool
+:param name: Name of the model instance.
+:type name: str</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>config</strong> (<a class="reference internal" href="deeperwin.configuration.DeepErwinModelConfig.html#deeperwin.configuration.DeepErwinModelConfig" title="deeperwin.configuration.DeepErwinModelConfig"><em>DeepErwinModelConfig</em></a>) – Hyperparameters of the DeepErwin model.</p></li>
-<li><p><strong>physical_config</strong> (<a class="reference internal" href="deeperwin.configuration.PhysicalConfig.html#deeperwin.configuration.PhysicalConfig" title="deeperwin.configuration.PhysicalConfig"><em>PhysicalConfig</em></a>) – Description of the molecule.</p></li>
-<li><p><strong>init_fixed_params</strong> (<em>bool</em>) – If false, fixed parameters will not be initialized. In particular, this includes the computation of CASSCF baseline results.</p></li>
-<li><p><strong>name</strong> (<em>str</em>) – Name of the model instance.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>Name of the model instance.
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Name of the model instance.
 (function): Callable function representing the model instance.
 (dict): Initial trainable parameters.
 (dict): Initial fixed parameters (None if init_fixed_params is false).</p>
 </dd>
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p>(str)</p>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>(str)</p>
 </dd>
 </dl>
 </dd></dl>

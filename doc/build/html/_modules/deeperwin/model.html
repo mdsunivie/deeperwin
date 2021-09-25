@@ -87,6 +87,14 @@
 
 
 <div class="viewcode-block" id="get_number_of_params"><a class="viewcode-back" href="../../_autosummary/deeperwin.model.get_number_of_params.html#deeperwin.model.get_number_of_params">[docs]</a><span class="k">def</span> <span class="nf">get_number_of_params</span><span class="p">(</span><span class="n">nested_params</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Yields the number of parameters in a nested structure.</span>
+<span class="sd">    Args:</span>
+<span class="sd">        nested_params (dict, array, ...): Nested dictionary of parameters</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        (int): Number of parameters</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">nested_params</span><span class="p">,</span> <span class="s1">&#39;shape&#39;</span><span class="p">):</span>
         <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">nested_params</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>
     <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">nested_params</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
@@ -96,6 +104,16 @@
 
 
 <div class="viewcode-block" id="scale"><a class="viewcode-back" href="../../_autosummary/deeperwin.model.scale.html#deeperwin.model.scale">[docs]</a><span class="k">def</span> <span class="nf">scale</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">register</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Computes Y = exp(params) * X.</span>
+<span class="sd">    Args:</span>
+<span class="sd">        X (array): Input</span>
+<span class="sd">        params (array): Scale</span>
+<span class="sd">        register (bool): Flag that controls whether the scaling is registered. Important for K-FAC implementation.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        (array): Output</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">y</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">params</span><span class="o">.</span><span class="n">squeeze</span><span class="p">())</span> <span class="o">*</span> <span class="n">X</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">register</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">y</span>
@@ -104,6 +122,17 @@
 
 
 <div class="viewcode-block" id="dense_layer"><a class="viewcode-back" href="../../_autosummary/deeperwin.model.dense_layer.html#deeperwin.model.dense_layer">[docs]</a><span class="k">def</span> <span class="nf">dense_layer</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">W</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">register</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Computes a single dense linear layer, i.e. Y = W * X + b</span>
+<span class="sd">    Args:</span>
+<span class="sd">        X (array): Input</span>
+<span class="sd">        W (array): Weights</span>
+<span class="sd">        b (array): Bias</span>
+<span class="sd">        register (bool): Flag that controls whether the layer is registered. Important for K-FAC implementation.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        (array): Output</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">y</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">W</span><span class="p">)</span> <span class="o">+</span> <span class="n">b</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">register</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">y</span>
@@ -112,6 +141,17 @@
 
 
 <div class="viewcode-block" id="ffwd_net"><a class="viewcode-back" href="../../_autosummary/deeperwin.model.ffwd_net.html#deeperwin.model.ffwd_net">[docs]</a><span class="k">def</span> <span class="nf">ffwd_net</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">linear_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">register</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Computes the output of a fully-connected feed-forward neural network with a tanh non-linearity.</span>
+<span class="sd">    Args:</span>
+<span class="sd">        params (array): Weights and biases of the network.</span>
+<span class="sd">        X (array): Input</span>
+<span class="sd">        linear_output (bool): If false, the non-linearity is applied to the output layer.</span>
+<span class="sd">        register (bool): Flag that controls whether the single layers are being registered. Important for K-FAC implementation.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        (array): Output</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">params</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
         <span class="n">X</span> <span class="o">=</span> <span class="n">dense_layer</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="o">*</span><span class="n">p</span><span class="p">,</span> <span class="n">register</span><span class="p">)</span>
         <span class="n">X</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">tanh</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
@@ -123,6 +163,16 @@
 
 
 <div class="viewcode-block" id="init_ffwd_net"><a class="viewcode-back" href="../../_autosummary/deeperwin.model.init_ffwd_net.html#deeperwin.model.init_ffwd_net">[docs]</a><span class="k">def</span> <span class="nf">init_ffwd_net</span><span class="p">(</span><span class="n">n_neurons</span><span class="p">,</span> <span class="n">input_dim</span><span class="p">,</span> <span class="n">n_parallel</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Initializes the parameters for a fully-connected feed-forward neural network.</span>
+<span class="sd">    Args:</span>
+<span class="sd">        n_neurons (list[int]): Number of neurons in each layer.</span>
+<span class="sd">        input_dim (int): Input dimension.</span>
+<span class="sd">        n_parallel (int): Number of affine linear mappings that are initialized for each layer.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        (array): Initial parameters.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">n_parallel</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">parallel_dims</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">else</span><span class="p">:</span>
@@ -140,11 +190,14 @@
 
 <div class="viewcode-block" id="get_rbf_features"><a class="viewcode-back" href="../../_autosummary/deeperwin.model.get_rbf_features.html#deeperwin.model.get_rbf_features">[docs]</a><span class="k">def</span> <span class="nf">get_rbf_features</span><span class="p">(</span><span class="n">dist</span><span class="p">,</span> <span class="n">n_features</span><span class="p">,</span> <span class="n">sigma_pauli</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Maps distances to a set of gaussians, which can then be used as a kind of &quot;one-hot-encoding&quot; of the distance</span>
+<span class="sd">    Computes radial basis features based on Gaussians with different means from pairwise distances. This can be interpreted as a special type of &quot;one-hot-encoding&quot; for the distance between two particles.</span>
 <span class="sd">    Args:</span>
-<span class="sd">        r (tf.Tensor): Tensor of shape [batch-dimensions x 1] representing pairwise distances</span>
+<span class="sd">        dist (array): Pairwise particle distances.</span>
+<span class="sd">        n_features (int): Number of radial basis features.</span>
+<span class="sd">        sigma_pauli (bool): Flag that controls computation of the sigma parameter of the Gaussians.</span>
+
 <span class="sd">    Returns:</span>
-<span class="sd">        (tf.Tensor): Tensor of shape [batch-dimensions x n_rbf_features]. The number of features returned is set in the config</span>
+<span class="sd">        (array): Pairwise radial basis features.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">r_rbf_max</span> <span class="o">=</span> <span class="mf">5.0</span>
     <span class="n">q</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">n_features</span><span class="p">)</span>
@@ -162,7 +215,6 @@
 <div class="viewcode-block" id="get_pairwise_features"><a class="viewcode-back" href="../../_autosummary/deeperwin.model.get_pairwise_features.html#deeperwin.model.get_pairwise_features">[docs]</a><span class="k">def</span> <span class="nf">get_pairwise_features</span><span class="p">(</span><span class="n">dist</span><span class="p">,</span> <span class="n">model_config</span><span class="p">:</span> <span class="n">DeepErwinModelConfig</span><span class="p">,</span> <span class="n">dist_feat</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Computes pairwise features based on particle distances.</span>
-
 <span class="sd">    Args:</span>
 <span class="sd">        dist (array): Pairwise particle distances.</span>
 <span class="sd">        model_config (DeepErwinModelConfig): Hyperparameters of the DeepErwin model.</span>
@@ -195,7 +247,6 @@
 <div class="viewcode-block" id="build_simple_schnet"><a class="viewcode-back" href="../../_autosummary/deeperwin.model.build_simple_schnet.html#deeperwin.model.build_simple_schnet">[docs]</a><span class="k">def</span> <span class="nf">build_simple_schnet</span><span class="p">(</span><span class="n">config</span><span class="p">:</span> <span class="n">SimpleSchnetConfig</span><span class="p">,</span> <span class="n">n_el</span><span class="p">,</span> <span class="n">n_up</span><span class="p">,</span> <span class="n">input_dim</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;embed&quot;</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Builds the electron coordinate embedding of the DeepErwin wavefunction model and initializes the respective trainable parameters.</span>
-
 <span class="sd">    Args:</span>
 <span class="sd">        config (SimpleSchnetConfig): Hyperparameters of the electron coordinate embedding.</span>
 <span class="sd">        n_el (int): Number of electrons.</span>
@@ -285,7 +336,6 @@
 <div class="viewcode-block" id="build_backflow_shift"><a class="viewcode-back" href="../../_autosummary/deeperwin.model.build_backflow_shift.html#deeperwin.model.build_backflow_shift">[docs]</a><span class="k">def</span> <span class="nf">build_backflow_shift</span><span class="p">(</span><span class="n">config</span><span class="p">:</span> <span class="n">DeepErwinModelConfig</span><span class="p">,</span> <span class="n">n_el</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;bf_shift&quot;</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Builds the backflow shift of the DeepErwin wavefunction model and initializes the respective trainable parameters.</span>
-
 <span class="sd">    Args:</span>
 <span class="sd">        config (DeepErwinModelConfig): Hyperparameters of the DeepErwin model.</span>
 <span class="sd">        n_el (int): Number of electrons.</span>
@@ -332,7 +382,6 @@
 <div class="viewcode-block" id="build_backflow_factor"><a class="viewcode-back" href="../../_autosummary/deeperwin.model.build_backflow_factor.html#deeperwin.model.build_backflow_factor">[docs]</a><span class="k">def</span> <span class="nf">build_backflow_factor</span><span class="p">(</span><span class="n">config</span><span class="p">:</span> <span class="n">DeepErwinModelConfig</span><span class="p">,</span> <span class="n">n_electrons</span><span class="p">,</span> <span class="n">n_up</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;bf_fac&quot;</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Builds the backflow factor of the DeepErwin wavefunction model and initializes the respective model parameters. Note that this function yields a single callable but specific initial parameters for different determinants, orbitals, and spins.</span>
-
 <span class="sd">    Args:</span>
 <span class="sd">        config (DeepErwinModelConfig): Hyperparameters of the DeepErwin model.</span>
 <span class="sd">        n_electrons (int): Number of electrons.</span>
@@ -450,7 +499,6 @@
 <div class="viewcode-block" id="init_log_psi_squared_fixed_params"><a class="viewcode-back" href="../../_autosummary/deeperwin.model.init_log_psi_squared_fixed_params.html#deeperwin.model.init_log_psi_squared_fixed_params">[docs]</a><span class="k">def</span> <span class="nf">init_log_psi_squared_fixed_params</span><span class="p">(</span><span class="n">casscf_config</span><span class="p">:</span> <span class="n">CASSCFConfig</span><span class="p">,</span> <span class="n">physical_config</span><span class="p">:</span> <span class="n">PhysicalConfig</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Computes CASSCF baseline solution for DeepErwin model and initializes fixed parameters.</span>
-
 <span class="sd">    Args:</span>
 <span class="sd">        casscf_config (CASSCFConfig): CASSCF hyperparmeters.</span>
 <span class="sd">        physical_config (PhysicalConfig): Description of the molecule.</span>
@@ -469,7 +517,6 @@
                           <span class="n">name</span><span class="o">=</span><span class="s2">&quot;log_psi_squared_deeperwin&quot;</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Builds log(psi(.)^2) for a wavefunction psi that is based on the DeepErwin model and initializes the respective trainable and fixed parameters.</span>
-
 <span class="sd">    Args:</span>
 <span class="sd">        config (DeepErwinModelConfig): Hyperparameters of the DeepErwin model.</span>
 <span class="sd">        physical_config (PhysicalConfig): Description of the molecule.</span>
@@ -554,7 +601,6 @@
                                          <span class="n">init_fixed_params</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;log_psi_squared_baseline&quot;</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Builds log(psi(.)^2) for a wavefunction psi that is based on a CASSCF solution and additional cusp correction.</span>
-
 <span class="sd">    Args:</span>
 <span class="sd">        baseline_config (CASSCFConfig): Hyperparameters for CASSCF.</span>
 <span class="sd">        physical_config (PhysicalConfig): Description of the molecule.</span>

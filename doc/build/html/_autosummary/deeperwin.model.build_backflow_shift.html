@@ -122,22 +122,21 @@
 <dl class="py function">
 <dt class="sig sig-object py" id="deeperwin.model.build_backflow_shift">
 <span class="sig-prename descclassname"><span class="pre">deeperwin.model.</span></span><span class="sig-name descname"><span class="pre">build_backflow_shift</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="deeperwin.configuration.DeepErwinModelConfig.html#deeperwin.configuration.DeepErwinModelConfig" title="deeperwin.configuration.DeepErwinModelConfig"><span class="pre">deeperwin.configuration.DeepErwinModelConfig</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_el</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'bf_shift'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/deeperwin/model.html#build_backflow_shift"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.model.build_backflow_shift" title="Permalink to this definition"></a></dt>
-<dd><p>Builds the backflow shift of the DeepErwin wavefunction model and initializes the respective trainable parameters.</p>
+<dd><p>Builds the backflow shift of the DeepErwin wavefunction model and initializes the respective trainable parameters.
+:param config: Hyperparameters of the DeepErwin model.
+:type config: DeepErwinModelConfig
+:param n_el: Number of electrons.
+:type n_el: int
+:param name: Name of the backflow shift instance.
+:type name: str</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>config</strong> (<a class="reference internal" href="deeperwin.configuration.DeepErwinModelConfig.html#deeperwin.configuration.DeepErwinModelConfig" title="deeperwin.configuration.DeepErwinModelConfig"><em>DeepErwinModelConfig</em></a>) – Hyperparameters of the DeepErwin model.</p></li>
-<li><p><strong>n_el</strong> (<em>int</em>) – Number of electrons.</p></li>
-<li><p><strong>name</strong> (<em>str</em>) – Name of the backflow shift instance.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>Name of the shift factor instance.
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Name of the shift factor instance.
 (function): Callable representing the backflow shift.
 (dict): Initial trainable parameters.</p>
 </dd>
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p>(str)</p>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>(str)</p>
 </dd>
 </dl>
 </dd></dl>

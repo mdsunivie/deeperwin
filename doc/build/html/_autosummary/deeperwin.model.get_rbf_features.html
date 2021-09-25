@@ -122,15 +122,19 @@
 <dl class="py function">
 <dt class="sig sig-object py" id="deeperwin.model.get_rbf_features">
 <span class="sig-prename descclassname"><span class="pre">deeperwin.model.</span></span><span class="sig-name descname"><span class="pre">get_rbf_features</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dist</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_features</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma_pauli</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/deeperwin/model.html#get_rbf_features"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.model.get_rbf_features" title="Permalink to this definition"></a></dt>
-<dd><p>Maps distances to a set of gaussians, which can then be used as a kind of “one-hot-encoding” of the distance
-:param r: Tensor of shape [batch-dimensions x 1] representing pairwise distances
-:type r: tf.Tensor</p>
+<dd><p>Computes radial basis features based on Gaussians with different means from pairwise distances. This can be interpreted as a special type of “one-hot-encoding” for the distance between two particles.
+:param dist: Pairwise particle distances.
+:type dist: array
+:param n_features: Number of radial basis features.
+:type n_features: int
+:param sigma_pauli: Flag that controls computation of the sigma parameter of the Gaussians.
+:type sigma_pauli: bool</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns</dt>
-<dd class="field-odd"><p>Tensor of shape [batch-dimensions x n_rbf_features]. The number of features returned is set in the config</p>
+<dd class="field-odd"><p>Pairwise radial basis features.</p>
 </dd>
 <dt class="field-even">Return type</dt>
-<dd class="field-even"><p>(tf.Tensor)</p>
+<dd class="field-even"><p>(array)</p>
 </dd>
 </dl>
 </dd></dl>
