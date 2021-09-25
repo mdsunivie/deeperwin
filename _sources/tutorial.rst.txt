@@ -110,4 +110,4 @@ The code runs best on a GPU, but will in principle also work on a CPU. It will g
 
 * **GPU.out** containing a detailed debug log of all steps of the calculation
 * **full_config.yml** containing all configuration options used for this calculation: Your provided options, as well as all default options. Take a look at this file to see all the available config options for DeepErwin
-* **results.bzw** containing a compressed, pickled representation of all data (including history and model weights)
+* **results.bz2** containing a compressed, pickled representation of all data (including history and model weights)
