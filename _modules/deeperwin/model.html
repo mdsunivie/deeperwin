@@ -89,6 +89,7 @@
 <div class="viewcode-block" id="get_number_of_params"><a class="viewcode-back" href="../../_autosummary/deeperwin.model.get_number_of_params.html#deeperwin.model.get_number_of_params">[docs]</a><span class="k">def</span> <span class="nf">get_number_of_params</span><span class="p">(</span><span class="n">nested_params</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Yields the number of parameters in a nested structure.</span>
+
 <span class="sd">    Args:</span>
 <span class="sd">        nested_params (dict, array, ...): Nested dictionary of parameters</span>
 
@@ -106,6 +107,7 @@
 <div class="viewcode-block" id="scale"><a class="viewcode-back" href="../../_autosummary/deeperwin.model.scale.html#deeperwin.model.scale">[docs]</a><span class="k">def</span> <span class="nf">scale</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">register</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Computes Y = exp(params) * X.</span>
+
 <span class="sd">    Args:</span>
 <span class="sd">        X (array): Input</span>
 <span class="sd">        params (array): Scale</span>
@@ -124,6 +126,7 @@
 <div class="viewcode-block" id="dense_layer"><a class="viewcode-back" href="../../_autosummary/deeperwin.model.dense_layer.html#deeperwin.model.dense_layer">[docs]</a><span class="k">def</span> <span class="nf">dense_layer</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">W</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">register</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Computes a single dense linear layer, i.e. Y = W * X + b</span>
+
 <span class="sd">    Args:</span>
 <span class="sd">        X (array): Input</span>
 <span class="sd">        W (array): Weights</span>
@@ -143,6 +146,7 @@
 <div class="viewcode-block" id="ffwd_net"><a class="viewcode-back" href="../../_autosummary/deeperwin.model.ffwd_net.html#deeperwin.model.ffwd_net">[docs]</a><span class="k">def</span> <span class="nf">ffwd_net</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">linear_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">register</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Computes the output of a fully-connected feed-forward neural network with a tanh non-linearity.</span>
+
 <span class="sd">    Args:</span>
 <span class="sd">        params (array): Weights and biases of the network.</span>
 <span class="sd">        X (array): Input</span>
@@ -165,6 +169,7 @@
 <div class="viewcode-block" id="init_ffwd_net"><a class="viewcode-back" href="../../_autosummary/deeperwin.model.init_ffwd_net.html#deeperwin.model.init_ffwd_net">[docs]</a><span class="k">def</span> <span class="nf">init_ffwd_net</span><span class="p">(</span><span class="n">n_neurons</span><span class="p">,</span> <span class="n">input_dim</span><span class="p">,</span> <span class="n">n_parallel</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Initializes the parameters for a fully-connected feed-forward neural network.</span>
+
 <span class="sd">    Args:</span>
 <span class="sd">        n_neurons (list[int]): Number of neurons in each layer.</span>
 <span class="sd">        input_dim (int): Input dimension.</span>
@@ -191,6 +196,7 @@
 <div class="viewcode-block" id="get_rbf_features"><a class="viewcode-back" href="../../_autosummary/deeperwin.model.get_rbf_features.html#deeperwin.model.get_rbf_features">[docs]</a><span class="k">def</span> <span class="nf">get_rbf_features</span><span class="p">(</span><span class="n">dist</span><span class="p">,</span> <span class="n">n_features</span><span class="p">,</span> <span class="n">sigma_pauli</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Computes radial basis features based on Gaussians with different means from pairwise distances. This can be interpreted as a special type of &quot;one-hot-encoding&quot; for the distance between two particles.</span>
+
 <span class="sd">    Args:</span>
 <span class="sd">        dist (array): Pairwise particle distances.</span>
 <span class="sd">        n_features (int): Number of radial basis features.</span>
@@ -215,6 +221,7 @@
 <div class="viewcode-block" id="get_pairwise_features"><a class="viewcode-back" href="../../_autosummary/deeperwin.model.get_pairwise_features.html#deeperwin.model.get_pairwise_features">[docs]</a><span class="k">def</span> <span class="nf">get_pairwise_features</span><span class="p">(</span><span class="n">dist</span><span class="p">,</span> <span class="n">model_config</span><span class="p">:</span> <span class="n">DeepErwinModelConfig</span><span class="p">,</span> <span class="n">dist_feat</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Computes pairwise features based on particle distances.</span>
+
 <span class="sd">    Args:</span>
 <span class="sd">        dist (array): Pairwise particle distances.</span>
 <span class="sd">        model_config (DeepErwinModelConfig): Hyperparameters of the DeepErwin model.</span>
@@ -247,6 +254,7 @@
 <div class="viewcode-block" id="build_simple_schnet"><a class="viewcode-back" href="../../_autosummary/deeperwin.model.build_simple_schnet.html#deeperwin.model.build_simple_schnet">[docs]</a><span class="k">def</span> <span class="nf">build_simple_schnet</span><span class="p">(</span><span class="n">config</span><span class="p">:</span> <span class="n">SimpleSchnetConfig</span><span class="p">,</span> <span class="n">n_el</span><span class="p">,</span> <span class="n">n_up</span><span class="p">,</span> <span class="n">input_dim</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;embed&quot;</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Builds the electron coordinate embedding of the DeepErwin wavefunction model and initializes the respective trainable parameters.</span>
+
 <span class="sd">    Args:</span>
 <span class="sd">        config (SimpleSchnetConfig): Hyperparameters of the electron coordinate embedding.</span>
 <span class="sd">        n_el (int): Number of electrons.</span>
@@ -336,6 +344,7 @@
 <div class="viewcode-block" id="build_backflow_shift"><a class="viewcode-back" href="../../_autosummary/deeperwin.model.build_backflow_shift.html#deeperwin.model.build_backflow_shift">[docs]</a><span class="k">def</span> <span class="nf">build_backflow_shift</span><span class="p">(</span><span class="n">config</span><span class="p">:</span> <span class="n">DeepErwinModelConfig</span><span class="p">,</span> <span class="n">n_el</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;bf_shift&quot;</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Builds the backflow shift of the DeepErwin wavefunction model and initializes the respective trainable parameters.</span>
+
 <span class="sd">    Args:</span>
 <span class="sd">        config (DeepErwinModelConfig): Hyperparameters of the DeepErwin model.</span>
 <span class="sd">        n_el (int): Number of electrons.</span>
@@ -382,6 +391,7 @@
 <div class="viewcode-block" id="build_backflow_factor"><a class="viewcode-back" href="../../_autosummary/deeperwin.model.build_backflow_factor.html#deeperwin.model.build_backflow_factor">[docs]</a><span class="k">def</span> <span class="nf">build_backflow_factor</span><span class="p">(</span><span class="n">config</span><span class="p">:</span> <span class="n">DeepErwinModelConfig</span><span class="p">,</span> <span class="n">n_electrons</span><span class="p">,</span> <span class="n">n_up</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;bf_fac&quot;</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Builds the backflow factor of the DeepErwin wavefunction model and initializes the respective model parameters. Note that this function yields a single callable but specific initial parameters for different determinants, orbitals, and spins.</span>
+
 <span class="sd">    Args:</span>
 <span class="sd">        config (DeepErwinModelConfig): Hyperparameters of the DeepErwin model.</span>
 <span class="sd">        n_electrons (int): Number of electrons.</span>
@@ -431,6 +441,7 @@
 <div class="viewcode-block" id="build_jastrow_factor"><a class="viewcode-back" href="../../_autosummary/deeperwin.model.build_jastrow_factor.html#deeperwin.model.build_jastrow_factor">[docs]</a><span class="k">def</span> <span class="nf">build_jastrow_factor</span><span class="p">(</span><span class="n">config</span><span class="p">:</span> <span class="n">DeepErwinModelConfig</span><span class="p">,</span> <span class="n">n_up</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;jastrow&quot;</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Builds the Jastrow factor of the DeepErwin wavefunction model and initializes the respective model parameters.</span>
+
 <span class="sd">    Args:</span>
 <span class="sd">        config (DeepErwinModelConfig): Hyperparameters of the DeepErwin model.</span>
 <span class="sd">        n_up: Number of up-spin electrons.</span>
@@ -499,6 +510,7 @@
 <div class="viewcode-block" id="init_log_psi_squared_fixed_params"><a class="viewcode-back" href="../../_autosummary/deeperwin.model.init_log_psi_squared_fixed_params.html#deeperwin.model.init_log_psi_squared_fixed_params">[docs]</a><span class="k">def</span> <span class="nf">init_log_psi_squared_fixed_params</span><span class="p">(</span><span class="n">casscf_config</span><span class="p">:</span> <span class="n">CASSCFConfig</span><span class="p">,</span> <span class="n">physical_config</span><span class="p">:</span> <span class="n">PhysicalConfig</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Computes CASSCF baseline solution for DeepErwin model and initializes fixed parameters.</span>
+
 <span class="sd">    Args:</span>
 <span class="sd">        casscf_config (CASSCFConfig): CASSCF hyperparmeters.</span>
 <span class="sd">        physical_config (PhysicalConfig): Description of the molecule.</span>
@@ -517,6 +529,7 @@
                           <span class="n">name</span><span class="o">=</span><span class="s2">&quot;log_psi_squared_deeperwin&quot;</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Builds log(psi(.)^2) for a wavefunction psi that is based on the DeepErwin model and initializes the respective trainable and fixed parameters.</span>
+
 <span class="sd">    Args:</span>
 <span class="sd">        config (DeepErwinModelConfig): Hyperparameters of the DeepErwin model.</span>
 <span class="sd">        physical_config (PhysicalConfig): Description of the molecule.</span>
@@ -601,6 +614,7 @@
                                          <span class="n">init_fixed_params</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;log_psi_squared_baseline&quot;</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Builds log(psi(.)^2) for a wavefunction psi that is based on a CASSCF solution and additional cusp correction.</span>
+
 <span class="sd">    Args:</span>
 <span class="sd">        baseline_config (CASSCFConfig): Hyperparameters for CASSCF.</span>
 <span class="sd">        physical_config (PhysicalConfig): Description of the molecule.</span>
