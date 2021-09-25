@@ -112,16 +112,16 @@
 </colgroup>
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.optimization.build_grad_loss.html#deeperwin.optimization.build_grad_loss" title="deeperwin.optimization.build_grad_loss"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_grad_loss</span></code></a>(log_psi_func, clipping_config)</p></td>
-<td><p></p></td>
+<td><p>Returns a callable that computes the gradient of the mean local energy for a given set of MCMC walkers with respect to the model defined by <cite>log_psi_func</cite>.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="deeperwin.optimization.build_optimize_epoch_first_order.html#deeperwin.optimization.build_optimize_epoch_first_order" title="deeperwin.optimization.build_optimize_epoch_first_order"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_optimize_epoch_first_order</span></code></a>(...)</p></td>
-<td><p></p></td>
+<td><p>Returns a callable that optimizes the model defined by <cite>log_psi_squared_func</cite> for a single epoch with a first-order method.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.optimization.build_optimizer.html#deeperwin.optimization.build_optimizer" title="deeperwin.optimization.build_optimizer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_optimizer</span></code></a>(log_psi_squared_func, ...[, ...])</p></td>
-<td><p></p></td>
+<td><p>Builds an optimizer for optimizing the wavefunction model defined by <cite>log_psi_squared_func</cite>.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="deeperwin.optimization.optimize_wavefunction.html#deeperwin.optimization.optimize_wavefunction" title="deeperwin.optimization.optimize_wavefunction"><code class="xref py py-obj docutils literal notranslate"><span class="pre">optimize_wavefunction</span></code></a>(log_psi_squared, ...)</p></td>
-<td><p></p></td>
+<td><p>Minimizes the energy of the wavefunction defined by the callable <cite>log_psi_squared</cite> by adjusting the trainable parameters.</p></td>
 </tr>
 </tbody>
 </table>

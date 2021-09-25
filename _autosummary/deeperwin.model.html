@@ -147,16 +147,16 @@
 <td><p>Builds the electron coordinate embedding of the DeepErwin wavefunction model and initializes the respective trainable parameters.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="deeperwin.model.calculate_shift_decay.html#deeperwin.model.calculate_shift_decay" title="deeperwin.model.calculate_shift_decay"><code class="xref py py-obj docutils literal notranslate"><span class="pre">calculate_shift_decay</span></code></a>(d_el_ion, Z, ...)</p></td>
-<td><p></p></td>
+<td><p>Computes the scaling factor ensuring that the contribution of the backflow shift decays in the proximity of a nucleus.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.model.dense_layer.html#deeperwin.model.dense_layer" title="deeperwin.model.dense_layer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dense_layer</span></code></a>(X, W, b, register)</p></td>
-<td><p>Computes a single dense linear layer, i.e. Y = W * X + b.</p></td>
+<td><p>Computes a single dense linear layer, i.e. <cite>W</cite> * <cite>X</cite> + <cite>b</cite>.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="deeperwin.model.ffwd_net.html#deeperwin.model.ffwd_net" title="deeperwin.model.ffwd_net"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ffwd_net</span></code></a>(params, X[, linear_output, register])</p></td>
 <td><p>Computes the output of a fully-connected feed-forward neural network with a tanh non-linearity.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.model.get_number_of_params.html#deeperwin.model.get_number_of_params" title="deeperwin.model.get_number_of_params"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_number_of_params</span></code></a>(nested_params)</p></td>
-<td><p>Yields the number of parameters in a nested structure.</p></td>
+<td><p>Returns the number of parameters in a nested structure.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="deeperwin.model.get_pairwise_features.html#deeperwin.model.get_pairwise_features" title="deeperwin.model.get_pairwise_features"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_pairwise_features</span></code></a>(dist, model_config[, ...])</p></td>
 <td><p>Computes pairwise features based on particle distances.</p></td>
@@ -177,7 +177,7 @@
 <td><p></p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="deeperwin.model.scale.html#deeperwin.model.scale" title="deeperwin.model.scale"><code class="xref py py-obj docutils literal notranslate"><span class="pre">scale</span></code></a>(X, params, register)</p></td>
-<td><p>Computes Y = exp(params) * X.</p></td>
+<td><p>Computes Y = exp(<cite>params</cite>) * <cite>X</cite>.</p></td>
 </tr>
 </tbody>
 </table>

@@ -126,20 +126,14 @@
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>config</strong> (<a class="reference internal" href="deeperwin.configuration.DeepErwinModelConfig.html#deeperwin.configuration.DeepErwinModelConfig" title="deeperwin.configuration.DeepErwinModelConfig"><em>DeepErwinModelConfig</em></a>) – Hyperparameters of the DeepErwin model.</p></li>
-<li><p><strong>physical_config</strong> (<a class="reference internal" href="deeperwin.configuration.PhysicalConfig.html#deeperwin.configuration.PhysicalConfig" title="deeperwin.configuration.PhysicalConfig"><em>PhysicalConfig</em></a>) – Description of the molecule.</p></li>
+<li><p><strong>config</strong> (<a class="reference internal" href="deeperwin.configuration.DeepErwinModelConfig.html#deeperwin.configuration.DeepErwinModelConfig" title="deeperwin.configuration.DeepErwinModelConfig"><em>DeepErwinModelConfig</em></a>) – Hyperparameters of the DeepErwin model</p></li>
+<li><p><strong>physical_config</strong> (<a class="reference internal" href="deeperwin.configuration.PhysicalConfig.html#deeperwin.configuration.PhysicalConfig" title="deeperwin.configuration.PhysicalConfig"><em>PhysicalConfig</em></a>) – Description of the molecule</p></li>
 <li><p><strong>init_fixed_params</strong> (<em>bool</em>) – If false, fixed parameters will not be initialized. In particular, this includes the computation of CASSCF baseline results.</p></li>
-<li><p><strong>name</strong> (<em>str</em>) – Name of the model instance.</p></li>
+<li><p><strong>name</strong> (<em>str</em>) – Name of the model instance</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns</dt>
-<dd class="field-even"><p>Name of the model instance.
-(function): Callable function representing the model instance.
-(dict): Initial trainable parameters.
-(dict): Initial fixed parameters (None if init_fixed_params is false).</p>
-</dd>
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p>(str)</p>
+<dd class="field-even"><p>A tuple (name, call, trainable_params, fixed_params) where call is a callable representing the built model. The dictionaries trainable_params and fixed_params contain the respective initial model parameters.</p>
 </dd>
 </dl>
 </dd></dl>
