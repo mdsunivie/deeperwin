@@ -17,10 +17,10 @@ arXiv preprint [arXiv:2105.08351](https://arxiv.org/pdf/2105.08351.pdf) (2021).
 
 ## Getting Started
 
-The quickest way to get started with DeepErwin is to have a look at our documentation. It has a detailed description of our python codebase and will also guide you through several [examples](examples), which should help you to quickly get up-and-running using DeepErwin.
+The quickest way to get started with DeepErwin is to have a look at our [documentation](https://mipunivie.github.io/deeperwin/). It contains a detailed description of our python codebase and a [tutorial](https://mipunivie.github.io/deeperwin/tutorial.html) which should help you to quickly get up-and-running using DeepErwin.
 
 ## About
 
-DeepErwin is a collaborative effort of Rafael Reisenhofer, Philipp Grohs, Philipp Marquetand, Michael Scherbela, and Leon Gerard (University of Vienna).
-For questions regarding this code, freel free to reach out via [e-mail](mailto:deeperwin.datascience@univie.ac.at).
-
+DeepErwin is a collaborative effort of Michael Scherbela, Rafael Reisenhofer, Leon Gerard, Philipp Marquetand, and Philipp Grohs.\
+The code was written by Michael Scherbela, Leon Gerard, and Rafael Reisenhofer.\
+If you have any questions, freel free to reach out via [e-mail](mailto:deeperwin.datascience@univie.ac.at).
