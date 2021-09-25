@@ -307,8 +307,11 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">log_weights</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">weight_dict</span><span class="p">):</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Pickle logger: Creating deepcopy of weight dict; keys = </span><span class="si">{</span><span class="n">weight_dict</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="n">weight_dict</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">weight_dict</span><span class="p">)</span>
+        <span class="c1"># For some unclear reason this deepcopy has caused the code to get stuck for hours without progress.</span>
+        <span class="c1"># Not copying should be fine since we only store the weights once, but this could in principle be problematic when</span>
+        <span class="c1"># external code modifies stored weights in-place</span>
+        <span class="c1"># logging.debug(f&quot;Pickle logger: Creating deepcopy of weight dict; keys = {weight_dict.keys()}&quot;)</span>
+        <span class="c1"># weight_dict = copy.deepcopy(weight_dict)</span>
         <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Pickle logger: Updating self.weights&quot;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">weights</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">weight_dict</span><span class="p">)</span>
 

@@ -126,25 +126,25 @@
 </colgroup>
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.model.build_backflow_factor.html#deeperwin.model.build_backflow_factor" title="deeperwin.model.build_backflow_factor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_backflow_factor</span></code></a>(config, n_electrons, n_up)</p></td>
-<td><p></p></td>
+<td><p>Builds the backflow factor of the DeepErwin wavefunction model and initializes the respective model parameters.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="deeperwin.model.build_backflow_shift.html#deeperwin.model.build_backflow_shift" title="deeperwin.model.build_backflow_shift"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_backflow_shift</span></code></a>(config, n_el[, name])</p></td>
-<td><p></p></td>
+<td><p>Builds the backflow shift of the DeepErwin wavefunction model and initializes the respective trainable parameters.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.model.build_dummy_embedding.html#deeperwin.model.build_dummy_embedding" title="deeperwin.model.build_dummy_embedding"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_dummy_embedding</span></code></a>(config[, name])</p></td>
 <td><p></p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="deeperwin.model.build_jastrow_factor.html#deeperwin.model.build_jastrow_factor" title="deeperwin.model.build_jastrow_factor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_jastrow_factor</span></code></a>(config, n_up[, name])</p></td>
-<td><p></p></td>
+<td><p>Builds the Jastrow factor of the DeepErwin wavefunction model and initializes the respective model parameters.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.model.build_log_psi_squared.html#deeperwin.model.build_log_psi_squared" title="deeperwin.model.build_log_psi_squared"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_log_psi_squared</span></code></a>(config, physical_config)</p></td>
-<td><p></p></td>
+<td><p>Builds log(psi(.)^2) for a wavefunction psi that is based on the DeepErwin model and initializes the respective trainable and fixed parameters.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="deeperwin.model.build_log_psi_squared_baseline_model.html#deeperwin.model.build_log_psi_squared_baseline_model" title="deeperwin.model.build_log_psi_squared_baseline_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_log_psi_squared_baseline_model</span></code></a>(...[, ...])</p></td>
-<td><p></p></td>
+<td><p>Builds log(psi(.)^2) for a wavefunction psi that is based on a CASSCF solution and additional cusp correction.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.model.build_simple_schnet.html#deeperwin.model.build_simple_schnet" title="deeperwin.model.build_simple_schnet"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_simple_schnet</span></code></a>(config, n_el, n_up, ...)</p></td>
-<td><p></p></td>
+<td><p>Builds the electron coordinate embedding of the DeepErwin wavefunction model and initializes the respective trainable parameters.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="deeperwin.model.calculate_shift_decay.html#deeperwin.model.calculate_shift_decay" title="deeperwin.model.calculate_shift_decay"><code class="xref py py-obj docutils literal notranslate"><span class="pre">calculate_shift_decay</span></code></a>(d_el_ion, Z, ...)</p></td>
 <td><p></p></td>
@@ -159,7 +159,7 @@
 <td><p></p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="deeperwin.model.get_pairwise_features.html#deeperwin.model.get_pairwise_features" title="deeperwin.model.get_pairwise_features"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_pairwise_features</span></code></a>(dist, model_config[, ...])</p></td>
-<td><p></p></td>
+<td><p>Computes pairwise features based on particle distances.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.model.get_rbf_features.html#deeperwin.model.get_rbf_features" title="deeperwin.model.get_rbf_features"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_rbf_features</span></code></a>(dist, n_features, sigma_pauli)</p></td>
 <td><p>Maps distances to a set of gaussians, which can then be used as a kind of &quot;one-hot-encoding&quot; of the distance :param r: Tensor of shape [batch-dimensions x 1] representing pairwise distances :type r: tf.Tensor</p></td>
@@ -168,7 +168,7 @@
 <td><p></p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.model.init_log_psi_squared_fixed_params.html#deeperwin.model.init_log_psi_squared_fixed_params" title="deeperwin.model.init_log_psi_squared_fixed_params"><code class="xref py py-obj docutils literal notranslate"><span class="pre">init_log_psi_squared_fixed_params</span></code></a>(...)</p></td>
-<td><p></p></td>
+<td><p>Computes CASSCF baseline solution for DeepErwin model and initializes fixed parameters.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="deeperwin.model.register_repeated_dense.html#deeperwin.model.register_repeated_dense" title="deeperwin.model.register_repeated_dense"><code class="xref py py-obj docutils literal notranslate"><span class="pre">register_repeated_dense</span></code></a>(y, X, W, b)</p></td>
 <td><p></p></td>
