@@ -108,7 +108,21 @@
 <dl class="py function">
 <dt class="sig sig-object py" id="deeperwin.optimization.build_optimize_epoch_first_order">
 <span class="sig-prename descclassname"><span class="pre">deeperwin.optimization.</span></span><span class="sig-name descname"><span class="pre">build_optimize_epoch_first_order</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">log_psi_squared_func</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grad_loss_func</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mcmc</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">opt_get_params</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">opt_update_params</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">opt_config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_walkers</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/deeperwin/optimization.html#build_optimize_epoch_first_order"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.optimization.build_optimize_epoch_first_order" title="Permalink to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>Returns a callable that optimizes the model defined by <cite>log_psi_squared_func</cite> for a single epoch with a first-order method.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>log_psi_squared_func</strong> (<em>callable</em>) – A function representing the wavefunction model</p></li>
+<li><p><strong>grad_loss_func</strong> (<em>callable</em>) – A function that yields gradients for minimizing the local energies</p></li>
+<li><p><strong>mcmc</strong> (<a class="reference internal" href="deeperwin.mcmc.MetropolisHastingsMonteCarlo.html#deeperwin.mcmc.MetropolisHastingsMonteCarlo" title="deeperwin.mcmc.MetropolisHastingsMonteCarlo"><em>MetropolisHastingsMonteCarlo</em></a>) – Object that implements the MCMC algorithm</p></li>
+<li><p><strong>opt_get_params</strong> (<em>callable</em>) – A function to extract the trainable parameters from an optimization state object</p></li>
+<li><p><strong>opt_update_params</strong> (<em>callable</em>) – Function that implements an update rule for the model weights given the gradient of the loss function</p></li>
+<li><p><strong>opt_config</strong> (<a class="reference internal" href="deeperwin.configuration.OptimizationConfig.html#deeperwin.configuration.OptimizationConfig" title="deeperwin.configuration.OptimizationConfig"><em>OptimizationConfig</em></a>) – Optimization hyperparameters</p></li>
+<li><p><strong>n_walkers</strong> (<em>int</em>) – Number of MCMC walkers</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
 
 </section>
 

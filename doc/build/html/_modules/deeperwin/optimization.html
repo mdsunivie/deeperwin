@@ -71,7 +71,7 @@
 <span></span><span class="kn">import</span> <span class="nn">time</span>
 
 <span class="kn">from</span> <span class="nn">deeperwin.bfgs</span> <span class="kn">import</span> <span class="n">build_bfgs_optimizer</span><span class="p">,</span> <span class="n">calculate_metrics_bfgs</span>
-<span class="kn">from</span> <span class="nn">deeperwin.configuration</span> <span class="kn">import</span> <span class="n">OptimizationConfig</span><span class="p">,</span> <span class="n">EvaluationConfig</span>
+<span class="kn">from</span> <span class="nn">deeperwin.configuration</span> <span class="kn">import</span> <span class="n">OptimizationConfig</span><span class="p">,</span> <span class="n">EvaluationConfig</span><span class="p">,</span> <span class="n">ClippingConfig</span>
 <span class="kn">from</span> <span class="nn">deeperwin.evaluation</span> <span class="kn">import</span> <span class="n">evaluate_wavefunction</span>
 <span class="kn">from</span> <span class="nn">deeperwin.hamiltonian</span> <span class="kn">import</span> <span class="o">*</span>
 <span class="kn">from</span> <span class="nn">deeperwin.kfac</span> <span class="kn">import</span> <span class="n">build_grad_loss_kfac</span><span class="p">,</span> <span class="n">build_optimize_epoch_kfac_test</span>
@@ -82,6 +82,23 @@
 
 <div class="viewcode-block" id="build_optimizer"><a class="viewcode-back" href="../../_autosummary/deeperwin.optimization.build_optimizer.html#deeperwin.optimization.build_optimizer">[docs]</a><span class="k">def</span> <span class="nf">build_optimizer</span><span class="p">(</span><span class="n">log_psi_squared_func</span><span class="p">,</span> <span class="n">grad_loss_func</span><span class="p">,</span> <span class="n">mcmc</span><span class="p">,</span> <span class="n">initial_params</span><span class="p">,</span> <span class="n">fixed_params</span><span class="p">,</span>
                     <span class="n">opt_config</span><span class="p">:</span> <span class="n">OptimizationConfig</span><span class="p">,</span> <span class="n">n_walkers</span><span class="p">,</span> <span class="n">mcmc_state</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Builds an optimizer for optimizing the wavefunction model defined by `log_psi_squared_func`.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        log_psi_squared_func (callable): A function representing the wavefunction model</span>
+<span class="sd">        grad_loss_func (callable): A function that yields gradients for minimizing the local energies</span>
+<span class="sd">        mcmc (MetropolisHastingsMonteCarlo): Object that implements the MCMC algorithm</span>
+<span class="sd">        initial_params (array): Initial trainable parameters for the model defined by `log_psi_squared_func`</span>
+<span class="sd">        fixed_params (array): Fixed paraemters of the model defined by `log_psi_squared_func`</span>
+<span class="sd">        opt_config (OptimizationConfig): Optimization hyperparameters</span>
+<span class="sd">        n_walkers (int): Number of MCMC walkers</span>
+<span class="sd">        mcmc_state (MCMCState): Initial state of the MCMC walkers</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        A tuple (get_params, optimize_epoch, opt_state) where get_params is a callable that extracts the (optimized) trainable parameters from and optimization state, optimize_epoch is a callable that performs one epoch of wavefunction optimization and opt_state is the initial optimization state.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">opt_config</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">order</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
         <span class="n">opt_init</span><span class="p">,</span> <span class="n">opt_update</span><span class="p">,</span> <span class="n">opt_get_params</span> <span class="o">=</span> <span class="n">get_builtin_optimizer</span><span class="p">(</span><span class="n">opt_config</span><span class="o">.</span><span class="n">optimizer</span><span class="p">,</span> <span class="n">opt_config</span><span class="o">.</span><span class="n">schedule</span><span class="p">,</span>
                                                                      <span class="n">opt_config</span><span class="o">.</span><span class="n">learning_rate</span><span class="p">)</span>
@@ -109,6 +126,19 @@
 
 <div class="viewcode-block" id="build_optimize_epoch_first_order"><a class="viewcode-back" href="../../_autosummary/deeperwin.optimization.build_optimize_epoch_first_order.html#deeperwin.optimization.build_optimize_epoch_first_order">[docs]</a><span class="k">def</span> <span class="nf">build_optimize_epoch_first_order</span><span class="p">(</span><span class="n">log_psi_squared_func</span><span class="p">,</span> <span class="n">grad_loss_func</span><span class="p">,</span> <span class="n">mcmc</span><span class="p">,</span> <span class="n">opt_get_params</span><span class="p">,</span> <span class="n">opt_update_params</span><span class="p">,</span>
                                      <span class="n">opt_config</span><span class="p">,</span> <span class="n">n_walkers</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns a callable that optimizes the model defined by `log_psi_squared_func` for a single epoch with a first-order method.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        log_psi_squared_func (callable): A function representing the wavefunction model</span>
+<span class="sd">        grad_loss_func (callable): A function that yields gradients for minimizing the local energies</span>
+<span class="sd">        mcmc (MetropolisHastingsMonteCarlo): Object that implements the MCMC algorithm</span>
+<span class="sd">        opt_get_params (callable): A function to extract the trainable parameters from an optimization state object</span>
+<span class="sd">        opt_update_params (callable): Function that implements an update rule for the model weights given the gradient of the loss function</span>
+<span class="sd">        opt_config (OptimizationConfig): Optimization hyperparameters</span>
+<span class="sd">        n_walkers (int): Number of MCMC walkers</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">n_batches_per_epoch</span> <span class="o">=</span> <span class="n">n_walkers</span> <span class="o">//</span> <span class="n">opt_config</span><span class="o">.</span><span class="n">batch_size</span>
 
     <span class="nd">@jax</span><span class="o">.</span><span class="n">jit</span>
@@ -133,6 +163,15 @@
 
 
 <div class="viewcode-block" id="build_grad_loss"><a class="viewcode-back" href="../../_autosummary/deeperwin.optimization.build_grad_loss.html#deeperwin.optimization.build_grad_loss">[docs]</a><span class="k">def</span> <span class="nf">build_grad_loss</span><span class="p">(</span><span class="n">log_psi_func</span><span class="p">,</span> <span class="n">clipping_config</span><span class="p">:</span> <span class="n">ClippingConfig</span><span class="p">,</span> <span class="n">use_fwd_fwd_hessian</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns a callable that computes the gradient of the mean local energy for a given set of MCMC walkers with respect to the model defined by `log_psi_func`.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        log_psi_func (callable): A function representing the wavefunction model</span>
+<span class="sd">        clipping_config (ClippingConfig): Clipping hyperparameters</span>
+<span class="sd">        use_fwd_fwd_hessian (bool): If true, the second partial derivatives required for computing the local energy are obtained with a forward-forward scheme.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="nd">@jax</span><span class="o">.</span><span class="n">custom_jvp</span>
     <span class="k">def</span> <span class="nf">total_energy</span><span class="p">(</span><span class="n">trainable_params</span><span class="p">,</span> <span class="n">aux_params</span><span class="p">):</span>
         <span class="n">r</span><span class="p">,</span> <span class="n">R</span><span class="p">,</span> <span class="n">Z</span><span class="p">,</span> <span class="n">fixed_params</span><span class="p">,</span> <span class="n">clipping_state</span> <span class="o">=</span> <span class="n">aux_params</span>
@@ -167,6 +206,23 @@
         <span class="n">checkpoints</span> <span class="o">=</span> <span class="p">{},</span>
         <span class="n">logger</span><span class="p">:</span> <span class="n">DataLogger</span> <span class="o">=</span> <span class="kc">None</span>
 <span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Minimizes the energy of the wavefunction defined by the callable `log_psi_squared` by adjusting the trainable parameters.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        log_psi_func (callable): A function representing the wavefunction model</span>
+<span class="sd">        initial_trainable_params (dict): Trainable paramters of the model defined by `log_psi_func`</span>
+<span class="sd">        fixed_params (dict): Fixed paramters of the model defined by `log_psi_func`</span>
+<span class="sd">        mcmc (MetropolisHastingsMonteCarlo): Object that implements the MCMC algorithm</span>
+<span class="sd">        mcmc_state (MCMCState): Initial state of the MCMC walkers</span>
+<span class="sd">        opt_config (OptimizationConfig): Optimization hyperparameters</span>
+<span class="sd">        checkpoints (dict): Dictionary with items of the form {n_epochs: path}. A checkpoint is saved for each item after optimization epoch n_epochs in the folder path.</span>
+<span class="sd">        logger (DataLogger): A logger that is used to log information about the optimization process</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        A tuple (mcmc_state, trainable_paramters, opt_state), where mcmc_state is the final MCMC state and trainable_parameters contains the optimized parameters.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">n_walkers</span> <span class="o">=</span> <span class="n">mcmc_state</span><span class="o">.</span><span class="n">r</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
     <span class="n">clipping_params</span> <span class="o">=</span> <span class="p">(</span>
         <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.0</span><span class="p">])</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(),</span> <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1000.0</span><span class="p">])</span><span class="o">.</span><span class="n">squeeze</span><span class="p">())</span>  <span class="c1"># do not clip at first epoch, then adjust</span>

@@ -108,7 +108,25 @@
 <dl class="py function">
 <dt class="sig sig-object py" id="deeperwin.optimization.build_optimizer">
 <span class="sig-prename descclassname"><span class="pre">deeperwin.optimization.</span></span><span class="sig-name descname"><span class="pre">build_optimizer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">log_psi_squared_func</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grad_loss_func</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mcmc</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_params</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fixed_params</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">opt_config</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="deeperwin.configuration.OptimizationConfig.html#deeperwin.configuration.OptimizationConfig" title="deeperwin.configuration.OptimizationConfig"><span class="pre">deeperwin.configuration.OptimizationConfig</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_walkers</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mcmc_state</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/deeperwin/optimization.html#build_optimizer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.optimization.build_optimizer" title="Permalink to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>Builds an optimizer for optimizing the wavefunction model defined by <cite>log_psi_squared_func</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>log_psi_squared_func</strong> (<em>callable</em>) – A function representing the wavefunction model</p></li>
+<li><p><strong>grad_loss_func</strong> (<em>callable</em>) – A function that yields gradients for minimizing the local energies</p></li>
+<li><p><strong>mcmc</strong> (<a class="reference internal" href="deeperwin.mcmc.MetropolisHastingsMonteCarlo.html#deeperwin.mcmc.MetropolisHastingsMonteCarlo" title="deeperwin.mcmc.MetropolisHastingsMonteCarlo"><em>MetropolisHastingsMonteCarlo</em></a>) – Object that implements the MCMC algorithm</p></li>
+<li><p><strong>initial_params</strong> (<em>array</em>) – Initial trainable parameters for the model defined by <cite>log_psi_squared_func</cite></p></li>
+<li><p><strong>fixed_params</strong> (<em>array</em>) – Fixed paraemters of the model defined by <cite>log_psi_squared_func</cite></p></li>
+<li><p><strong>opt_config</strong> (<a class="reference internal" href="deeperwin.configuration.OptimizationConfig.html#deeperwin.configuration.OptimizationConfig" title="deeperwin.configuration.OptimizationConfig"><em>OptimizationConfig</em></a>) – Optimization hyperparameters</p></li>
+<li><p><strong>n_walkers</strong> (<em>int</em>) – Number of MCMC walkers</p></li>
+<li><p><strong>mcmc_state</strong> (<a class="reference internal" href="deeperwin.mcmc.MCMCState.html#deeperwin.mcmc.MCMCState" title="deeperwin.mcmc.MCMCState"><em>MCMCState</em></a>) – Initial state of the MCMC walkers</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A tuple (get_params, optimize_epoch, opt_state) where get_params is a callable that extracts the (optimized) trainable parameters from and optimization state, optimize_epoch is a callable that performs one epoch of wavefunction optimization and opt_state is the initial optimization state.</p>
+</dd>
+</dl>
+</dd></dl>
 
 </section>
 

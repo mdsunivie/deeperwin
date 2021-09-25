@@ -126,20 +126,15 @@
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>config</strong> (<a class="reference internal" href="deeperwin.configuration.SimpleSchnetConfig.html#deeperwin.configuration.SimpleSchnetConfig" title="deeperwin.configuration.SimpleSchnetConfig"><em>SimpleSchnetConfig</em></a>) – Hyperparameters of the electron coordinate embedding.</p></li>
-<li><p><strong>n_el</strong> (<em>int</em>) – Number of electrons.</p></li>
-<li><p><strong>n_up</strong> (<em>int</em>) – Number of up-spin electrons.</p></li>
-<li><p><strong>input_dim</strong> (<em>int</em>) – Input feature dimension.</p></li>
-<li><p><strong>name</strong> (<em>str</em>) – Name of the embedding instance.</p></li>
+<li><p><strong>config</strong> (<a class="reference internal" href="deeperwin.configuration.SimpleSchnetConfig.html#deeperwin.configuration.SimpleSchnetConfig" title="deeperwin.configuration.SimpleSchnetConfig"><em>SimpleSchnetConfig</em></a>) – Hyperparameters of the electron coordinate embedding</p></li>
+<li><p><strong>n_el</strong> (<em>int</em>) – Number of electrons</p></li>
+<li><p><strong>n_up</strong> (<em>int</em>) – Number of up-spin electrons</p></li>
+<li><p><strong>input_dim</strong> (<em>int</em>) – Input feature dimension</p></li>
+<li><p><strong>name</strong> (<em>str</em>) – Name of the embedding instance</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns</dt>
-<dd class="field-even"><p>Name of the embedding instance.
-(function): Callable representing the electron coordinate embedding.
-(dict): Initial trainable parameters.</p>
-</dd>
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p>(str)</p>
+<dd class="field-even"><p>A tuple (name, call, params) where call is a callable representing the built electron embedding. The dictionary params contains the initial trainable parameters.</p>
 </dd>
 </dl>
 </dd></dl>

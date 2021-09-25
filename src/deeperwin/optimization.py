@@ -1,7 +1,7 @@
 import time
 
 from deeperwin.bfgs import build_bfgs_optimizer, calculate_metrics_bfgs
-from deeperwin.configuration import OptimizationConfig, EvaluationConfig
+from deeperwin.configuration import OptimizationConfig, EvaluationConfig, ClippingConfig
 from deeperwin.evaluation import evaluate_wavefunction
 from deeperwin.hamiltonian import *
 from deeperwin.kfac import build_grad_loss_kfac, build_optimize_epoch_kfac_test
@@ -12,6 +12,23 @@ from deeperwin.utils import get_builtin_optimizer, calculate_clipping_state, mak
 
 def build_optimizer(log_psi_squared_func, grad_loss_func, mcmc, initial_params, fixed_params,
                     opt_config: OptimizationConfig, n_walkers, mcmc_state=None):
+    """
+    Builds an optimizer for optimizing the wavefunction model defined by `log_psi_squared_func`.
+
+    Args:
+        log_psi_squared_func (callable): A function representing the wavefunction model
+        grad_loss_func (callable): A function that yields gradients for minimizing the local energies
+        mcmc (MetropolisHastingsMonteCarlo): Object that implements the MCMC algorithm
+        initial_params (array): Initial trainable parameters for the model defined by `log_psi_squared_func`
+        fixed_params (array): Fixed paraemters of the model defined by `log_psi_squared_func`
+        opt_config (OptimizationConfig): Optimization hyperparameters
+        n_walkers (int): Number of MCMC walkers
+        mcmc_state (MCMCState): Initial state of the MCMC walkers
+
+    Returns:
+        A tuple (get_params, optimize_epoch, opt_state) where get_params is a callable that extracts the (optimized) trainable parameters from and optimization state, optimize_epoch is a callable that performs one epoch of wavefunction optimization and opt_state is the initial optimization state.
+
+    """
     if opt_config.optimizer.order == 1:
         opt_init, opt_update, opt_get_params = get_builtin_optimizer(opt_config.optimizer, opt_config.schedule,
                                                                      opt_config.learning_rate)
@@ -39,6 +56,19 @@ def build_optimizer(log_psi_squared_func, grad_loss_func, mcmc, initial_params, 
 
 def build_optimize_epoch_first_order(log_psi_squared_func, grad_loss_func, mcmc, opt_get_params, opt_update_params,
                                      opt_config, n_walkers):
+    """
+    Returns a callable that optimizes the model defined by `log_psi_squared_func` for a single epoch with a first-order method.
+
+    Args:
+        log_psi_squared_func (callable): A function representing the wavefunction model
+        grad_loss_func (callable): A function that yields gradients for minimizing the local energies
+        mcmc (MetropolisHastingsMonteCarlo): Object that implements the MCMC algorithm
+        opt_get_params (callable): A function to extract the trainable parameters from an optimization state object
+        opt_update_params (callable): Function that implements an update rule for the model weights given the gradient of the loss function
+        opt_config (OptimizationConfig): Optimization hyperparameters
+        n_walkers (int): Number of MCMC walkers
+
+    """
     n_batches_per_epoch = n_walkers // opt_config.batch_size
 
     @jax.jit
@@ -63,6 +93,15 @@ def build_optimize_epoch_first_order(log_psi_squared_func, grad_loss_func, mcmc,
 
 
 def build_grad_loss(log_psi_func, clipping_config: ClippingConfig, use_fwd_fwd_hessian=False):
+    """
+    Returns a callable that computes the gradient of the mean local energy for a given set of MCMC walkers with respect to the model defined by `log_psi_func`.
+
+    Args:
+        log_psi_func (callable): A function representing the wavefunction model
+        clipping_config (ClippingConfig): Clipping hyperparameters
+        use_fwd_fwd_hessian (bool): If true, the second partial derivatives required for computing the local energy are obtained with a forward-forward scheme.
+
+    """
     @jax.custom_jvp
     def total_energy(trainable_params, aux_params):
         r, R, Z, fixed_params, clipping_state = aux_params
@@ -97,6 +136,23 @@ def optimize_wavefunction(
         checkpoints = {},
         logger: DataLogger = None
 ):
+    """
+    Minimizes the energy of the wavefunction defined by the callable `log_psi_squared` by adjusting the trainable parameters.
+
+    Args:
+        log_psi_func (callable): A function representing the wavefunction model
+        initial_trainable_params (dict): Trainable paramters of the model defined by `log_psi_func`
+        fixed_params (dict): Fixed paramters of the model defined by `log_psi_func`
+        mcmc (MetropolisHastingsMonteCarlo): Object that implements the MCMC algorithm
+        mcmc_state (MCMCState): Initial state of the MCMC walkers
+        opt_config (OptimizationConfig): Optimization hyperparameters
+        checkpoints (dict): Dictionary with items of the form {n_epochs: path}. A checkpoint is saved for each item after optimization epoch n_epochs in the folder path.
+        logger (DataLogger): A logger that is used to log information about the optimization process
+
+    Returns:
+        A tuple (mcmc_state, trainable_paramters, opt_state), where mcmc_state is the final MCMC state and trainable_parameters contains the optimized parameters.
+
+    """
     n_walkers = mcmc_state.r.shape[0]
     clipping_params = (
         jnp.array([0.0]).squeeze(), jnp.array([1000.0]).squeeze())  # do not clip at first epoch, then adjust

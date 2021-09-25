@@ -108,7 +108,17 @@
 <dl class="py function">
 <dt class="sig sig-object py" id="deeperwin.optimization.build_grad_loss">
 <span class="sig-prename descclassname"><span class="pre">deeperwin.optimization.</span></span><span class="sig-name descname"><span class="pre">build_grad_loss</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">log_psi_func</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clipping_config</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="deeperwin.configuration.ClippingConfig.html#deeperwin.configuration.ClippingConfig" title="deeperwin.configuration.ClippingConfig"><span class="pre">deeperwin.configuration.ClippingConfig</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_fwd_fwd_hessian</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/deeperwin/optimization.html#build_grad_loss"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.optimization.build_grad_loss" title="Permalink to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>Returns a callable that computes the gradient of the mean local energy for a given set of MCMC walkers with respect to the model defined by <cite>log_psi_func</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>log_psi_func</strong> (<em>callable</em>) – A function representing the wavefunction model</p></li>
+<li><p><strong>clipping_config</strong> (<a class="reference internal" href="deeperwin.configuration.ClippingConfig.html#deeperwin.configuration.ClippingConfig" title="deeperwin.configuration.ClippingConfig"><em>ClippingConfig</em></a>) – Clipping hyperparameters</p></li>
+<li><p><strong>use_fwd_fwd_hessian</strong> (<em>bool</em>) – If true, the second partial derivatives required for computing the local energy are obtained with a forward-forward scheme.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
 
 </section>
 

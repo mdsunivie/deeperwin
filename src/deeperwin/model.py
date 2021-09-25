@@ -18,13 +18,11 @@ except ImportError:
 
 def get_number_of_params(nested_params):
     """
-    Yields the number of parameters in a nested structure.
+    Returns the number of parameters in a nested structure.
 
     Args:
-        nested_params (dict, array, ...): Nested dictionary of parameters
+        nested_params: Possibly nested structure that holds different model parameters.
 
-    Returns:
-        (int): Number of parameters
     """
     if hasattr(nested_params, 'shape'):
         return int(np.prod(nested_params.shape))
@@ -36,15 +34,13 @@ def get_number_of_params(nested_params):
 
 def scale(X, params, register):
     """
-    Computes Y = exp(params) * X.
+    Computes Y = exp(`params`) * `X`.
 
     Args:
         X (array): Input
         params (array): Scale
         register (bool): Flag that controls whether the scaling is registered. Important for K-FAC implementation.
 
-    Returns:
-        (array): Output
     """
     y = jnp.exp(params.squeeze()) * X
     if not register:
@@ -55,7 +51,7 @@ def scale(X, params, register):
 
 def dense_layer(X, W, b, register):
     """
-    Computes a single dense linear layer, i.e. Y = W * X + b
+    Computes a single dense linear layer, i.e. `W` * `X` + `b`
 
     Args:
         X (array): Input
@@ -63,8 +59,6 @@ def dense_layer(X, W, b, register):
         b (array): Bias
         register (bool): Flag that controls whether the layer is registered. Important for K-FAC implementation.
 
-    Returns:
-        (array): Output
     """
     y = jnp.dot(X, W) + b
     if not register:
@@ -78,13 +72,11 @@ def ffwd_net(params, X, linear_output=True, register=True):
     Computes the output of a fully-connected feed-forward neural network with a tanh non-linearity.
 
     Args:
-        params (array): Weights and biases of the network.
+        params (array): Weights and biases of the network
         X (array): Input
         linear_output (bool): If false, the non-linearity is applied to the output layer.
         register (bool): Flag that controls whether the single layers are being registered. Important for K-FAC implementation.
 
-    Returns:
-        (array): Output
     """
     for p in params[:-1]:
         X = dense_layer(X, *p, register)
@@ -101,12 +93,13 @@ def init_ffwd_net(n_neurons, input_dim, n_parallel=None):
     Initializes the parameters for a fully-connected feed-forward neural network.
 
     Args:
-        n_neurons (list[int]): Number of neurons in each layer.
-        input_dim (int): Input dimension.
-        n_parallel (int): Number of affine linear mappings that are initialized for each layer.
+        n_neurons (list[int]): Number of neurons in each layer
+        input_dim (int): Input dimension
+        n_parallel (int): Number of affine linear mappings that are initialized for each layer
 
     Returns:
-        (array): Initial parameters.
+        array: Initial parameters
+
     """
     if n_parallel is None:
         parallel_dims = []
@@ -128,12 +121,13 @@ def get_rbf_features(dist, n_features, sigma_pauli):
     Computes radial basis features based on Gaussians with different means from pairwise distances. This can be interpreted as a special type of "one-hot-encoding" for the distance between two particles.
 
     Args:
-        dist (array): Pairwise particle distances.
-        n_features (int): Number of radial basis features.
-        sigma_pauli (bool): Flag that controls computation of the sigma parameter of the Gaussians.
+        dist (array): Pairwise particle distances
+        n_features (int): Number of radial basis features
+        sigma_pauli (bool): Flag that controls computation of the sigma parameter of the Gaussians
 
     Returns:
-        (array): Pairwise radial basis features.
+        array: Pairwise radial basis features
+
     """
     r_rbf_max = 5.0
     q = jnp.linspace(0, 1.0, n_features)
@@ -153,12 +147,13 @@ def get_pairwise_features(dist, model_config: DeepErwinModelConfig, dist_feat=Fa
     Computes pairwise features based on particle distances.
 
     Args:
-        dist (array): Pairwise particle distances.
-        model_config (DeepErwinModelConfig): Hyperparameters of the DeepErwin model.
-        dist_feat (bool): Flag that controls the usage of features of the form dist^n.
+        dist (array): Pairwise particle distances
+        model_config (DeepErwinModelConfig): Hyperparameters of the DeepErwin model
+        dist_feat (bool): Flag that controls the usage of features of the form `dist`^n
 
     Returns:
-        (array): Pairwise distance features.
+        array: Pairwise distance features
+
     """
     features = get_rbf_features(dist, model_config.n_rbf_features, model_config.sigma_pauli)
     eps = model_config.eps_dist_feat
@@ -186,16 +181,15 @@ def build_simple_schnet(config: SimpleSchnetConfig, n_el, n_up, input_dim, name=
     Builds the electron coordinate embedding of the DeepErwin wavefunction model and initializes the respective trainable parameters.
 
     Args:
-        config (SimpleSchnetConfig): Hyperparameters of the electron coordinate embedding.
-        n_el (int): Number of electrons.
-        n_up (int): Number of up-spin electrons.
-        input_dim (int): Input feature dimension.
-        name (str): Name of the embedding instance.
+        config (SimpleSchnetConfig): Hyperparameters of the electron coordinate embedding
+        n_el (int): Number of electrons
+        n_up (int): Number of up-spin electrons
+        input_dim (int): Input feature dimension
+        name (str): Name of the embedding instance
 
     Returns:
-        (str): Name of the embedding instance.
-        (function): Callable representing the electron coordinate embedding.
-        (dict): Initial trainable parameters.
+        A tuple (name, call, params) where call is a callable representing the built electron embedding. The dictionary params contains the initial trainable parameters.
+
     """
     n_dn = n_el - n_up
     indices_u_u = np.array([[j for j in range(n_up) if j != i] for i in range(n_up)], dtype=int)
@@ -266,6 +260,18 @@ def build_simple_schnet(config: SimpleSchnetConfig, n_el, n_up, input_dim, name=
 
 
 def calculate_shift_decay(d_el_ion, Z, decaying_parameter):
+    """
+    Computes the scaling factor ensuring that the contribution of the backflow shift decays in the proximity of a nucleus.
+
+    Args:
+        d_el_ion (array): Pairwise electron-ion distances
+        Z (array): Nuclear charges
+        decaying_parameter (array): Decaying parameters (same length as `Z`)
+
+    Returns:
+        array: Scalings for each electron
+
+    """
     scale = decaying_parameter / Z
     scaling = jnp.prod(jnp.tanh((d_el_ion / scale) ** 2), axis=-1)
     return scaling
@@ -276,14 +282,12 @@ def build_backflow_shift(config: DeepErwinModelConfig, n_el, name="bf_shift"):
     Builds the backflow shift of the DeepErwin wavefunction model and initializes the respective trainable parameters.
 
     Args:
-        config (DeepErwinModelConfig): Hyperparameters of the DeepErwin model.
-        n_el (int): Number of electrons.
-        name (str): Name of the backflow shift instance.
+        config (DeepErwinModelConfig): Hyperparameters of the DeepErwin model
+        n_el (int): Number of electrons
+        name (str): Name of the backflow shift instance
 
     Returns:
-        (str): Name of the shift factor instance.
-        (function): Callable representing the backflow shift.
-        (dict): Initial trainable parameters.
+        A tuple (name, call, params) where call is a callable representing the built backflow shift. The dictionary params contains the initial trainable parameters.
     """
     input_dim = config.embedding.embedding_dim
 
@@ -323,15 +327,14 @@ def build_backflow_factor(config: DeepErwinModelConfig, n_electrons, n_up, name=
     Builds the backflow factor of the DeepErwin wavefunction model and initializes the respective model parameters. Note that this function yields a single callable but specific initial parameters for different determinants, orbitals, and spins.
 
     Args:
-        config (DeepErwinModelConfig): Hyperparameters of the DeepErwin model.
-        n_electrons (int): Number of electrons.
-        n_up (int): Number of up-spin electrons.
-        name (str): Name of the backflow factor instance.
+        config (DeepErwinModelConfig): Hyperparameters of the DeepErwin model
+        n_electrons (int): Number of electrons
+        n_up (int): Number of up-spin electrons
+        name (str): Name of the backflow factor instance
 
     Returns:
-        (str): Name of the backflow factor instance.
-        (function): Callable representing the backflow factor.
-        (dict): Initial trainable parameters.
+        A tuple (name, call, params) where call is a callable representing the built backflow factor. The dictionary params contains the initial trainable parameters.
+
     """
     n_dn = n_electrons - n_up
     n_dets = config.baseline.n_determinants
@@ -373,14 +376,13 @@ def build_jastrow_factor(config: DeepErwinModelConfig, n_up, name="jastrow"):
     Builds the Jastrow factor of the DeepErwin wavefunction model and initializes the respective model parameters.
 
     Args:
-        config (DeepErwinModelConfig): Hyperparameters of the DeepErwin model.
-        n_up: Number of up-spin electrons.
-        name: Name of the Jastrow factor instance.
+        config (DeepErwinModelConfig): Hyperparameters of the DeepErwin model
+        n_up (int): Number of up-spin electrons
+        name (str): Name of the Jastrow factor instance
 
     Returns:
-        (str): Name of the Jastrow factor instance.
-        (function): Callable representing the Jastrow factor.
-        (dict): Initial trainable parameters.
+        A tuple (name, call, params) where call is a callable representing the built Jastrow factor. The dictionary params contains the initial trainable parameters.
+
     """
 
     def _call_jastrow(embeddings, params):
@@ -442,11 +444,11 @@ def init_log_psi_squared_fixed_params(casscf_config: CASSCFConfig, physical_conf
     Computes CASSCF baseline solution for DeepErwin model and initializes fixed parameters.
 
     Args:
-        casscf_config (CASSCFConfig): CASSCF hyperparmeters.
-        physical_config (PhysicalConfig): Description of the molecule.
+        casscf_config (CASSCFConfig): CASSCF hyperparmeters
+        physical_config (PhysicalConfig): Description of the molecule
 
     Returns:
-        (dict): Initial fixed parameters.
+        dict: Initial fixed parameters
     """
     logging.debug("Calculating baseline solution...")
     baseline_solution, (E_hf, E_cas) = get_baseline_solution(physical_config, casscf_config)
@@ -461,16 +463,14 @@ def build_log_psi_squared(config: DeepErwinModelConfig, physical_config: Physica
     Builds log(psi(.)^2) for a wavefunction psi that is based on the DeepErwin model and initializes the respective trainable and fixed parameters.
 
     Args:
-        config (DeepErwinModelConfig): Hyperparameters of the DeepErwin model.
-        physical_config (PhysicalConfig): Description of the molecule.
+        config (DeepErwinModelConfig): Hyperparameters of the DeepErwin model
+        physical_config (PhysicalConfig): Description of the molecule
         init_fixed_params (bool): If false, fixed parameters will not be initialized. In particular, this includes the computation of CASSCF baseline results.
-        name (str): Name of the model instance.
+        name (str): Name of the model instance
 
     Returns:
-        (str): Name of the model instance.
-        (function): Callable function representing the model instance.
-        (dict): Initial trainable parameters.
-        (dict): Initial fixed parameters (None if init_fixed_params is false).
+        A tuple (name, call, trainable_params, fixed_params) where call is a callable representing the built model. The dictionaries trainable_params and fixed_params contain the respective initial model parameters.
+
     """
     n_electrons, n_up = physical_config.n_electrons, physical_config.n_up
     initial_trainable_params = {}
@@ -546,16 +546,14 @@ def build_log_psi_squared_baseline_model(baseline_config: CASSCFConfig, physical
     Builds log(psi(.)^2) for a wavefunction psi that is based on a CASSCF solution and additional cusp correction.
 
     Args:
-        baseline_config (CASSCFConfig): Hyperparameters for CASSCF.
-        physical_config (PhysicalConfig): Description of the molecule.
+        baseline_config (CASSCFConfig): Hyperparameters for CASSCF
+        physical_config (PhysicalConfig): Description of the molecule
         init_fixed_params (bool): If false, fixed parameters will not be initialized. In particular, this includes the computation of CASSCF baseline results.
-        name (str): Name of the model instance.
+        name (str): Name of the model instance
 
     Returns:
-        (str): Name of the model instance.
-        (function): Callable function representing the model instance.
-        (dict): Empty dictionary of initial trainable parameters (this model has no trainable parameters).
-        (dict): Initial fixed parameters (None if init_fixed_params is false).
+        A tuple (name, call, trainable_params, fixed_params) where call is a callable representing the built model. The dictionaries trainable_params and fixed_params contain the respective initial model parameters.
+
     """
     n_electrons, n_up = physical_config.n_electrons, physical_config.n_up
     initial_fixed_params = init_log_psi_squared_fixed_params(baseline_config,
