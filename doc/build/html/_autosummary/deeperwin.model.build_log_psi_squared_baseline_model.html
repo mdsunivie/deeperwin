@@ -122,24 +122,24 @@
 <dl class="py function">
 <dt class="sig sig-object py" id="deeperwin.model.build_log_psi_squared_baseline_model">
 <span class="sig-prename descclassname"><span class="pre">deeperwin.model.</span></span><span class="sig-name descname"><span class="pre">build_log_psi_squared_baseline_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">baseline_config</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="deeperwin.configuration.CASSCFConfig.html#deeperwin.configuration.CASSCFConfig" title="deeperwin.configuration.CASSCFConfig"><span class="pre">deeperwin.configuration.CASSCFConfig</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">physical_config</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="deeperwin.configuration.PhysicalConfig.html#deeperwin.configuration.PhysicalConfig" title="deeperwin.configuration.PhysicalConfig"><span class="pre">deeperwin.configuration.PhysicalConfig</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">init_fixed_params</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'log_psi_squared_baseline'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/deeperwin/model.html#build_log_psi_squared_baseline_model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.model.build_log_psi_squared_baseline_model" title="Permalink to this definition"></a></dt>
-<dd><p>Builds log(psi(.)^2) for a wavefunction psi that is based on a CASSCF solution and additional cusp correction.
-:param baseline_config: Hyperparameters for CASSCF.
-:type baseline_config: CASSCFConfig
-:param physical_config: Description of the molecule.
-:type physical_config: PhysicalConfig
-:param init_fixed_params: If false, fixed parameters will not be initialized. In particular, this includes the computation of CASSCF baseline results.
-:type init_fixed_params: bool
-:param name: Name of the model instance.
-:type name: str</p>
+<dd><p>Builds log(psi(.)^2) for a wavefunction psi that is based on a CASSCF solution and additional cusp correction.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Returns</dt>
-<dd class="field-odd"><p>Name of the model instance.
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>baseline_config</strong> (<a class="reference internal" href="deeperwin.configuration.CASSCFConfig.html#deeperwin.configuration.CASSCFConfig" title="deeperwin.configuration.CASSCFConfig"><em>CASSCFConfig</em></a>) – Hyperparameters for CASSCF.</p></li>
+<li><p><strong>physical_config</strong> (<a class="reference internal" href="deeperwin.configuration.PhysicalConfig.html#deeperwin.configuration.PhysicalConfig" title="deeperwin.configuration.PhysicalConfig"><em>PhysicalConfig</em></a>) – Description of the molecule.</p></li>
+<li><p><strong>init_fixed_params</strong> (<em>bool</em>) – If false, fixed parameters will not be initialized. In particular, this includes the computation of CASSCF baseline results.</p></li>
+<li><p><strong>name</strong> (<em>str</em>) – Name of the model instance.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Name of the model instance.
 (function): Callable function representing the model instance.
 (dict): Empty dictionary of initial trainable parameters (this model has no trainable parameters).
 (dict): Initial fixed parameters (None if init_fixed_params is false).</p>
 </dd>
-<dt class="field-even">Return type</dt>
-<dd class="field-even"><p>(str)</p>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>(str)</p>
 </dd>
 </dl>
 </dd></dl>

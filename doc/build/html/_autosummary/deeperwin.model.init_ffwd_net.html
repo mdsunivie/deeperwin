@@ -122,19 +122,20 @@
 <dl class="py function">
 <dt class="sig sig-object py" id="deeperwin.model.init_ffwd_net">
 <span class="sig-prename descclassname"><span class="pre">deeperwin.model.</span></span><span class="sig-name descname"><span class="pre">init_ffwd_net</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_neurons</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">input_dim</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_parallel</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/deeperwin/model.html#init_ffwd_net"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.model.init_ffwd_net" title="Permalink to this definition"></a></dt>
-<dd><p>Initializes the parameters for a fully-connected feed-forward neural network.
-:param n_neurons: Number of neurons in each layer.
-:type n_neurons: list[int]
-:param input_dim: Input dimension.
-:type input_dim: int
-:param n_parallel: Number of affine linear mappings that are initialized for each layer.
-:type n_parallel: int</p>
+<dd><p>Initializes the parameters for a fully-connected feed-forward neural network.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Returns</dt>
-<dd class="field-odd"><p>Initial parameters.</p>
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>n_neurons</strong> (<em>list</em><em>[</em><em>int</em><em>]</em>) – Number of neurons in each layer.</p></li>
+<li><p><strong>input_dim</strong> (<em>int</em>) – Input dimension.</p></li>
+<li><p><strong>n_parallel</strong> (<em>int</em>) – Number of affine linear mappings that are initialized for each layer.</p></li>
+</ul>
 </dd>
-<dt class="field-even">Return type</dt>
-<dd class="field-even"><p>(array)</p>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Initial parameters.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>(array)</p>
 </dd>
 </dl>
 </dd></dl>
