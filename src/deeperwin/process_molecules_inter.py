@@ -26,7 +26,7 @@ from deeperwin.utils import getCodeVersion, make_opt_state_picklable
 @dataclass
 class WF:
     physical = None
-    trainable_params = None
+    init_trainable_params = None
     fixed_params = None
     mcmc_state = None
     opt_state = None
@@ -40,6 +40,12 @@ def is_shared_module(key, shared_modules):
         return False
     return key in shared_modules
 
+def update_shared_weights(dest_weights, src_weights, shared_modules):
+    for mod in src_weights.keys():
+        if is_shared_module(mod, shared_modules):
+            dest_weights[mod] = src_weights[mod]
+    return dest_weights
+
 def init_wf(config: Configuration):
     wfs = []
 
@@ -52,18 +58,16 @@ def init_wf(config: Configuration):
 
         # init parameters
         if i == 0:
-            _, log_psi_squared, wf.trainable_params, wf.fixed_params  = build_log_psi_squared(config.model, p)
+            _, log_psi_squared, wf.init_trainable_params, wf.fixed_params  = build_log_psi_squared(config.model, p)
         else:
-            _, _, wf.trainable_params, wf.fixed_params = build_log_psi_squared(config.model, p)
+            _, _, wf.init_trainable_params, wf.fixed_params = build_log_psi_squared(config.model, p)
 
         if i != 0:
-            for mod in wf.trainable_params.keys():
-                if is_shared_module(mod, config.optimization.shared_modules):
-                    wf.trainable_params[mod] = wfs[0].trainable_params[mod]
+            wf.init_trainable_params = update_shared_weights(wf.init_trainable_params, wfs[0].init_trainable_params, config.optimization.shared_modules)
 
         # MCMC state
         wf.mcmc_state = MCMCState.initialize_around_nuclei(config.mcmc.n_walkers_opt, p)
-        wf.mcmc_state.log_psi_sqr = log_psi_squared(*wf.mcmc_state.model_args, wf.trainable_params, wf.fixed_params)
+        wf.mcmc_state.log_psi_sqr = log_psi_squared(*wf.mcmc_state.model_args, wf.init_trainable_params, wf.fixed_params)
 
         # make folder for single WF (stores adjusted config and logger data)
         job_name = idx_to_job_name(i)
@@ -75,7 +79,7 @@ def init_wf(config: Configuration):
         #loggers.log_params(config.get_as_flattened_dict())
         loggers.log_tags(config.logging.tags)
         loggers.log_metrics(dict(E_hf=wf.fixed_params["E_hf"], E_casscf=wf.fixed_params["E_casscf"]))
-        loggers.log_param("n_params", get_number_of_params(wf.trainable_params))
+        loggers.log_param("n_params", get_number_of_params(wf.init_trainable_params))
         wf.loggers = loggers
 
         # save full config for single wavefunction
@@ -100,7 +104,7 @@ def warm_up_opt(wfs, mcmc, config: Configuration, log_psi_squared):  # could be 
         logging.info(f"Starting warm-up for wf {i}...")
 
         fixed_params = wf.fixed_params
-        trainable_params = wf.trainable_params
+        trainable_params = wf.init_trainable_params
         mcmc_state = wf.mcmc_state
 
         mcmc_state = mcmc.run_burn_in_opt(log_psi_squared, (trainable_params, fixed_params), mcmc_state)
@@ -127,23 +131,18 @@ def update_opt_state(opt_state, params):
     new_states_flat, subtrees2 = unzip2(map(tree_flatten, new_states))
     return OptimizerState(new_states_flat, tree, subtrees)
 
+def update_wf(index, index_next, mcmc_state, opt_state, opt_get_params, clipping_params, wfs, shared_modules):
 
-def update_wf(index, index_next, mcmc_state, opt_state, opt_get_param, clipping_params, wfs, shared_modules):
-    # adjust parameters for all wfs - adjust only next optimized wf
+    # update elements in WF dataclass
     wfs[index].mcmc_state = mcmc_state
     wfs[index].opt_state = opt_state
     wfs[index].clipping_params = clipping_params
 
-    params = opt_get_param(opt_state)
-    params_next = opt_get_param(
-        wfs[index_next].opt_state)  # tree_unflatten(wfs[index_next].opt_state[1], wfs[index_next].opt_state[0])
-    for mod in params.keys():
-        if mod in shared_modules:
-            params_next[mod] = params[mod]
+    # update shared modules for next wavefunction
+    params_next = update_shared_weights(opt_get_params(wfs[index_next].opt_state), opt_get_params(opt_state), shared_modules)
     wfs[index_next].opt_state = update_opt_state(wfs[index_next].opt_state, params_next)
 
     return wfs
-
 
 def get_index(n_epoch, n_wfs, method="round_robin"):
     if method == "round_robin":
@@ -156,35 +155,60 @@ def optimize_inter(config: Configuration, wfs, mcmc, log_psi_squared):
     wfs, opt_get_params, optimize_epoch = warm_up_opt(wfs, mcmc, config, log_psi_squared)
     n_wfs = len(wfs)
     index = get_index(0, n_wfs)
-    index_next = None
-
     t_start = time.time()
+
     for n_epoch in range(config.optimization.n_epochs * n_wfs):
-        if index_next is not None:
-            index = index_next
+
+        # optimize wf[index] for one eppoch
         E_epoch, mcmc_state, opt_state, clipping_params = optimize_epoch(n_epoch, wfs[index].mcmc_state,
                                                                          wfs[index].opt_state,
                                                                          wfs[index].clipping_params,
                                                                          wfs[index].fixed_params)
+
+        # get next indext for optimization
+        index_next = get_index(n_epoch, n_wfs)
+
+        # update wf[index] with optimization results and wf[next_index] with new shared weights
+        wfs = update_wf(index, index_next, mcmc_state, opt_state, opt_get_params, clipping_params, wfs,
+                        config.optimization.shared_modules)
+
+        # collect epoch time
         t_end = time.time()
 
         # check for checkpoints. if any, all wfs have the same checkpoints.
         if n_epoch in wfs[0].checkpoints:
             for wf in wfs:
                 if wf.loggers is not None:
-                    full_data = dict(trainable=opt_get_params(wf.opt_state), fixed= wf.fixed_params, mcmc=wf.mcmc_state, opt = make_opt_state_picklable(wf.opt_state))
+                    # update opt_state with current shared weights
+                    wf_params = opt_get_params(wf.opt_state)
+                    wf_params = update_shared_weights(wf_params, opt_get_params(opt_state), config.optimization.shared_modules)
+                    wf.opt_state = update_opt_state(wf.opt_state, wf_params)
+
+                    # create full data dict
+                    full_data = dict(trainable=wf_params, fixed= wf.fixed_params, mcmc=wf.mcmc_state, opt = make_opt_state_picklable(wf.opt_state))
+
+                    # log weights
                     wf.loggers.log_weights(full_data)
+
+                    # log checkpoint
                     logging.info(f"Logging checkpoint to folder {wf.checkpoints[n_epoch]}")
                     wf.loggers.log_checkpoint(wf.checkpoints[n_epoch])
 
+        # log metrics
         if wfs[index].loggers is not None:
             metrics = calculate_metrics(n_epoch, n_wfs, E_epoch, mcmc_state, t_end - t_start, "opt")
             wfs[index].loggers.log_metrics(*metrics)
 
-        index_next = get_index(n_epoch, n_wfs)
-        wfs = update_wf(index, index_next, mcmc_state, opt_state, opt_get_params, clipping_params, wfs,
-                        config.optimization.shared_modules)
-        t_start = t_end
+        # reset clock and update index
+        t_start = time.time()
+        index = index_next
+
+    # update shared weights from last opt_state for all wfs
+    for wf in wfs:
+        wf_params = opt_get_params(wf.opt_state)
+        wf_params = update_shared_weights(wf_params, opt_get_params(opt_state), config.optimization.shared_modules)
+        wf.opt_state = update_opt_state(wf.opt_state, wf_params)
+
     return wfs, opt_get_params
 
 
@@ -216,7 +240,7 @@ if __name__ == "__main__":
         wfs, opt_get_params = optimize_inter(config, wfs, mcmc, log_psi_squared)
 
     for wf in wfs:
-        wf.loggers.log_weights(dict(trainable=wf.trainable_params, fixed=wf.fixed_params, mcmc=wf.mcmc_state,
+        wf.loggers.log_weights(dict(trainable=opt_get_params(wf.opt_state), fixed=wf.fixed_params, mcmc=wf.mcmc_state,
                                  opt=make_opt_state_picklable(wf.opt_state)))
 
     # Wavefunction evaluation
