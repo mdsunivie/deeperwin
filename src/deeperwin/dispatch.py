@@ -1,23 +1,28 @@
+import bz2
 import copy
+import logging
 import os
+import pickle
+import re
+import shutil
 import subprocess
 from pathlib import Path
-import re
-from ruamel import yaml
-import shutil
-import logging
-from deeperwin.configuration import Configuration
-import pickle
-import bz2
+
 import pandas as pd
+from ruamel import yaml
+
+from deeperwin.configuration import Configuration
+
 
 def load_from_file(fname):
     with bz2.open(fname, 'rb') as f:
         return pickle.load(f)
 
+
 def save_to_file(fname, **data):
     with bz2.open(fname, 'wb') as f:
         pickle.dump(data, f)
+
 
 def load_all_runs(root_dir, max_history_length=50):
     full_data = []
@@ -31,6 +36,7 @@ def load_all_runs(root_dir, max_history_length=50):
         data['dirname'] = fname.parent.name
         full_data.append(data)
     return pd.DataFrame(full_data)
+
 
 def prepare_checkpoints(run_path, chkpt_epochs, config: Configuration):
     checkpoints = {}
@@ -129,9 +135,10 @@ def dispatch_to_local(command, run_dir, config: Configuration):
 
 
 def dispatch_to_vsc3(command, run_dir, config: Configuration):
-    time_in_minutes = duration_string_to_minutes(config.computation.vsc3.time)
-    jobfile_content = get_jobfile_content_vsc3(' '.join(command), config.experiment_name, config.computation.vsc3.queue,
-                                               time_in_minutes, config.computation.vsc3.conda_env)
+    time_in_minutes = duration_string_to_minutes(config.dispatch.time)
+    queue = 'gpu_rtx2080ti' if config.dispatch.queue == "default" else config.dispatch.queue
+    jobfile_content = get_jobfile_content_vsc3(' '.join(command), config.experiment_name, queue,
+                                               time_in_minutes, config.dispatch.conda_env)
 
     with open(os.path.join(run_dir, 'job.sh'), 'w') as f:
         f.write(jobfile_content)
@@ -139,8 +146,9 @@ def dispatch_to_vsc3(command, run_dir, config: Configuration):
 
 
 def dispatch_to_vsc4(command, run_dir, config: Configuration):
-    time_in_minutes = duration_string_to_minutes(config.computation.vsc4.time)
-    jobfile_content = get_jobfile_content_vsc4(' '.join(command), config.experiment_name, config.computation.vsc4.queue,
+    time_in_minutes = duration_string_to_minutes(config.dispatch.time)
+    queue = 'mem_0096' if config.dispatch.queue == "default" else config.dispatch.queue
+    jobfile_content = get_jobfile_content_vsc4(' '.join(command), config.experiment_name, queue,
                                                time_in_minutes)
 
     with open(os.path.join(run_dir, 'job.sh'), 'w') as f:
@@ -235,7 +243,7 @@ export CUDA_VISIBLE_DEVICES="0"
 
 
 def dispatch_job(fname, job_dir, config):
-    dispatch_to = config.computation.dispatch
+    dispatch_to = config.dispatch.system
     if dispatch_to == "auto":
         dispatch_to = "local"
         if os.path.exists("/etc/slurm/slurm.conf"):

@@ -1,11 +1,12 @@
+import warnings
+from abc import ABC, abstractmethod
+from typing import Union, Literal, Optional, List
+
 import pydantic
+import ruamel.yaml.comments
 from pydantic import BaseModel, validator, root_validator
 from pydantic.fields import ModelField
-from typing import Union, Literal, Optional, List
-from abc import ABC, abstractmethod
 from ruamel.yaml import YAML
-import warnings
-import ruamel.yaml.comments
 
 
 class ConfigModel(BaseModel):
@@ -70,6 +71,7 @@ class ConfigModel(BaseModel):
         It's not a config for the variational monte carlo code"""
         extra = "forbid"
 
+
 class NetworkConfig(ConfigModel, ABC):
     net_width: Union[int, None]
     net_depth: Union[int, None]
@@ -102,14 +104,17 @@ class SimpleSchnetConfig(NetworkConfig):
     def get_default_network_shape(key, width, depth):
         return dict(w=[width] * depth, h=[width] * depth, g=[width] * (depth - 1))[key]
 
+
 class DummyEmbeddingConfig(ConfigModel):
     name: Literal["dummy"]
+
 
 class CuspCorrectionConfig(ConfigModel):
     use = True
     cusp_type: Literal["mo", "ao"] = "mo"
     r_cusp_el_el = 1.0
     r_cusp_el_ion_scale = 1.0
+
 
 class CASSCFConfig(ConfigModel):
     name: Literal["casscf"] = "casscf"
@@ -131,7 +136,7 @@ class DeepErwinModelConfig(NetworkConfig):
     el_el_shift_decay = False
     target_el = False
     sum_first = False
-    output_shift: Literal[1,3] = 1
+    output_shift: Literal[1, 3] = 1
     distance_feature_powers: List[int] = [-1]
     sigma_pauli = True
     use_trainable_shift_decay_radius = True
@@ -153,7 +158,8 @@ class DeepErwinModelConfig(NetworkConfig):
         n_required = values['n_rbf_features'] + len(values['distance_feature_powers'])
         n = n_required if n is None else n
         if n != n_required:
-            raise pydantic.ValidationError(f"Number of total pairwise features {n} is inconsistent with n_rbf_features={values['n_rbf_features']} and distance_feature_powers={values['distance_feature_powers']}")
+            raise pydantic.ValidationError(
+                f"Number of total pairwise features {n} is inconsistent with n_rbf_features={values['n_rbf_features']} and distance_feature_powers={values['distance_feature_powers']}")
         return n
 
 
@@ -166,6 +172,7 @@ class MCMCLangevinProposalConfig(ConfigModel):
     langevin_scale = 1.0
     r_min = 0.2
     r_max = 2.0
+
 
 class MCMCConfig(ConfigModel):
     n_walkers_opt: int = 2048
@@ -193,22 +200,27 @@ class ClippingConfig(ConfigModel):
     unclipped_center = False
     clip_by = 5.0
 
+
 class FixedLRSchedule(ConfigModel):
     name: Literal["fixed"] = "fixed"
+
 
 class InverseLRScheduleConfig(ConfigModel):
     name: Literal["inverse"] = "inverse"
     decay_time: float = 500.0
 
+
 class StandardOptimizerConfig(ConfigModel):
     name: Literal["rmsprop_momentum", "sgd"] = "sgd"  # add others optimizers that don't need further configs here
     order: Literal[1] = 1
+
 
 class AdamOptimizerConfig(StandardOptimizerConfig):
     name: Literal["adam"] = "adam"
     b1 = 0.9
     b2 = 0.999
     eps = 1e-8
+
 
 class KFACOptimizerConfig(ConfigModel):
     name: Literal["kfac"] = "kfac"
@@ -226,6 +238,7 @@ class KFACOptimizerConfig(ConfigModel):
     curvature_ema = 0.05
     internal_optimizer: Union[AdamOptimizerConfig, StandardOptimizerConfig] = AdamOptimizerConfig()
 
+
 class BFGSOptimizerConfig(ConfigModel):
     name: Literal["slbfgs"] = "slbfgs"
     order: Literal[2] = 2
@@ -236,16 +249,19 @@ class BFGSOptimizerConfig(ConfigModel):
     use_variance_reduction = True
     update_hessian_every_n_epochs = 1
 
+
 class IntermediateEvaluationConfig(ConfigModel):
     n_epochs = 500
     opt_epochs: List[int] = []
 
+
 class OptimizationConfig(ConfigModel):
-    optimizer: Union[AdamOptimizerConfig, StandardOptimizerConfig, KFACOptimizerConfig, BFGSOptimizerConfig] = AdamOptimizerConfig()
+    optimizer: Union[
+        AdamOptimizerConfig, StandardOptimizerConfig, KFACOptimizerConfig, BFGSOptimizerConfig] = AdamOptimizerConfig()
     schedule: Union[InverseLRScheduleConfig, FixedLRSchedule] = InverseLRScheduleConfig()
     learning_rate = 1.5e-3
     n_epochs = 10_000
-    n_epochs_prev = 0 # if run is restart, this can be used to store number of previous epochs
+    n_epochs_prev = 0  # if run is restart, this can be used to store number of previous epochs
     batch_size = 512
     use_batch_reweighting = False
     checkpoints: List[int] = []
@@ -258,9 +274,11 @@ class OptimizationConfig(ConfigModel):
     def shared_modules_only_with_interdependent(cls, values):
         if values['shared_modules'] is not None:
             if not values["interdependent"]:
-                warnings.warn("Shared optimization is only possible with interdependent optimization. Setting shared_modules to None.")
+                warnings.warn(
+                    "Shared optimization is only possible with interdependent optimization. Setting shared_modules to None.")
                 values['shared_modules'] = None
         return values
+
 
 class RestartConfig(ConfigModel):
     path: str
@@ -277,6 +295,7 @@ class ForceEvaluationConfig(ConfigModel):
     use_antithetic_sampling: bool = False
     polynomial_degree: int = 4
 
+
 class EvaluationConfig(ConfigModel):
     n_epochs = 2000
     forces: Optional[ForceEvaluationConfig] = None
@@ -286,6 +305,7 @@ class PhysicalConfigChange(ConfigModel):
     R: Optional[List[List[float]]]
     E_ref: Optional[float]
     comment: Optional[str]
+
 
 class PhysicalConfig(ConfigModel):
     name: Optional[str]
@@ -308,10 +328,12 @@ class PhysicalConfig(ConfigModel):
                                LiH=[[0.0, 0.0, 0.0], [3.015, 0.0, 0.0]],
                                HChain10=[[2.0 * i, 0.0, 0.0] for i in range(10)],
                                HChain6=[[1.8 * i, 0.0, 0.0] for i in range(6)],
-                               Ethene=[[1.26517164, 0, 0], [-1.26517164, 0, 0], [2.328293764, 1.7554138407, 0], [2.328293764, -1.7554138407, 0],
+                               Ethene=[[1.26517164, 0, 0], [-1.26517164, 0, 0], [2.328293764, 1.7554138407, 0],
+                                       [2.328293764, -1.7554138407, 0],
                                        [-2.328293764, 1.7554138407, 0], [-2.328293764, -1.7554138407, 0]],
-                               EtheneBarrier=[[1.26517164, 0, 0], [-1.26517164, 0, 0], [2.328293764, 0, 1.7554138407], [2.328293764, 0, -1.7554138407],
-                                       [-2.328293764, 1.7554138407, 0], [-2.328293764, -1.7554138407, 0]],
+                               EtheneBarrier=[[1.26517164, 0, 0], [-1.26517164, 0, 0], [2.328293764, 0, 1.7554138407],
+                                              [2.328293764, 0, -1.7554138407],
+                                              [-2.328293764, 1.7554138407, 0], [-2.328293764, -1.7554138407, 0]],
                                Cyclobutadiene=[
                                    [-1.4777688, -1.2793472, 0],
                                    [+1.4777688, -1.2793472, 0],
@@ -327,8 +349,8 @@ class PhysicalConfig(ConfigModel):
                             LiH=[3, 1],
                             HChain10=[1] * 10,
                             HChain6=[1] * 6,
-                            Ethene=[6,6,1,1,1,1],
-                            EtheneBarrier=[6,6,1,1,1,1],
+                            Ethene=[6, 6, 1, 1, 1, 1],
+                            EtheneBarrier=[6, 6, 1, 1, 1, 1],
                             Cyclobutadiene=[6, 6, 6, 6, 1, 1, 1, 1])
     _DEFAULT_SPIN = dict(H=1, He=0, Li=1, Be=0, B=1, C=2, N=3, O=2, F=1, Ne=0, Na=1, Mg=0, Al=1, Si=2, P=3, S=2, Cl=1,
                          Ar=0, Ethene=0, Cyclobutadiene=0, HChain6=0, HChain10=0)
@@ -338,7 +360,8 @@ class PhysicalConfig(ConfigModel):
                                     HChain6=[0, 2, 4, 1, 3, 5],
                                     HChain10=[0, 2, 4, 6, 8, 1, 3, 5, 7, 9],
                                     Ethene=[0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 2, 4, 3, 5],
-                                    Cyclobutadiene = [0,0,0,1,1,1,2,2,2,3,3,3,4,6,0,0,0,1,1,1,2,2,2,3,3,3,5,7]
+                                    Cyclobutadiene=[0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 6, 0, 0, 0, 1, 1, 1, 2, 2, 2,
+                                                    3, 3, 3, 5, 7]
                                     )
     _DEFAULT_CAS_N_ACTIVE_ORBITALS = dict(He=2, Li=9, Be=8, LiH=10, B=12, C=12, N=12, O=12, F=12,
                                           Ne=12, H2=4, Li2=16, Be2=16, B2=16, C2=16, N2=16,
@@ -346,14 +369,16 @@ class PhysicalConfig(ConfigModel):
                                           Ethene=12, Cyclobutadiene=12)
 
     _DEFAULT_CAS_N_ACTIVE_ELECTRONS = dict(He=2, Li=3, Be=2, LiH=2, B=3, C=4, N=5, O=6, F=7, Ne=8, H2=2, Li2=2, Be2=4,
-                                           B2=6, C2=8, N2=6, H2p=1, H3plus=2, H4plus=3, H4Rect=4, HChain6=6, HChain10=10, Ethene=12, Cyclobutadiene=12)
+                                           B2=6, C2=8, N2=6, H2p=1, H3plus=2, H4plus=3, H4Rect=4, HChain6=6,
+                                           HChain10=10, Ethene=12, Cyclobutadiene=12)
 
-    _REFERENCE_ENERGIES = {'He': -2.90372, 'Li': -7.478067, 'Be': -14.66733, 'B': -24.65371, 'C': -37.84471, 'N': -54.58882,
-                          'O': -75.06655, 'F': -99.7329, 'Ne': -128.9366, 'H2': -1.17448, 'LiH': -8.070548,
-                          'N2': -109.5423, 'Li2': -14.9954, 'CO': -113.3255, 'Be2': -29.338, 'B2': -49.4141,
-                          'C2': -75.9265, 'O2': -150.3274, 'F2': -199.5304, 'H4Rect': -2.0155,
-                          'H3plus': -1.3438355180000001, 'H4plus': -1.8527330000000002, 'HChain6': -3.40583160,
-                          'HChain10': -5.6655, 'Ethene': -78.57744597}
+    _REFERENCE_ENERGIES = {'He': -2.90372, 'Li': -7.478067, 'Be': -14.66733, 'B': -24.65371, 'C': -37.84471,
+                           'N': -54.58882,
+                           'O': -75.06655, 'F': -99.7329, 'Ne': -128.9366, 'H2': -1.17448, 'LiH': -8.070548,
+                           'N2': -109.5423, 'Li2': -14.9954, 'CO': -113.3255, 'Be2': -29.338, 'B2': -49.4141,
+                           'C2': -75.9265, 'O2': -150.3274, 'F2': -199.5304, 'H4Rect': -2.0155,
+                           'H3plus': -1.3438355180000001, 'H4plus': -1.8527330000000002, 'HChain6': -3.40583160,
+                           'HChain10': -5.6655, 'Ethene': -78.57744597}
 
     @validator("R", always=True)
     def populate_R(cls, v, values):
@@ -373,7 +398,8 @@ class PhysicalConfig(ConfigModel):
             else:
                 Z = cls._DEFAULT_CHARGES[values['name']]
         if len(Z) != len(values['R']):
-            raise pydantic.ValidationError(f"List of nuclear charges Z has length {len(Z)}, but list of ion positions R has length {len(values['R'])}")
+            raise pydantic.ValidationError(
+                f"List of nuclear charges Z has length {len(Z)}, but list of ion positions R has length {len(values['R'])}")
         return Z
 
     @validator("n_electrons", always=True)
@@ -396,7 +422,8 @@ class PhysicalConfig(ConfigModel):
             else:
                 v = cls._DEFAULT_EL_ION_MAPPINGS[values['name']]
         if len(v) != values['n_electrons']:
-            raise pydantic.ValidationError(f"An initial ion-mapping must be supplied for all electrons. len(el_ion_mapping)={len(v)}, n_electrons={values['n_electrons']}")
+            raise pydantic.ValidationError(
+                f"An initial ion-mapping must be supplied for all electrons. len(el_ion_mapping)={len(v)}, n_electrons={values['n_electrons']}")
         return v
 
     @validator("n_cas_electrons", always=True)
@@ -430,12 +457,15 @@ class PhysicalConfig(ConfigModel):
             ret.append(p)
         return ret
 
+
 class LoggerBaseConfig(ConfigModel):
     n_skip_epochs = 0
 
+
 class WandBConfig(LoggerBaseConfig):
     project: Optional[str] = "default"
-    entity:Optional[str]
+    entity: Optional[str]
+
 
 class BasicLoggerConfig(LoggerBaseConfig):
     log_to_stdout = True
@@ -446,6 +476,7 @@ class BasicLoggerConfig(LoggerBaseConfig):
 
 class PickleLoggerConfig(LoggerBaseConfig):
     fname = 'results.bz2'
+
 
 class LoggingConfig(ConfigModel):
     tags: List[str] = []
@@ -462,27 +493,20 @@ class LoggingConfig(ConfigModel):
     #             logger_names.append(k)
     #     return logger_names
 
-class VSC3Config(ConfigModel):
-    queue: Literal["vsc3plus_0064", "devel_0128", "gpu_a40dual", "gpu_gtx1080amd", "gpu_gtx1080multi", "gpu_gtx1080single", "gpu_v100", "gpu_k20m", "gpu_rtx2080ti", "jupyter", "normal_binf", "vsc3plus_0256"]  = 'gpu_rtx2080ti'
-    time = "1day"
-    conda_env = "jax"
 
-class VSC4Config(ConfigModel):
-    queue:  Literal["mem_0096", "devel_0096", "jupyter", "mem_0096", "mem_0384", "mem_0768"]  = 'mem_0096'
-    time = "1day"
+class DispatchConfig(ConfigModel):
+    system: Literal["local", "vsc3", "vsc4", "dgx", "auto"] = "auto"
+    queue: Literal[
+        "default", "vsc3plus_0064", "devel_0128", "gpu_a40dual", "gpu_gtx1080amd", "gpu_gtx1080multi", "gpu_gtx1080single", "gpu_v100", "gpu_k20m", "gpu_rtx2080ti", "jupyter", "normal_binf", "vsc3plus_0256", "mem_0096", "devel_0096", "jupyter", "mem_0096", "mem_0384", "mem_0768"] = "default"
+    time: str = "1day"
+    conda_env: str = "jax"
 
-class DGXConfig(ConfigModel):
-    time = "1day"
-    conda_env = "jax"
 
 class ComputationConfig(ConfigModel):
     use_gpu = True
     disable_jit = False
     float_precision: Literal["float32", "float64"] = "float32"
-    dispatch: Literal["local", "vsc3", "vsc4", "dgx", "auto"] = "auto"
-    vsc3: Optional[VSC3Config] = VSC3Config()
-    vsc4: Optional[VSC4Config] = VSC4Config()
-    dgx: Optional[DGXConfig] = DGXConfig()
+
 
 class Configuration(ConfigModel):
     physical: Optional[PhysicalConfig]
@@ -492,6 +516,7 @@ class Configuration(ConfigModel):
     model: Union[DeepErwinModelConfig] = DeepErwinModelConfig()
     logging = LoggingConfig()
     computation = ComputationConfig()
+    dispatch = DispatchConfig()
     restart: Optional[RestartConfig]
     comment: Optional[str]
     experiment_name: str = None
@@ -500,7 +525,7 @@ class Configuration(ConfigModel):
     def walkers_divisible_by_batch_size(cls, values):
         n_walkers = values['mcmc'].n_walkers_opt
         batch_size = values['optimization'].batch_size
-        if (n_walkers %  batch_size) != 0:
+        if (n_walkers % batch_size) != 0:
             raise ValueError(f"Number of walkers ({n_walkers}) is not divisible by batch-size ({batch_size})")
         return values
 
@@ -509,6 +534,7 @@ class Configuration(ConfigModel):
         if values['experiment_name'] is None:
             values['experiment_name'] = values["physical"].name
         return values
+
 
 # Helper Functions
 def get_attribute_by_nested_key(config: Configuration, key):
@@ -519,6 +545,7 @@ def get_attribute_by_nested_key(config: Configuration, key):
         parent_key = tokens[0]
         child_key = ".".join(tokens[1:])
         return get_attribute_by_nested_key(getattr(config, parent_key), child_key)
+
 
 def set_with_nested_key(config_dict, key, value):
     if "." not in key:
@@ -532,22 +559,24 @@ def set_with_nested_key(config_dict, key, value):
         set_with_nested_key(config_dict[parent_key], child_key, value)
     return config_dict
 
+
 def build_nested_dict(flattened_dict):
     root_dict = {}
-    for k,value in flattened_dict.items():
+    for k, value in flattened_dict.items():
         key_tokens = k.split('.')
         d = root_dict
-        for i,key in enumerate(key_tokens):
+        for i, key in enumerate(key_tokens):
             if i == len(key_tokens) - 1:
-                d[key] = value # reached leaf => store value
+                d[key] = value  # reached leaf => store value
                 continue
             if key not in d:
                 d[key] = {}
-            d = d[key] # traverse further
+            d = d[key]  # traverse further
     return root_dict
 
+
 if __name__ == '__main__':
-    from ruamel import yaml
+    pass
 
     #
     # parsed_config = Configuration.parse_obj(raw_config)
@@ -556,5 +585,3 @@ if __name__ == '__main__':
     # c = Configuration(physical=PhysicalConfig(name='C'))
     # d = c.get_as_flattened_dict()
     # print(d)
-
-
