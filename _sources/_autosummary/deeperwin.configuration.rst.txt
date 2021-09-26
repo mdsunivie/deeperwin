@@ -1,4 +1,4 @@
-deeperwin.configuration
+﻿deeperwin.configuration
 =======================
 
 .. automodule:: deeperwin.configuration
@@ -37,8 +37,8 @@ deeperwin.configuration
       ConfigModel
       Configuration
       CuspCorrectionConfig
-      DGXConfig
       DeepErwinModelConfig
+      DispatchConfig
       DummyEmbeddingConfig
       EvaluationConfig
       FixedLRSchedule
@@ -59,8 +59,6 @@ deeperwin.configuration
       RestartConfig
       SimpleSchnetConfig
       StandardOptimizerConfig
-      VSC3Config
-      VSC4Config
       WandBConfig
    
    

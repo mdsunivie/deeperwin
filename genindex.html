@@ -118,7 +118,7 @@
 </li>
         <li><a href="_autosummary/deeperwin.configuration.DeepErwinModelConfig.html#deeperwin.configuration.DeepErwinModelConfig.__init__">(deeperwin.configuration.DeepErwinModelConfig method)</a>
 </li>
-        <li><a href="_autosummary/deeperwin.configuration.DGXConfig.html#deeperwin.configuration.DGXConfig.__init__">(deeperwin.configuration.DGXConfig method)</a>
+        <li><a href="_autosummary/deeperwin.configuration.DispatchConfig.html#deeperwin.configuration.DispatchConfig.__init__">(deeperwin.configuration.DispatchConfig method)</a>
 </li>
         <li><a href="_autosummary/deeperwin.configuration.DummyEmbeddingConfig.html#deeperwin.configuration.DummyEmbeddingConfig.__init__">(deeperwin.configuration.DummyEmbeddingConfig method)</a>
 </li>
@@ -159,10 +159,6 @@
         <li><a href="_autosummary/deeperwin.configuration.SimpleSchnetConfig.html#deeperwin.configuration.SimpleSchnetConfig.__init__">(deeperwin.configuration.SimpleSchnetConfig method)</a>
 </li>
         <li><a href="_autosummary/deeperwin.configuration.StandardOptimizerConfig.html#deeperwin.configuration.StandardOptimizerConfig.__init__">(deeperwin.configuration.StandardOptimizerConfig method)</a>
-</li>
-        <li><a href="_autosummary/deeperwin.configuration.VSC3Config.html#deeperwin.configuration.VSC3Config.__init__">(deeperwin.configuration.VSC3Config method)</a>
-</li>
-        <li><a href="_autosummary/deeperwin.configuration.VSC4Config.html#deeperwin.configuration.VSC4Config.__init__">(deeperwin.configuration.VSC4Config method)</a>
 </li>
         <li><a href="_autosummary/deeperwin.configuration.WandBConfig.html#deeperwin.configuration.WandBConfig.__init__">(deeperwin.configuration.WandBConfig method)</a>
 </li>
@@ -660,8 +656,6 @@
 </li>
       <li><a href="_autosummary/deeperwin.kfac_ferminet_alpha.curvature_blocks.DenseTwoKroneckerFactored.html#deeperwin.kfac_ferminet_alpha.curvature_blocks.DenseTwoKroneckerFactored">DenseTwoKroneckerFactored (class in deeperwin.kfac_ferminet_alpha.curvature_blocks)</a>
 </li>
-      <li><a href="_autosummary/deeperwin.configuration.DGXConfig.html#deeperwin.configuration.DGXConfig">DGXConfig (class in deeperwin.configuration)</a>
-</li>
       <li><a href="_autosummary/deeperwin.kfac_ferminet_alpha.tag_graph_matcher.JaxGraph.html#deeperwin.kfac_ferminet_alpha.tag_graph_matcher.JaxGraph.digraph">digraph (deeperwin.kfac_ferminet_alpha.tag_graph_matcher.JaxGraph attribute)</a>
 </li>
       <li><a href="_autosummary/deeperwin.dispatch.dispatch_job.html#deeperwin.dispatch.dispatch_job">dispatch_job() (in module deeperwin.dispatch)</a>
@@ -673,6 +667,8 @@
       <li><a href="_autosummary/deeperwin.dispatch.dispatch_to_vsc3.html#deeperwin.dispatch.dispatch_to_vsc3">dispatch_to_vsc3() (in module deeperwin.dispatch)</a>
 </li>
       <li><a href="_autosummary/deeperwin.dispatch.dispatch_to_vsc4.html#deeperwin.dispatch.dispatch_to_vsc4">dispatch_to_vsc4() (in module deeperwin.dispatch)</a>
+</li>
+      <li><a href="_autosummary/deeperwin.configuration.DispatchConfig.html#deeperwin.configuration.DispatchConfig">DispatchConfig (class in deeperwin.configuration)</a>
 </li>
       <li><a href="_autosummary/deeperwin.kfac_ferminet_alpha.loss_functions.DistributionNegativeLogProbLoss.html#deeperwin.kfac_ferminet_alpha.loss_functions.DistributionNegativeLogProbLoss.dist">dist (deeperwin.kfac_ferminet_alpha.loss_functions.DistributionNegativeLogProbLoss property)</a>
 
@@ -1315,6 +1311,8 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="_autosummary/deeperwin.process_molecules_inter.update_opt_state.html#deeperwin.process_molecules_inter.update_opt_state">update_opt_state() (in module deeperwin.process_molecules_inter)</a>
 </li>
+      <li><a href="_autosummary/deeperwin.process_molecules_inter.update_shared_weights.html#deeperwin.process_molecules_inter.update_shared_weights">update_shared_weights() (in module deeperwin.process_molecules_inter)</a>
+</li>
       <li><a href="_autosummary/deeperwin.process_molecules_inter.update_wf.html#deeperwin.process_molecules_inter.update_wf">update_wf() (in module deeperwin.process_molecules_inter)</a>
 </li>
   </ul></td>
@@ -1327,17 +1325,13 @@
 </li>
       <li><a href="_autosummary/deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator.html#deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator.vec_block_apply">vec_block_apply() (deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator method)</a>
 </li>
-      <li><a href="_autosummary/deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator.html#deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator.vectors_to_blocks">vectors_to_blocks() (deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator method)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="_autosummary/deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator.html#deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator.vectors_to_blocks">vectors_to_blocks() (deeperwin.kfac_ferminet_alpha.estimator.CurvatureEstimator method)</a>
+</li>
       <li><a href="_autosummary/deeperwin.kfac_ferminet_alpha.optimizer.Optimizer.html#deeperwin.kfac_ferminet_alpha.optimizer.Optimizer.velocities_and_delta">velocities_and_delta() (deeperwin.kfac_ferminet_alpha.optimizer.Optimizer method)</a>
 </li>
       <li><a href="_autosummary/deeperwin.kfac_ferminet_alpha.optimizer.Optimizer.html#deeperwin.kfac_ferminet_alpha.optimizer.Optimizer.verify_args_and_get_step_counter">verify_args_and_get_step_counter() (deeperwin.kfac_ferminet_alpha.optimizer.Optimizer method)</a>
-</li>
-      <li><a href="_autosummary/deeperwin.configuration.VSC3Config.html#deeperwin.configuration.VSC3Config">VSC3Config (class in deeperwin.configuration)</a>
-</li>
-      <li><a href="_autosummary/deeperwin.configuration.VSC4Config.html#deeperwin.configuration.VSC4Config">VSC4Config (class in deeperwin.configuration)</a>
 </li>
   </ul></td>
 </tr></table>

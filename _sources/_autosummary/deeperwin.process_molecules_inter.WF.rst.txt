@@ -28,10 +28,10 @@ deeperwin.process\_molecules\_inter.WF
       ~WF.checkpoints
       ~WF.clipping_params
       ~WF.fixed_params
+      ~WF.init_trainable_params
       ~WF.loggers
       ~WF.mcmc_state
       ~WF.opt_state
       ~WF.physical
-      ~WF.trainable_params
    
    
