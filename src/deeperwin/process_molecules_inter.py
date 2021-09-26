@@ -40,11 +40,13 @@ def is_shared_module(key, shared_modules):
         return False
     return key in shared_modules
 
+
 def update_shared_weights(dest_weights, src_weights, shared_modules):
     for mod in src_weights.keys():
         if is_shared_module(mod, shared_modules):
             dest_weights[mod] = src_weights[mod]
     return dest_weights
+
 
 def init_wf(config: Configuration):
     wfs = []
@@ -58,25 +60,28 @@ def init_wf(config: Configuration):
 
         # init parameters
         if i == 0:
-            _, log_psi_squared, wf.init_trainable_params, wf.fixed_params  = build_log_psi_squared(config.model, p)
+            _, log_psi_squared, wf.init_trainable_params, wf.fixed_params = build_log_psi_squared(config.model, p)
         else:
             _, _, wf.init_trainable_params, wf.fixed_params = build_log_psi_squared(config.model, p)
 
         if i != 0:
-            wf.init_trainable_params = update_shared_weights(wf.init_trainable_params, wfs[0].init_trainable_params, config.optimization.shared_modules)
+            wf.init_trainable_params = update_shared_weights(wf.init_trainable_params, wfs[0].init_trainable_params,
+                                                             config.optimization.shared_modules)
 
         # MCMC state
         wf.mcmc_state = MCMCState.initialize_around_nuclei(config.mcmc.n_walkers_opt, p)
-        wf.mcmc_state.log_psi_sqr = log_psi_squared(*wf.mcmc_state.model_args, wf.init_trainable_params, wf.fixed_params)
+        wf.mcmc_state.log_psi_sqr = log_psi_squared(*wf.mcmc_state.model_args, wf.init_trainable_params,
+                                                    wf.fixed_params)
 
         # make folder for single WF (stores adjusted config and logger data)
         job_name = idx_to_job_name(i)
         job_dir = setup_job_dir(".", job_name)
 
         # init loggers
-        loggers = LoggerCollection(config.logging, config.experiment_name + "_" + job_name, save_path= job_name, prefix= f"{job_name}_")
+        loggers = LoggerCollection(config.logging, config.experiment_name + "_" + job_name, save_path=job_name,
+                                   prefix=f"{job_name}_")
         loggers.on_run_begin()
-        #loggers.log_params(config.get_as_flattened_dict())
+        # loggers.log_params(config.get_as_flattened_dict())
         loggers.log_tags(config.logging.tags)
         loggers.log_metrics(dict(E_hf=wf.fixed_params["E_hf"], E_casscf=wf.fixed_params["E_casscf"]))
         loggers.log_param("n_params", get_number_of_params(wf.init_trainable_params))
@@ -89,9 +94,9 @@ def init_wf(config: Configuration):
         config_wf.save(os.path.join(job_dir, "full_config.yml"))
 
         # prepare checkpoints
-        wf.checkpoints = prepare_checkpoints(job_dir, config.optimization.checkpoints, config) if len(config.optimization.checkpoints) > 0 else {}
+        wf.checkpoints = prepare_checkpoints(job_dir, config.optimization.checkpoints, config) if len(
+            config.optimization.checkpoints) > 0 else {}
         wfs.append(wf)
-
 
     mcmc = MetropolisHastingsMonteCarlo(config.mcmc)
     return log_psi_squared, mcmc, wfs
@@ -131,18 +136,20 @@ def update_opt_state(opt_state, params):
     new_states_flat, subtrees2 = unzip2(map(tree_flatten, new_states))
     return OptimizerState(new_states_flat, tree, subtrees)
 
-def update_wf(index, index_next, mcmc_state, opt_state, opt_get_params, clipping_params, wfs, shared_modules):
 
+def update_wf(index, index_next, mcmc_state, opt_state, opt_get_params, clipping_params, wfs, shared_modules):
     # update elements in WF dataclass
     wfs[index].mcmc_state = mcmc_state
     wfs[index].opt_state = opt_state
     wfs[index].clipping_params = clipping_params
 
     # update shared modules for next wavefunction
-    params_next = update_shared_weights(opt_get_params(wfs[index_next].opt_state), opt_get_params(opt_state), shared_modules)
+    params_next = update_shared_weights(opt_get_params(wfs[index_next].opt_state), opt_get_params(opt_state),
+                                        shared_modules)
     wfs[index_next].opt_state = update_opt_state(wfs[index_next].opt_state, params_next)
 
     return wfs
+
 
 def get_index(n_epoch, n_wfs, method="round_robin"):
     if method == "round_robin":
@@ -181,11 +188,13 @@ def optimize_inter(config: Configuration, wfs, mcmc, log_psi_squared):
                 if wf.loggers is not None:
                     # update opt_state with current shared weights
                     wf_params = opt_get_params(wf.opt_state)
-                    wf_params = update_shared_weights(wf_params, opt_get_params(opt_state), config.optimization.shared_modules)
+                    wf_params = update_shared_weights(wf_params, opt_get_params(opt_state),
+                                                      config.optimization.shared_modules)
                     wf.opt_state = update_opt_state(wf.opt_state, wf_params)
 
                     # create full data dict
-                    full_data = dict(trainable=wf_params, fixed= wf.fixed_params, mcmc=wf.mcmc_state, opt = make_opt_state_picklable(wf.opt_state))
+                    full_data = dict(trainable=wf_params, fixed=wf.fixed_params, mcmc=wf.mcmc_state,
+                                     opt=make_opt_state_picklable(wf.opt_state))
 
                     # log weights
                     wf.loggers.log_weights(full_data)
@@ -241,7 +250,7 @@ if __name__ == "__main__":
 
     for wf in wfs:
         wf.loggers.log_weights(dict(trainable=opt_get_params(wf.opt_state), fixed=wf.fixed_params, mcmc=wf.mcmc_state,
-                                 opt=make_opt_state_picklable(wf.opt_state)))
+                                    opt=make_opt_state_picklable(wf.opt_state)))
 
     # Wavefunction evaluation
     if config.evaluation.n_epochs > 0:
@@ -254,12 +263,12 @@ if __name__ == "__main__":
             mcmc_state = resize_nr_of_walkers(wf.mcmc_state, config.mcmc.n_walkers_eval)
             trainable_params = opt_get_params(wf.opt_state)
             E_eval, forces_eval, mcmc_state = evaluate_wavefunction(log_psi_squared,
-                                                       trainable_params,
-                                                       wf.fixed_params,
-                                                       mcmc,
-                                                       mcmc_state,
-                                                       config.evaluation,
-                                                       wf[i].loggers)
+                                                                    trainable_params,
+                                                                    wf.fixed_params,
+                                                                    mcmc,
+                                                                    mcmc_state,
+                                                                    config.evaluation,
+                                                                    wf[i].loggers)
             # Postprocessing
             E_mean = jnp.nanmean(E_eval)
             E_mean_sigma = jnp.nanstd(E_eval) / jnp.sqrt(len(E_eval))
@@ -268,7 +277,7 @@ if __name__ == "__main__":
             if wf.physical.E_ref is not None:
                 error_eval, sigma_eval = 1e3 * (E_mean - wf.physical.E_ref), 1e3 * E_mean_sigma
                 wf[i].loggers.log_metrics(dict(error_eval=error_eval, sigma_error_eval=sigma_eval,
-                                         error_plus_2_stdev=error_eval + 2 * sigma_eval))
+                                               error_plus_2_stdev=error_eval + 2 * sigma_eval))
                 error_set.append(error_eval)
                 sigma_set.append(sigma_eval)
                 error_plus_2_stdev_set.append(error_eval + 2 * sigma_eval)
@@ -277,8 +286,9 @@ if __name__ == "__main__":
                 forces_mean = jnp.nanmean(forces_eval, axis=0)
                 wf[i].loggers.log_metric('forces_mean', forces_mean)
 
-        loggers_set.log_metrics(dict(error_eval=jnp.nanmean(jnp.array(error_set)), sigma_error_eval = jnp.nanmean(jnp.array(sigma_set)),
-                                         error_plus_2_stdev=jnp.nanmean(jnp.array(error_plus_2_stdev_set))), metric_type="eval")
+        loggers_set.log_metrics(
+            dict(error_eval=jnp.nanmean(jnp.array(error_set)), sigma_error_eval=jnp.nanmean(jnp.array(sigma_set)),
+                 error_plus_2_stdev=jnp.nanmean(jnp.array(error_plus_2_stdev_set))), metric_type="eval")
     for wf in wfs:
         wf.loggers.on_run_end()
     loggers_set.on_run_end()
