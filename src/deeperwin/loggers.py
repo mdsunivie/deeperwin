@@ -1,15 +1,21 @@
-import copy
+"""
+Logging of metrics and weights to local disk and web services.
+"""
+
 import logging
 import os.path
 import sys
 import threading
-import numpy as np
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Literal
+
+import numpy as np
 import wandb
+
 from deeperwin.configuration import LoggingConfig, BasicLoggerConfig, LoggerBaseConfig, PickleLoggerConfig, \
     WandBConfig
 from deeperwin.dispatch import save_to_file
+
 
 class DataLogger(ABC):
     """
@@ -111,6 +117,7 @@ class LoggerCollection(DataLogger):
     def log_weights(self, weight_dict):
         for l in self.loggers:
             l.log_weights(weight_dict)
+
 
 class WandBLogger(DataLogger):
     def __init__(self, config: WandBConfig, name, save_path='.', prefix=''):

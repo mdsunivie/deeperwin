@@ -1,9 +1,16 @@
-from jax import numpy as jnp
+"""
+Definitions of wavefunction models (DeepErwin, baseline)
+"""
+
+import logging
+
 import numpy as np
+from jax import numpy as jnp
+
+from deeperwin.configuration import DeepErwinModelConfig, SimpleSchnetConfig, PhysicalConfig, CASSCFConfig
 from deeperwin.orbitals import build_el_el_cusp_correction, evaluate_molecular_orbitals, get_baseline_solution
 from deeperwin.utils import get_el_ion_distance_matrix, get_distance_matrix
-from deeperwin.configuration import DeepErwinModelConfig, SimpleSchnetConfig, PhysicalConfig, CASSCFConfig
-import logging
+
 try:
     from register_curvature import register_repeated_dense
     from kfac_ferminet_alpha.layers_and_loss_tags import register_scale_and_shift
@@ -39,7 +46,7 @@ def scale(X, params, register):
     Args:
         X (array): Input
         params (array): Scale
-        register (bool): Flag that controls whether the scaling is registered. Important for K-FAC implementation.
+        register (bool): Enables registration of scaling function for the K-FAC algorithm.
 
     """
     y = jnp.exp(params.squeeze()) * X
@@ -57,7 +64,7 @@ def dense_layer(X, W, b, register):
         X (array): Input
         W (array): Weights
         b (array): Bias
-        register (bool): Flag that controls whether the layer is registered. Important for K-FAC implementation.
+        register (bool): Enables registration of the layer for the K-FAC algorithm.
 
     """
     y = jnp.dot(X, W) + b
@@ -75,7 +82,7 @@ def ffwd_net(params, X, linear_output=True, register=True):
         params (array): Weights and biases of the network
         X (array): Input
         linear_output (bool): If false, the non-linearity is applied to the output layer.
-        register (bool): Flag that controls whether the single layers are being registered. Important for K-FAC implementation.
+        register (bool): Enables registration of the single layers for the K-FAC algorithm.
 
     """
     for p in params[:-1]:
@@ -88,20 +95,20 @@ def ffwd_net(params, X, linear_output=True, register=True):
         return jnp.tanh(X)
 
 
-def init_ffwd_net(n_neurons, input_dim, n_parallel=None):
+def init_ffwd_net(n_neurons, input_dim, n_parallel=1):
     """
     Initializes the parameters for a fully-connected feed-forward neural network.
 
     Args:
         n_neurons (list[int]): Number of neurons in each layer
         input_dim (int): Input dimension
-        n_parallel (int): Number of affine linear mappings that are initialized for each layer
+        n_parallel (int): Number of independent affine linear mappings that are initialized for each layer. Can be used to build a model that represents multiple wavefunctions.
 
     Returns:
         array: Initial parameters
 
     """
-    if n_parallel is None:
+    if n_parallel == 1:
         parallel_dims = []
     else:
         parallel_dims = [n_parallel]

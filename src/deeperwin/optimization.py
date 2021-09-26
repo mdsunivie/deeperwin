@@ -1,3 +1,7 @@
+"""
+Logic for wavefunction optimization.
+"""
+
 import time
 
 from deeperwin.bfgs import build_bfgs_optimizer, calculate_metrics_bfgs
@@ -102,6 +106,7 @@ def build_grad_loss(log_psi_func, clipping_config: ClippingConfig, use_fwd_fwd_h
         use_fwd_fwd_hessian (bool): If true, the second partial derivatives required for computing the local energy are obtained with a forward-forward scheme.
 
     """
+
     @jax.custom_jvp
     def total_energy(trainable_params, aux_params):
         r, R, Z, fixed_params, clipping_state = aux_params
@@ -133,7 +138,7 @@ def optimize_wavefunction(
         mcmc: MetropolisHastingsMonteCarlo,
         mcmc_state: MCMCState,
         opt_config: OptimizationConfig,
-        checkpoints = {},
+        checkpoints={},
         logger: DataLogger = None
 ):
     """
@@ -179,7 +184,8 @@ def optimize_wavefunction(
         t_end = time.time()
 
         if n_epoch in checkpoints and logger is not None:
-            full_data = dict(trainable=opt_get_params(opt_state), fixed=fixed_params, mcmc=mcmc_state, opt = make_opt_state_picklable(opt_state))
+            full_data = dict(trainable=opt_get_params(opt_state), fixed=fixed_params, mcmc=mcmc_state,
+                             opt=make_opt_state_picklable(opt_state))
             logger.log_weights(full_data)
             logging.info(f"Logging checkpoint to folder {checkpoints[n_epoch]}")
             logger.log_checkpoint(checkpoints[n_epoch])
@@ -191,7 +197,8 @@ def optimize_wavefunction(
         if n_epoch in eval_checkpoints:
             logging.debug(f"opt epoch {n_epoch:5d}: Running intermediate evaluation...")
             E_eval, _, _ = evaluate_wavefunction(log_psi_squared, opt_get_params(opt_state), fixed_params, mcmc,
-                                              mcmc_state, EvaluationConfig(n_epochs=opt_config.intermediate_eval.n_epochs))
+                                                 mcmc_state,
+                                                 EvaluationConfig(n_epochs=opt_config.intermediate_eval.n_epochs))
             logger.log_metrics(dict(E_intermed_eval_mean=jnp.mean(E_eval), E_intermed_eval_std=jnp.std(E_eval)),
                                n_epoch, "opt")
         t_start = t_end

@@ -1,4 +1,4 @@
-deeperwin.process\_molecules\_inter
+﻿deeperwin.process\_molecules\_inter
 ===================================
 
 .. automodule:: deeperwin.process_molecules_inter
@@ -19,6 +19,7 @@ deeperwin.process\_molecules\_inter
       is_shared_module
       optimize_inter
       update_opt_state
+      update_shared_weights
       update_wf
       warm_up_opt
    

@@ -1,3 +1,7 @@
+"""
+DeepErwin CLI
+"""
+
 #!/usr/bin/env python3
 import argparse
 import itertools
@@ -144,6 +148,7 @@ def main():
             command = ["python", str(get_fname_fullpath("process_molecule.py")), "config.yml"]
 
         dispatch_job(command, job_dir, job_config)
+
 
 if __name__ == '__main__':
     main()

@@ -1,8 +1,13 @@
-from deeperwin.kfac_ferminet_alpha import optimizer as kfac_optim
-from deeperwin.kfac_ferminet_alpha import loss_functions
+"""
+Helper functions for K-FAC 2nd-order optimization.
+"""
+
 from deeperwin.configuration import OptimizationConfig
 from deeperwin.hamiltonian import *
+from deeperwin.kfac_ferminet_alpha import loss_functions
+from deeperwin.kfac_ferminet_alpha import optimizer as kfac_optim
 from deeperwin.utils import build_inverse_schedule, get_builtin_optimizer, calculate_clipping_state
+
 
 def build_grad_loss_kfac(log_psi_func, clipping_config: ClippingConfig, use_fwd_fwd_hessian=False):
     # Build custom total energy jvp. Based on https://github.com/deepmind/ferminet/blob/jax/ferminet/train.py
@@ -36,8 +41,9 @@ def build_grad_loss_kfac(log_psi_func, clipping_config: ClippingConfig, use_fwd_
 
     return grad_loss_func
 
-def build_optimize_epoch_kfac_test(grad_loss_func, initial_params, opt_config: OptimizationConfig, r_batch, func_state, log_psi_squared, mcmc, n_walkers, n_batches):
 
+def build_optimize_epoch_kfac_test(grad_loss_func, initial_params, opt_config: OptimizationConfig, r_batch, func_state,
+                                   log_psi_squared, mcmc, n_walkers, n_batches):
     learning_rate_scheduler = build_inverse_schedule(opt_config.learning_rate, opt_config.optimizer.decay_time)
     optimizer = kfac_optim.Optimizer(
         grad_loss_func,
@@ -54,7 +60,7 @@ def build_optimize_epoch_kfac_test(grad_loss_func, initial_params, opt_config: O
         min_damping=opt_config.optimizer.min_damping,
         multi_device=False,
         curvature_ema=1.0 - opt_config.optimizer.curvature_ema
-        #debug=True
+        # debug=True
     )
 
     key_init = jax.random.PRNGKey(1245123)
@@ -63,11 +69,13 @@ def build_optimize_epoch_kfac_test(grad_loss_func, initial_params, opt_config: O
     kfac_opt_state = optimizer.init(initial_params, subkeys, r_batch, func_state)
 
     if opt_config.optimizer.internal_optimizer is not None:
-        opt_init, opt_update, get_params_adam = get_builtin_optimizer(opt_config.optimizer.internal_optimizer, opt_config.schedule,
-                                                                 opt_config.learning_rate)
+        opt_init, opt_update, get_params_adam = get_builtin_optimizer(opt_config.optimizer.internal_optimizer,
+                                                                      opt_config.schedule,
+                                                                      opt_config.learning_rate)
         adam_state = opt_init(initial_params)
 
         opt_state = (adam_state, get_params_adam(adam_state), kfac_opt_state, opt_key)
+
         def _get_params(state):
             return get_params_adam(state[0])
 
@@ -78,12 +86,13 @@ def build_optimize_epoch_kfac_test(grad_loss_func, initial_params, opt_config: O
 
     else:
         opt_state = (None, initial_params, kfac_opt_state, opt_key)
+
         def _get_params(state):
             return state[1]
 
-
     if opt_config.optimizer.damping_scheduler:
-        damping_scheduler = build_inverse_schedule(opt_config.optimizer.damping, opt_config.optimizer.decay_time_damping)
+        damping_scheduler = build_inverse_schedule(opt_config.optimizer.damping,
+                                                   opt_config.optimizer.decay_time_damping)
     else:
         damping_scheduler = lambda x: opt_config.optimizer.damping
 
@@ -117,7 +126,6 @@ def build_optimize_epoch_kfac_test(grad_loss_func, initial_params, opt_config: O
 
         mcmc_state.log_psi_sqr = log_psi_squared(*mcmc_state.model_args, params, fixed_params)
         clipping_params = calculate_clipping_state(E_epoch, opt_config.clipping)
-
 
         opt_state = (adam_state, params, kfac_opt_state, key)
 

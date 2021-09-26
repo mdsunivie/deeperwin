@@ -1,3 +1,7 @@
+"""
+CLI to process multiple molecules with interdependent optimization.
+"""
+
 import argparse
 import copy
 import logging

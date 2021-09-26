@@ -1,3 +1,7 @@
+"""
+DeepErwin hyperparameter and configuration management.
+"""
+
 import warnings
 from abc import ABC, abstractmethod
 from typing import Union, Literal, Optional, List
@@ -6,7 +10,6 @@ import pydantic
 import ruamel.yaml.comments
 from pydantic import BaseModel, validator, root_validator
 from pydantic.fields import ModelField
-from ruamel.yaml import YAML
 
 
 class ConfigModel(BaseModel):

@@ -68,26 +68,35 @@
            <div itemprop="articleBody">
              
   <h1>Source code for deeperwin.dispatch</h1><div class="highlight"><pre>
-<span></span><span class="kn">import</span> <span class="nn">copy</span>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Dispatch management for different machines (clusters, local, ...)</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">bz2</span>
+<span class="kn">import</span> <span class="nn">copy</span>
+<span class="kn">import</span> <span class="nn">logging</span>
 <span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">pickle</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">shutil</span>
 <span class="kn">import</span> <span class="nn">subprocess</span>
 <span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
-<span class="kn">import</span> <span class="nn">re</span>
-<span class="kn">from</span> <span class="nn">ruamel</span> <span class="kn">import</span> <span class="n">yaml</span>
-<span class="kn">import</span> <span class="nn">shutil</span>
-<span class="kn">import</span> <span class="nn">logging</span>
-<span class="kn">from</span> <span class="nn">deeperwin.configuration</span> <span class="kn">import</span> <span class="n">Configuration</span>
-<span class="kn">import</span> <span class="nn">pickle</span>
-<span class="kn">import</span> <span class="nn">bz2</span>
+
 <span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">from</span> <span class="nn">ruamel</span> <span class="kn">import</span> <span class="n">yaml</span>
+
+<span class="kn">from</span> <span class="nn">deeperwin.configuration</span> <span class="kn">import</span> <span class="n">Configuration</span>
+
 
 <div class="viewcode-block" id="load_from_file"><a class="viewcode-back" href="../../_autosummary/deeperwin.dispatch.load_from_file.html#deeperwin.dispatch.load_from_file">[docs]</a><span class="k">def</span> <span class="nf">load_from_file</span><span class="p">(</span><span class="n">fname</span><span class="p">):</span>
     <span class="k">with</span> <span class="n">bz2</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span></div>
 
+
 <div class="viewcode-block" id="save_to_file"><a class="viewcode-back" href="../../_autosummary/deeperwin.dispatch.save_to_file.html#deeperwin.dispatch.save_to_file">[docs]</a><span class="k">def</span> <span class="nf">save_to_file</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="o">**</span><span class="n">data</span><span class="p">):</span>
     <span class="k">with</span> <span class="n">bz2</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
         <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span></div>
+
 
 <div class="viewcode-block" id="load_all_runs"><a class="viewcode-back" href="../../_autosummary/deeperwin.dispatch.load_all_runs.html#deeperwin.dispatch.load_all_runs">[docs]</a><span class="k">def</span> <span class="nf">load_all_runs</span><span class="p">(</span><span class="n">root_dir</span><span class="p">,</span> <span class="n">max_history_length</span><span class="o">=</span><span class="mi">50</span><span class="p">):</span>
     <span class="n">full_data</span> <span class="o">=</span> <span class="p">[]</span>
@@ -101,6 +110,7 @@
         <span class="n">data</span><span class="p">[</span><span class="s1">&#39;dirname&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">fname</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">name</span>
         <span class="n">full_data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">full_data</span><span class="p">)</span></div>
+
 
 <div class="viewcode-block" id="prepare_checkpoints"><a class="viewcode-back" href="../../_autosummary/deeperwin.dispatch.prepare_checkpoints.html#deeperwin.dispatch.prepare_checkpoints">[docs]</a><span class="k">def</span> <span class="nf">prepare_checkpoints</span><span class="p">(</span><span class="n">run_path</span><span class="p">,</span> <span class="n">chkpt_epochs</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Configuration</span><span class="p">):</span>
     <span class="n">checkpoints</span> <span class="o">=</span> <span class="p">{}</span>
@@ -199,9 +209,10 @@
 
 
 <div class="viewcode-block" id="dispatch_to_vsc3"><a class="viewcode-back" href="../../_autosummary/deeperwin.dispatch.dispatch_to_vsc3.html#deeperwin.dispatch.dispatch_to_vsc3">[docs]</a><span class="k">def</span> <span class="nf">dispatch_to_vsc3</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">run_dir</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Configuration</span><span class="p">):</span>
-    <span class="n">time_in_minutes</span> <span class="o">=</span> <span class="n">duration_string_to_minutes</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">computation</span><span class="o">.</span><span class="n">vsc3</span><span class="o">.</span><span class="n">time</span><span class="p">)</span>
-    <span class="n">jobfile_content</span> <span class="o">=</span> <span class="n">get_jobfile_content_vsc3</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">command</span><span class="p">),</span> <span class="n">config</span><span class="o">.</span><span class="n">experiment_name</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">computation</span><span class="o">.</span><span class="n">vsc3</span><span class="o">.</span><span class="n">queue</span><span class="p">,</span>
-                                               <span class="n">time_in_minutes</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">computation</span><span class="o">.</span><span class="n">vsc3</span><span class="o">.</span><span class="n">conda_env</span><span class="p">)</span>
+    <span class="n">time_in_minutes</span> <span class="o">=</span> <span class="n">duration_string_to_minutes</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">dispatch</span><span class="o">.</span><span class="n">time</span><span class="p">)</span>
+    <span class="n">queue</span> <span class="o">=</span> <span class="s1">&#39;gpu_rtx2080ti&#39;</span> <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">dispatch</span><span class="o">.</span><span class="n">queue</span> <span class="o">==</span> <span class="s2">&quot;default&quot;</span> <span class="k">else</span> <span class="n">config</span><span class="o">.</span><span class="n">dispatch</span><span class="o">.</span><span class="n">queue</span>
+    <span class="n">jobfile_content</span> <span class="o">=</span> <span class="n">get_jobfile_content_vsc3</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">command</span><span class="p">),</span> <span class="n">config</span><span class="o">.</span><span class="n">experiment_name</span><span class="p">,</span> <span class="n">queue</span><span class="p">,</span>
+                                               <span class="n">time_in_minutes</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">dispatch</span><span class="o">.</span><span class="n">conda_env</span><span class="p">)</span>
 
     <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">run_dir</span><span class="p">,</span> <span class="s1">&#39;job.sh&#39;</span><span class="p">),</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
         <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">jobfile_content</span><span class="p">)</span>
@@ -209,8 +220,9 @@
 
 
 <div class="viewcode-block" id="dispatch_to_vsc4"><a class="viewcode-back" href="../../_autosummary/deeperwin.dispatch.dispatch_to_vsc4.html#deeperwin.dispatch.dispatch_to_vsc4">[docs]</a><span class="k">def</span> <span class="nf">dispatch_to_vsc4</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">run_dir</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Configuration</span><span class="p">):</span>
-    <span class="n">time_in_minutes</span> <span class="o">=</span> <span class="n">duration_string_to_minutes</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">computation</span><span class="o">.</span><span class="n">vsc4</span><span class="o">.</span><span class="n">time</span><span class="p">)</span>
-    <span class="n">jobfile_content</span> <span class="o">=</span> <span class="n">get_jobfile_content_vsc4</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">command</span><span class="p">),</span> <span class="n">config</span><span class="o">.</span><span class="n">experiment_name</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">computation</span><span class="o">.</span><span class="n">vsc4</span><span class="o">.</span><span class="n">queue</span><span class="p">,</span>
+    <span class="n">time_in_minutes</span> <span class="o">=</span> <span class="n">duration_string_to_minutes</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">dispatch</span><span class="o">.</span><span class="n">time</span><span class="p">)</span>
+    <span class="n">queue</span> <span class="o">=</span> <span class="s1">&#39;mem_0096&#39;</span> <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">dispatch</span><span class="o">.</span><span class="n">queue</span> <span class="o">==</span> <span class="s2">&quot;default&quot;</span> <span class="k">else</span> <span class="n">config</span><span class="o">.</span><span class="n">dispatch</span><span class="o">.</span><span class="n">queue</span>
+    <span class="n">jobfile_content</span> <span class="o">=</span> <span class="n">get_jobfile_content_vsc4</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">command</span><span class="p">),</span> <span class="n">config</span><span class="o">.</span><span class="n">experiment_name</span><span class="p">,</span> <span class="n">queue</span><span class="p">,</span>
                                                <span class="n">time_in_minutes</span><span class="p">)</span>
 
     <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">run_dir</span><span class="p">,</span> <span class="s1">&#39;job.sh&#39;</span><span class="p">),</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
@@ -305,7 +317,7 @@
 
 
 <div class="viewcode-block" id="dispatch_job"><a class="viewcode-back" href="../../_autosummary/deeperwin.dispatch.dispatch_job.html#deeperwin.dispatch.dispatch_job">[docs]</a><span class="k">def</span> <span class="nf">dispatch_job</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">job_dir</span><span class="p">,</span> <span class="n">config</span><span class="p">):</span>
-    <span class="n">dispatch_to</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">computation</span><span class="o">.</span><span class="n">dispatch</span>
+    <span class="n">dispatch_to</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">dispatch</span><span class="o">.</span><span class="n">system</span>
     <span class="k">if</span> <span class="n">dispatch_to</span> <span class="o">==</span> <span class="s2">&quot;auto&quot;</span><span class="p">:</span>
         <span class="n">dispatch_to</span> <span class="o">=</span> <span class="s2">&quot;local&quot;</span>
         <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="s2">&quot;/etc/slurm/slurm.conf&quot;</span><span class="p">):</span>

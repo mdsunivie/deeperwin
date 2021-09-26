@@ -25,9 +25,5 @@ deeperwin.configuration.ComputationConfig
    .. autosummary::
    
       ~ComputationConfig.float_precision
-      ~ComputationConfig.dispatch
-      ~ComputationConfig.vsc3
-      ~ComputationConfig.vsc4
-      ~ComputationConfig.dgx
    
    

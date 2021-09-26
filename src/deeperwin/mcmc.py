@@ -1,12 +1,18 @@
-import jax
-import jax.numpy as jnp
+"""
+Logic for Markov chain Monte Carlo (MCMC) steps.
+"""
+
+import copy
 import functools
-import numpy as np
-from deeperwin.utils import get_el_ion_distance_matrix
-from deeperwin.configuration import MCMCConfig, MCMCLangevinProposalConfig, PhysicalConfig
 from dataclasses import dataclass
 from typing import Tuple
-import copy
+
+import jax
+import jax.numpy as jnp
+import numpy as np
+
+from deeperwin.configuration import MCMCConfig, MCMCLangevinProposalConfig, PhysicalConfig
+from deeperwin.utils import get_el_ion_distance_matrix
 
 
 @jax.tree_util.register_pytree_node_class
@@ -43,8 +49,10 @@ class MCMCState:
             r0[:, i_el, :] += np.array(physical_config.R[i_nuc])
         r0 = jnp.array(r0)
         return cls(
-            r=r0, R=jnp.array(physical_config.R), Z=jnp.array(physical_config.Z), walker_age=jnp.zeros(n_walkers, dtype=int)
+            r=r0, R=jnp.array(physical_config.R), Z=jnp.array(physical_config.Z),
+            walker_age=jnp.zeros(n_walkers, dtype=int)
         )
+
 
 def _resize_array(x, new_length):
     old_length = x.shape[0]
@@ -53,7 +61,8 @@ def _resize_array(x, new_length):
     else:
         n_replicas = new_length // old_length
         n_remainder = new_length % old_length
-        return jnp.concatenate([x for _ in range(n_replicas)] + [x[:n_remainder,...]], axis=0)
+        return jnp.concatenate([x for _ in range(n_replicas)] + [x[:n_remainder, ...]], axis=0)
+
 
 def resize_nr_of_walkers(state: MCMCState, n_walkers_new):
     new_state = copy.deepcopy(state)
@@ -61,6 +70,7 @@ def resize_nr_of_walkers(state: MCMCState, n_walkers_new):
     new_state.log_psi_sqr = _resize_array(state.log_psi_sqr, n_walkers_new)
     new_state.walker_age = _resize_array(state.walker_age, n_walkers_new)
     return new_state
+
 
 def _propose_normal(state: MCMCState):
     new_state = copy.copy(state)
@@ -127,6 +137,7 @@ class MetropolisHastingsMonteCarlo:
     This class holds the MCMC logic and configuration, but does not hold the actual state (e.g. electron positions, psi², etc).
     The actual state is stored in an MCMCState object.
     """
+
     def __init__(self, mcmc_config: MCMCConfig):
         self.config: MCMCConfig = mcmc_config
         self._build_proposal_function()
@@ -150,7 +161,7 @@ class MetropolisHastingsMonteCarlo:
         thr_accept = jax.random.uniform(subkey, p_accept.shape)
         do_accept = p_accept > thr_accept
 
-        if method=='opt':
+        if method == 'opt':
             is_too_old = state_new.walker_age >= self.config.max_age_opt
         else:
             is_too_old = state_new.walker_age >= self.config.max_age_eval
@@ -189,7 +200,9 @@ class MetropolisHastingsMonteCarlo:
     def run_burn_in_eval(self, func, func_params, state: MCMCState):
         return self._run_mcmc_steps(func, func_params, state, self.config.n_burn_in_eval)
 
-def calculate_metrics(epoch_nr: int, n_geometries: int, E_epoch: jnp.array, mcmc_state: MCMCState, time_per_epoch: float,
+
+def calculate_metrics(epoch_nr: int, n_geometries: int, E_epoch: jnp.array, mcmc_state: MCMCState,
+                      time_per_epoch: float,
                       metric_type: str):
     metrics = {}
     metrics[metric_type + "_E_mean"] = float(jnp.mean(E_epoch))
@@ -197,6 +210,6 @@ def calculate_metrics(epoch_nr: int, n_geometries: int, E_epoch: jnp.array, mcmc
     metrics[metric_type + "_mcmc_stepsize"] = float(mcmc_state.stepsize)
     metrics[metric_type + "_mcmc_max_age"] = float(jnp.max(mcmc_state.walker_age))
     metrics[metric_type + "_t_epoch"] = time_per_epoch
-    metrics[metric_type + "_epoch_per_geom"] = epoch_nr/ n_geometries
+    metrics[metric_type + "_epoch_per_geom"] = epoch_nr / n_geometries
 
     return metrics, int(epoch_nr), metric_type

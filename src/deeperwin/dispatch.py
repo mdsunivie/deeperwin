@@ -1,3 +1,7 @@
+"""
+Dispatch management for different machines (clusters, local, ...)
+"""
+
 import bz2
 import copy
 import logging

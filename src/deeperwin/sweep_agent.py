@@ -1,3 +1,7 @@
+"""
+CLI for wandb sweeps.
+"""
+
 #!/usr/bin/env python
 import os
 import subprocess

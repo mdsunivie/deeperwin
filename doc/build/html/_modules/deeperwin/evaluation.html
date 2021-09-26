@@ -68,16 +68,21 @@
            <div itemprop="articleBody">
              
   <h1>Source code for deeperwin.evaluation</h1><div class="highlight"><pre>
-<span></span><span class="kn">import</span> <span class="nn">logging</span>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Logic for wavefunction evaluation.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">logging</span>
 <span class="kn">import</span> <span class="nn">time</span>
+
 <span class="kn">import</span> <span class="nn">jax</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">from</span> <span class="nn">jax</span> <span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">jnp</span>
 
-<span class="kn">from</span> <span class="nn">deeperwin.loggers</span> <span class="kn">import</span> <span class="n">DataLogger</span>
-<span class="kn">from</span> <span class="nn">deeperwin.mcmc</span> <span class="kn">import</span> <span class="n">MCMCState</span><span class="p">,</span> <span class="n">MetropolisHastingsMonteCarlo</span><span class="p">,</span><span class="n">calculate_metrics</span>
-<span class="kn">from</span> <span class="nn">deeperwin.hamiltonian</span> <span class="kn">import</span> <span class="n">get_local_energy</span><span class="p">,</span> <span class="n">calculate_forces</span>
 <span class="kn">from</span> <span class="nn">deeperwin.configuration</span> <span class="kn">import</span> <span class="n">EvaluationConfig</span>
+<span class="kn">from</span> <span class="nn">deeperwin.hamiltonian</span> <span class="kn">import</span> <span class="n">get_local_energy</span><span class="p">,</span> <span class="n">calculate_forces</span>
+<span class="kn">from</span> <span class="nn">deeperwin.loggers</span> <span class="kn">import</span> <span class="n">DataLogger</span>
+<span class="kn">from</span> <span class="nn">deeperwin.mcmc</span> <span class="kn">import</span> <span class="n">MCMCState</span><span class="p">,</span> <span class="n">MetropolisHastingsMonteCarlo</span><span class="p">,</span> <span class="n">calculate_metrics</span>
 
 
 <span class="nd">@jax</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">jax</span><span class="o">.</span><span class="n">jit</span><span class="p">,</span> <span class="n">static_argnums</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
@@ -85,6 +90,7 @@
     <span class="n">mcmc_state</span> <span class="o">=</span> <span class="n">mcmc</span><span class="o">.</span><span class="n">run_inter_steps</span><span class="p">(</span><span class="n">log_psi_squared</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">mcmc_state</span><span class="p">,</span> <span class="s2">&quot;eval&quot;</span><span class="p">)</span>
     <span class="n">E_loc</span> <span class="o">=</span> <span class="n">get_local_energy</span><span class="p">(</span><span class="n">log_psi_squared</span><span class="p">,</span> <span class="o">*</span><span class="n">mcmc_state</span><span class="o">.</span><span class="n">model_args</span><span class="p">,</span> <span class="o">*</span><span class="n">params</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">mcmc_state</span><span class="p">,</span> <span class="n">E_loc</span>
+
 
 <span class="k">def</span> <span class="nf">_build_force_polynomial_coefficients</span><span class="p">(</span><span class="n">R_core</span><span class="p">,</span> <span class="n">polynomial_degree</span><span class="p">):</span>
     <span class="n">j</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">polynomial_degree</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
@@ -94,26 +100,31 @@
     <span class="n">coeff</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">coeff</span><span class="p">,</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
     <span class="k">return</span> <span class="n">coeff</span>
 
+
 <div class="viewcode-block" id="build_evaluation_step"><a class="viewcode-back" href="../../_autosummary/deeperwin.evaluation.build_evaluation_step.html#deeperwin.evaluation.build_evaluation_step">[docs]</a><span class="k">def</span> <span class="nf">build_evaluation_step</span><span class="p">(</span><span class="n">log_psi_sqr_func</span><span class="p">,</span> <span class="n">mcmc</span><span class="p">,</span> <span class="n">eval_config</span><span class="p">):</span>
     <span class="k">def</span> <span class="nf">_evaluation_step</span><span class="p">(</span><span class="n">mcmc_state</span><span class="p">:</span> <span class="n">MCMCState</span><span class="p">,</span> <span class="n">params</span><span class="p">):</span>
         <span class="n">mcmc_state</span> <span class="o">=</span> <span class="n">mcmc</span><span class="o">.</span><span class="n">run_inter_steps</span><span class="p">(</span><span class="n">log_psi_sqr_func</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">mcmc_state</span><span class="p">)</span>
         <span class="n">E_loc</span> <span class="o">=</span> <span class="n">get_local_energy</span><span class="p">(</span><span class="n">log_psi_sqr_func</span><span class="p">,</span> <span class="o">*</span><span class="n">mcmc_state</span><span class="o">.</span><span class="n">model_args</span><span class="p">,</span> <span class="o">*</span><span class="n">params</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">eval_config</span><span class="o">.</span><span class="n">forces</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">poly_coeffs</span> <span class="o">=</span> <span class="n">_build_force_polynomial_coefficients</span><span class="p">(</span><span class="n">eval_config</span><span class="o">.</span><span class="n">forces</span><span class="o">.</span><span class="n">R_core</span><span class="p">,</span> <span class="n">eval_config</span><span class="o">.</span><span class="n">forces</span><span class="o">.</span><span class="n">polynomial_degree</span><span class="p">)</span>
-            <span class="n">forces</span> <span class="o">=</span> <span class="n">calculate_forces</span><span class="p">(</span><span class="o">*</span><span class="n">mcmc_state</span><span class="o">.</span><span class="n">model_args</span><span class="p">,</span> <span class="n">mcmc_state</span><span class="o">.</span><span class="n">log_psi_sqr</span><span class="p">,</span> <span class="n">log_psi_sqr_func</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">eval_config</span><span class="o">.</span><span class="n">forces</span><span class="p">,</span> <span class="n">poly_coeffs</span><span class="p">)</span>
+            <span class="n">poly_coeffs</span> <span class="o">=</span> <span class="n">_build_force_polynomial_coefficients</span><span class="p">(</span><span class="n">eval_config</span><span class="o">.</span><span class="n">forces</span><span class="o">.</span><span class="n">R_core</span><span class="p">,</span>
+                                                               <span class="n">eval_config</span><span class="o">.</span><span class="n">forces</span><span class="o">.</span><span class="n">polynomial_degree</span><span class="p">)</span>
+            <span class="n">forces</span> <span class="o">=</span> <span class="n">calculate_forces</span><span class="p">(</span><span class="o">*</span><span class="n">mcmc_state</span><span class="o">.</span><span class="n">model_args</span><span class="p">,</span> <span class="n">mcmc_state</span><span class="o">.</span><span class="n">log_psi_sqr</span><span class="p">,</span> <span class="n">log_psi_sqr_func</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span>
+                                      <span class="n">eval_config</span><span class="o">.</span><span class="n">forces</span><span class="p">,</span> <span class="n">poly_coeffs</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">forces</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="k">return</span> <span class="n">mcmc_state</span><span class="p">,</span> <span class="n">E_loc</span><span class="p">,</span> <span class="n">forces</span>
+
     <span class="k">return</span> <span class="n">jax</span><span class="o">.</span><span class="n">jit</span><span class="p">(</span><span class="n">_evaluation_step</span><span class="p">)</span></div>
 
+
 <div class="viewcode-block" id="evaluate_wavefunction"><a class="viewcode-back" href="../../_autosummary/deeperwin.evaluation.evaluate_wavefunction.html#deeperwin.evaluation.evaluate_wavefunction">[docs]</a><span class="k">def</span> <span class="nf">evaluate_wavefunction</span><span class="p">(</span>
-    <span class="n">log_psi_squared</span><span class="p">,</span>
-    <span class="n">trainable_params</span><span class="p">,</span>
-    <span class="n">fixed_params</span><span class="p">,</span>
-    <span class="n">mcmc</span><span class="p">:</span> <span class="n">MetropolisHastingsMonteCarlo</span><span class="p">,</span>
-    <span class="n">mcmc_state</span><span class="p">:</span> <span class="n">MCMCState</span><span class="p">,</span>
-    <span class="n">config</span><span class="p">:</span> <span class="n">EvaluationConfig</span><span class="p">,</span>
-    <span class="n">logger</span><span class="p">:</span> <span class="n">DataLogger</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">log_psi_squared</span><span class="p">,</span>
+        <span class="n">trainable_params</span><span class="p">,</span>
+        <span class="n">fixed_params</span><span class="p">,</span>
+        <span class="n">mcmc</span><span class="p">:</span> <span class="n">MetropolisHastingsMonteCarlo</span><span class="p">,</span>
+        <span class="n">mcmc_state</span><span class="p">:</span> <span class="n">MCMCState</span><span class="p">,</span>
+        <span class="n">config</span><span class="p">:</span> <span class="n">EvaluationConfig</span><span class="p">,</span>
+        <span class="n">logger</span><span class="p">:</span> <span class="n">DataLogger</span> <span class="o">=</span> <span class="kc">None</span>
 <span class="p">):</span>
     <span class="n">params</span> <span class="o">=</span> <span class="p">(</span><span class="n">trainable_params</span><span class="p">,</span> <span class="n">fixed_params</span><span class="p">)</span>
     <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Starting burn-in for evaluation...&quot;</span><span class="p">)</span>

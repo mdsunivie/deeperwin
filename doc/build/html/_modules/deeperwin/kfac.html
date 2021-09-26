@@ -68,11 +68,16 @@
            <div itemprop="articleBody">
              
   <h1>Source code for deeperwin.kfac</h1><div class="highlight"><pre>
-<span></span><span class="kn">from</span> <span class="nn">deeperwin.kfac_ferminet_alpha</span> <span class="kn">import</span> <span class="n">optimizer</span> <span class="k">as</span> <span class="n">kfac_optim</span>
-<span class="kn">from</span> <span class="nn">deeperwin.kfac_ferminet_alpha</span> <span class="kn">import</span> <span class="n">loss_functions</span>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Helper functions for K-FAC 2nd-order optimization.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
 <span class="kn">from</span> <span class="nn">deeperwin.configuration</span> <span class="kn">import</span> <span class="n">OptimizationConfig</span>
 <span class="kn">from</span> <span class="nn">deeperwin.hamiltonian</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">deeperwin.kfac_ferminet_alpha</span> <span class="kn">import</span> <span class="n">loss_functions</span>
+<span class="kn">from</span> <span class="nn">deeperwin.kfac_ferminet_alpha</span> <span class="kn">import</span> <span class="n">optimizer</span> <span class="k">as</span> <span class="n">kfac_optim</span>
 <span class="kn">from</span> <span class="nn">deeperwin.utils</span> <span class="kn">import</span> <span class="n">build_inverse_schedule</span><span class="p">,</span> <span class="n">get_builtin_optimizer</span><span class="p">,</span> <span class="n">calculate_clipping_state</span>
+
 
 <div class="viewcode-block" id="build_grad_loss_kfac"><a class="viewcode-back" href="../../_autosummary/deeperwin.kfac.build_grad_loss_kfac.html#deeperwin.kfac.build_grad_loss_kfac">[docs]</a><span class="k">def</span> <span class="nf">build_grad_loss_kfac</span><span class="p">(</span><span class="n">log_psi_func</span><span class="p">,</span> <span class="n">clipping_config</span><span class="p">:</span> <span class="n">ClippingConfig</span><span class="p">,</span> <span class="n">use_fwd_fwd_hessian</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
     <span class="c1"># Build custom total energy jvp. Based on https://github.com/deepmind/ferminet/blob/jax/ferminet/train.py</span>
@@ -106,8 +111,9 @@
 
     <span class="k">return</span> <span class="n">grad_loss_func</span></div>
 
-<div class="viewcode-block" id="build_optimize_epoch_kfac_test"><a class="viewcode-back" href="../../_autosummary/deeperwin.kfac.build_optimize_epoch_kfac_test.html#deeperwin.kfac.build_optimize_epoch_kfac_test">[docs]</a><span class="k">def</span> <span class="nf">build_optimize_epoch_kfac_test</span><span class="p">(</span><span class="n">grad_loss_func</span><span class="p">,</span> <span class="n">initial_params</span><span class="p">,</span> <span class="n">opt_config</span><span class="p">:</span> <span class="n">OptimizationConfig</span><span class="p">,</span> <span class="n">r_batch</span><span class="p">,</span> <span class="n">func_state</span><span class="p">,</span> <span class="n">log_psi_squared</span><span class="p">,</span> <span class="n">mcmc</span><span class="p">,</span> <span class="n">n_walkers</span><span class="p">,</span> <span class="n">n_batches</span><span class="p">):</span>
 
+<div class="viewcode-block" id="build_optimize_epoch_kfac_test"><a class="viewcode-back" href="../../_autosummary/deeperwin.kfac.build_optimize_epoch_kfac_test.html#deeperwin.kfac.build_optimize_epoch_kfac_test">[docs]</a><span class="k">def</span> <span class="nf">build_optimize_epoch_kfac_test</span><span class="p">(</span><span class="n">grad_loss_func</span><span class="p">,</span> <span class="n">initial_params</span><span class="p">,</span> <span class="n">opt_config</span><span class="p">:</span> <span class="n">OptimizationConfig</span><span class="p">,</span> <span class="n">r_batch</span><span class="p">,</span> <span class="n">func_state</span><span class="p">,</span>
+                                   <span class="n">log_psi_squared</span><span class="p">,</span> <span class="n">mcmc</span><span class="p">,</span> <span class="n">n_walkers</span><span class="p">,</span> <span class="n">n_batches</span><span class="p">):</span>
     <span class="n">learning_rate_scheduler</span> <span class="o">=</span> <span class="n">build_inverse_schedule</span><span class="p">(</span><span class="n">opt_config</span><span class="o">.</span><span class="n">learning_rate</span><span class="p">,</span> <span class="n">opt_config</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">decay_time</span><span class="p">)</span>
     <span class="n">optimizer</span> <span class="o">=</span> <span class="n">kfac_optim</span><span class="o">.</span><span class="n">Optimizer</span><span class="p">(</span>
         <span class="n">grad_loss_func</span><span class="p">,</span>
@@ -124,7 +130,7 @@
         <span class="n">min_damping</span><span class="o">=</span><span class="n">opt_config</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">min_damping</span><span class="p">,</span>
         <span class="n">multi_device</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="n">curvature_ema</span><span class="o">=</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">opt_config</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">curvature_ema</span>
-        <span class="c1">#debug=True</span>
+        <span class="c1"># debug=True</span>
     <span class="p">)</span>
 
     <span class="n">key_init</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">PRNGKey</span><span class="p">(</span><span class="mi">1245123</span><span class="p">)</span>
@@ -133,11 +139,13 @@
     <span class="n">kfac_opt_state</span> <span class="o">=</span> <span class="n">optimizer</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">initial_params</span><span class="p">,</span> <span class="n">subkeys</span><span class="p">,</span> <span class="n">r_batch</span><span class="p">,</span> <span class="n">func_state</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">opt_config</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">internal_optimizer</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">opt_init</span><span class="p">,</span> <span class="n">opt_update</span><span class="p">,</span> <span class="n">get_params_adam</span> <span class="o">=</span> <span class="n">get_builtin_optimizer</span><span class="p">(</span><span class="n">opt_config</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">internal_optimizer</span><span class="p">,</span> <span class="n">opt_config</span><span class="o">.</span><span class="n">schedule</span><span class="p">,</span>
-                                                                 <span class="n">opt_config</span><span class="o">.</span><span class="n">learning_rate</span><span class="p">)</span>
+        <span class="n">opt_init</span><span class="p">,</span> <span class="n">opt_update</span><span class="p">,</span> <span class="n">get_params_adam</span> <span class="o">=</span> <span class="n">get_builtin_optimizer</span><span class="p">(</span><span class="n">opt_config</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">internal_optimizer</span><span class="p">,</span>
+                                                                      <span class="n">opt_config</span><span class="o">.</span><span class="n">schedule</span><span class="p">,</span>
+                                                                      <span class="n">opt_config</span><span class="o">.</span><span class="n">learning_rate</span><span class="p">)</span>
         <span class="n">adam_state</span> <span class="o">=</span> <span class="n">opt_init</span><span class="p">(</span><span class="n">initial_params</span><span class="p">)</span>
 
         <span class="n">opt_state</span> <span class="o">=</span> <span class="p">(</span><span class="n">adam_state</span><span class="p">,</span> <span class="n">get_params_adam</span><span class="p">(</span><span class="n">adam_state</span><span class="p">),</span> <span class="n">kfac_opt_state</span><span class="p">,</span> <span class="n">opt_key</span><span class="p">)</span>
+
         <span class="k">def</span> <span class="nf">_get_params</span><span class="p">(</span><span class="n">state</span><span class="p">):</span>
             <span class="k">return</span> <span class="n">get_params_adam</span><span class="p">(</span><span class="n">state</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
 
@@ -148,12 +156,13 @@
 
     <span class="k">else</span><span class="p">:</span>
         <span class="n">opt_state</span> <span class="o">=</span> <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">initial_params</span><span class="p">,</span> <span class="n">kfac_opt_state</span><span class="p">,</span> <span class="n">opt_key</span><span class="p">)</span>
+
         <span class="k">def</span> <span class="nf">_get_params</span><span class="p">(</span><span class="n">state</span><span class="p">):</span>
             <span class="k">return</span> <span class="n">state</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
 
-
     <span class="k">if</span> <span class="n">opt_config</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">damping_scheduler</span><span class="p">:</span>
-        <span class="n">damping_scheduler</span> <span class="o">=</span> <span class="n">build_inverse_schedule</span><span class="p">(</span><span class="n">opt_config</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">damping</span><span class="p">,</span> <span class="n">opt_config</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">decay_time_damping</span><span class="p">)</span>
+        <span class="n">damping_scheduler</span> <span class="o">=</span> <span class="n">build_inverse_schedule</span><span class="p">(</span><span class="n">opt_config</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">damping</span><span class="p">,</span>
+                                                   <span class="n">opt_config</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">decay_time_damping</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">damping_scheduler</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">opt_config</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">damping</span>
 
@@ -187,7 +196,6 @@
 
         <span class="n">mcmc_state</span><span class="o">.</span><span class="n">log_psi_sqr</span> <span class="o">=</span> <span class="n">log_psi_squared</span><span class="p">(</span><span class="o">*</span><span class="n">mcmc_state</span><span class="o">.</span><span class="n">model_args</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">fixed_params</span><span class="p">)</span>
         <span class="n">clipping_params</span> <span class="o">=</span> <span class="n">calculate_clipping_state</span><span class="p">(</span><span class="n">E_epoch</span><span class="p">,</span> <span class="n">opt_config</span><span class="o">.</span><span class="n">clipping</span><span class="p">)</span>
-
 
         <span class="n">opt_state</span> <span class="o">=</span> <span class="p">(</span><span class="n">adam_state</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">kfac_opt_state</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
 

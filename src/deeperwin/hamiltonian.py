@@ -1,8 +1,13 @@
+"""
+Computation of local energies and forces.
+"""
+
 import logging
 
 import jax
-from jax import numpy as jnp
 import numpy as np
+from jax import numpy as jnp
+
 from deeperwin.configuration import ClippingConfig, ForceEvaluationConfig
 from deeperwin.mcmc import MCMCState
 from deeperwin.utils import get_el_ion_distance_matrix, get_full_distance_matrix
@@ -80,16 +85,19 @@ def clip_energies(E, center, width, clipping_config: ClippingConfig):
 
 
 def _calculate_forces_directly(diff_el_ion, d_el_ion, Z, R_cut):
-    d_el_ion = d_el_ion / jnp.tanh(d_el_ion/R_cut)
+    d_el_ion = d_el_ion / jnp.tanh(d_el_ion / R_cut)
     return Z[:, np.newaxis] * diff_el_ion / d_el_ion[..., np.newaxis] ** 3
+
 
 def _calculate_ion_ion_forces(R, Z):
     EPSILON = 1e-8
     diff = jnp.expand_dims(R, -2) - jnp.expand_dims(R, -3)
     dist = jnp.linalg.norm(diff, axis=-1, keepdims=True)
-    Z_matrix = Z[:, np.newaxis] * Z[np.newaxis, :] - jnp.diag(Z**2)
-    forces = diff * Z_matrix[..., jnp.newaxis] / (dist + EPSILON) ** 3 # tiny EPS ensures that the diagonal (self-interaction) has 0 contribution
+    Z_matrix = Z[:, np.newaxis] * Z[np.newaxis, :] - jnp.diag(Z ** 2)
+    forces = diff * Z_matrix[..., jnp.newaxis] / (
+                dist + EPSILON) ** 3  # tiny EPS ensures that the diagonal (self-interaction) has 0 contribution
     return jnp.sum(forces, axis=1)
+
 
 def _calculate_forces_polynomial_fit(diff_el_ion, d_el_ion, Z, R_core, poly_coeffs):
     r"""
@@ -100,13 +108,14 @@ def _calculate_forces_polynomial_fit(diff_el_ion, d_el_ion, Z, R_core, poly_coef
     d_el_ion = d_el_ion[..., np.newaxis]
     forces_outer = diff_el_ion / d_el_ion ** 3
     poly_degree = poly_coeffs.shape[0]
-    j = np.arange(1, poly_degree+1)
+    j = np.arange(1, poly_degree + 1)
     j = np.reshape(j, [-1, 1, 1, 1, 1])
     force_moments = (diff_el_ion / d_el_ion) * (d_el_ion / R_core) ** j
     forces_core = jnp.sum(poly_coeffs * force_moments, axis=0)  # sum over moments
     forces = jnp.where(d_el_ion < R_core, forces_core, forces_outer)
     forces = forces * Z[:, np.newaxis]
     return forces
+
 
 def calculate_forces(r, R, Z, log_psi_sqr, log_sqr_func, func_params, config: ForceEvaluationConfig, poly_coeffs=None):
     """
@@ -125,7 +134,8 @@ def calculate_forces(r, R, Z, log_psi_sqr, log_sqr_func, func_params, config: Fo
     if config.use_antithetic_sampling:
         ind_closest_ion = jnp.argmin(r_el_ion, axis=-1)
         d_closest_ion = jnp.min(r_el_ion, axis=-1, keepdims=True)
-        diff_to_closest_ion = jax.vmap(jax.vmap(lambda x,ind: x[ind]))(diff_el_ion, ind_closest_ion) # vmap over number of electrons and batch-size
+        diff_to_closest_ion = jax.vmap(jax.vmap(lambda x, ind: x[ind]))(diff_el_ion,
+                                                                        ind_closest_ion)  # vmap over number of electrons and batch-size
         is_core_electron = d_closest_ion < config.R_core
 
         r_mirrored = jnp.where(is_core_electron, r - 2 * diff_to_closest_ion, r)
@@ -133,10 +143,11 @@ def calculate_forces(r, R, Z, log_psi_sqr, log_sqr_func, func_params, config: Fo
         mirrored_weight = jnp.exp(log_sqr_func(r_mirrored, R, Z, *func_params) - log_psi_sqr)
 
         forces_mirrored = force_function(diff_el_ion_mirrored, r_el_ion_mirrored, Z)
-        forces = (forces + forces_mirrored * mirrored_weight[:,None,None,None]) * 0.5
+        forces = (forces + forces_mirrored * mirrored_weight[:, None, None, None]) * 0.5
 
-    force = jnp.mean(jnp.sum(forces, axis=1), axis=0) # sum over electrons, average over batch
+    force = jnp.mean(jnp.sum(forces, axis=1), axis=0)  # sum over electrons, average over batch
     return force + _calculate_ion_ion_forces(R, Z)
+
 
 def log_mcmc_debug_info(epoch_nr, mcmc_old: MCMCState, mcmc_new: MCMCState):
     dist = jnp.linalg.norm(mcmc_new.r - mcmc_old.r, axis=-1)

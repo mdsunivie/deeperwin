@@ -1,3 +1,7 @@
+"""
+Helper functions.
+"""
+
 import os
 import subprocess
 

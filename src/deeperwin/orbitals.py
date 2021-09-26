@@ -1,5 +1,5 @@
 """
-Module containing the calculation of a physical baseline model (e.g. CASSCF).
+Contains the physical baseline model (e.g. CASSCF).
 
 This module provides functionality to calculate a basline solution using pySCF and functions to
 """
