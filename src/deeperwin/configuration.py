@@ -229,8 +229,8 @@ class KFACOptimizerConfig(ConfigModel):
     name: Literal["kfac"] = "kfac"
     order: Literal[2] = 2
     momentum = 0.0
-    norm_constraint = 0.0004
-    damping = 0.00085
+    norm_constraint = 0.001
+    damping = 0.0005
     damping_scheduler = True
     estimation_mode = 'fisher_gradients'
     register_generic = True
