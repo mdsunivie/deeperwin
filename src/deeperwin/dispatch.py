@@ -171,9 +171,11 @@ def append_nfs_to_fullpaths(command):
 def dispatch_to_dgx(command, run_dir, config: Configuration):
     command = append_nfs_to_fullpaths(command)
     time_in_minutes = duration_string_to_minutes(config.dispatch.time)
+    src_dir = str(Path(__file__).resolve().parent.parent)
     jobfile_content = get_jobfile_content_dgx(' '.join(command), config.experiment_name,
                                               "/nfs" + str(os.path.abspath(run_dir)),
-                                              time_in_minutes, config.dispatch.conda_env)
+                                              time_in_minutes, config.dispatch.conda_env,
+                                              src_dir)
 
     with open(os.path.join(run_dir, 'job.sh'), 'w') as f:
         f.write(jobfile_content)
@@ -229,7 +231,7 @@ export CUDA_VISIBLE_DEVICES="0"
 {command}"""
 
 
-def get_jobfile_content_dgx(command, jobname, jobdir, time, conda_env):
+def get_jobfile_content_dgx(command, jobname, jobdir, time, conda_env, src_dir):
     return f"""#!/bin/bash
 #SBATCH -J {jobname}
 #SBATCH -N 1
@@ -241,6 +243,7 @@ def get_jobfile_content_dgx(command, jobname, jobdir, time, conda_env):
 export CONDA_ENVS_PATH="/nfs$HOME/.conda/envs:$CONDA_ENVS_PATH"
 source /opt/anaconda3/etc/profile.d/conda.sh 
 conda activate {conda_env}
+export PYTHONPATH="{src_dir}"
 export WANDB_API_KEY=$(grep -Po "(?<=password ).*" /nfs$HOME/.netrc)
 export CUDA_VISIBLE_DEVICES="0"
 {command}"""
