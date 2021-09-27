@@ -136,9 +136,6 @@ class DeepErwinModelConfig(NetworkConfig):
     use_bf_shift = True
     use_jastrow = True
 
-    el_el_shift_decay = False
-    target_el = False
-    sum_first = False
     output_shift: Literal[1, 3] = 1
     distance_feature_powers: List[int] = [-1]
     sigma_pauli = True
