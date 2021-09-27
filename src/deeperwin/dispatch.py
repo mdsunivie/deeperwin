@@ -170,10 +170,10 @@ def append_nfs_to_fullpaths(command):
 
 def dispatch_to_dgx(command, run_dir, config: Configuration):
     command = append_nfs_to_fullpaths(command)
-    time_in_minutes = duration_string_to_minutes(config.computation.dgx.time)
+    time_in_minutes = duration_string_to_minutes(config.dispatch.time)
     jobfile_content = get_jobfile_content_dgx(' '.join(command), config.experiment_name,
                                               "/nfs" + str(os.path.abspath(run_dir)),
-                                              time_in_minutes, config.computation.dgx.conda_env)
+                                              time_in_minutes, config.dispatch.conda_env)
 
     with open(os.path.join(run_dir, 'job.sh'), 'w') as f:
         f.write(jobfile_content)
