@@ -171,7 +171,7 @@ def append_nfs_to_fullpaths(command):
 def dispatch_to_dgx(command, run_dir, config: Configuration):
     command = append_nfs_to_fullpaths(command)
     time_in_minutes = duration_string_to_minutes(config.dispatch.time)
-    src_dir = str(Path(__file__).resolve().parent.parent)
+    src_dir = "/nfs"+str(Path(__file__).resolve().parent.parent)
     jobfile_content = get_jobfile_content_dgx(' '.join(command), config.experiment_name,
                                               "/nfs" + str(os.path.abspath(run_dir)),
                                               time_in_minutes, config.dispatch.conda_env,
