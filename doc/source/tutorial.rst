@@ -31,8 +31,8 @@ To enable GPU-support, use a pre-built jaxlib version with CUDA-support:
     pip install jax jaxlib==0.1.69+cuda101 -f https://storage.googleapis.com/jax-releases/jax_releases.html
 
 
-General Remarks
-===============
+Running a simple calculation
+============================
 
 To run a DeepErwin calculation, all configuration options must be specified in a YML file, typically named *config.yml*.
 For all options that are not specified explicitly, sensible default values will be used. The default values are defined in :~deeperwin.configuration: and a full_config.yml will also be created for each calculation listing the full configuration.
@@ -111,3 +111,14 @@ The code runs best on a GPU, but will in principle also work on a CPU. It will g
 * **GPU.out** containing a detailed debug log of all steps of the calculation
 * **full_config.yml** containing all configuration options used for this calculation: Your provided options, as well as all default options. Take a look at this file to see all the available config options for DeepErwin
 * **results.bz2** containing a compressed, pickled representation of all data (including history and model weights)
+
+
+Major configuration options
+===========================
+
+To see a structure of all possible configuration options, take a look at the class :class:`~deeperwin.configuration.Configuration` which contains a full tree of all possible config options.
+Alternatively you can see the full configuration tree when looking at the *full_config.yml* file that is being generated at every run.
+
+Here are some of the most important configuration options:
+
+* **optimzation.optimizer.name**: 

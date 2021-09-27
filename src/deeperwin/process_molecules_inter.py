@@ -37,6 +37,8 @@ class WF:
     clipping_params: Tuple[float] = (0, 1000)
     checkpoints = {}
     loggers = None
+    current_metrics = {}
+    n_opt_epochs: int = 0
 
 
 def is_shared_module(key, shared_modules):
@@ -176,8 +178,10 @@ def optimize_inter(config: Configuration, wfs, mcmc, log_psi_squared):
                                                                          wfs[index].clipping_params,
                                                                          wfs[index].fixed_params)
 
+        #TODO: store recent metrics
+
         # get next indext for optimization
-        index_next = get_index(n_epoch, n_wfs)
+        index_next = get_index(n_epoch, n_wfs) # TODO: pass wfs instead of n_wfs
 
         # update wf[index] with optimization results and wf[next_index] with new shared weights
         wfs = update_wf(index, index_next, mcmc_state, opt_state, opt_get_params, clipping_params, wfs,
