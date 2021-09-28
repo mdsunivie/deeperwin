@@ -11,13 +11,14 @@ from dataclasses import dataclass
 from typing import Tuple
 
 import jax.numpy as jnp
+import numpy as np
 from jax._src.util import unzip2
 from jax.config import config as jax_config
 from jax.experimental.optimizers import OptimizerState
 from jax.lib import xla_bridge
 from jax.tree_util import tree_unflatten, tree_flatten
 
-from deeperwin.configuration import Configuration
+from deeperwin.configuration import Configuration, SharedOptimizationConfig, OptimizationConfig
 from deeperwin.dispatch import idx_to_job_name, setup_job_dir, prepare_checkpoints
 from deeperwin.evaluation import evaluate_wavefunction
 from deeperwin.loggers import LoggerCollection
@@ -39,6 +40,7 @@ class WF:
     loggers = None
     current_metrics = {}
     n_opt_epochs: int = 0
+    age: int = 0
 
 
 def is_shared_module(key, shared_modules):
@@ -72,7 +74,7 @@ def init_wf(config: Configuration):
 
         if i != 0:
             wf.init_trainable_params = update_shared_weights(wf.init_trainable_params, wfs[0].init_trainable_params,
-                                                             config.optimization.shared_modules)
+                                                             config.optimization.shared_optimization.shared_modules)
 
         # MCMC state
         wf.mcmc_state = MCMCState.initialize_around_nuclei(config.mcmc.n_walkers_opt, p)
@@ -96,7 +98,7 @@ def init_wf(config: Configuration):
         # save full config for single wavefunction
         config_wf = copy.deepcopy(config)
         config_wf.physical = p
-        config_wf.optimization.interdependent = False
+        config_wf.optimization.shared_optimization = None
         config_wf.save(os.path.join(job_dir, "full_config.yml"))
 
         # prepare checkpoints
@@ -128,8 +130,7 @@ def warm_up_opt(wfs, mcmc, config: Configuration, log_psi_squared):  # could be 
 
     return wfs, opt_get_params, optimize_epoch
 
-
-def update_opt_state(opt_state, params):
+def update_adam_opt_state(opt_state, params):
     params, tree2 = tree_flatten(params)
 
     def do_nothing(state, params):
@@ -142,24 +143,77 @@ def update_opt_state(opt_state, params):
     new_states_flat, subtrees2 = unzip2(map(tree_flatten, new_states))
     return OptimizerState(new_states_flat, tree, subtrees)
 
+def update_kfac_opt_state(opt_state_old, opt_state, params, internal_optimzier):
 
-def update_wf(index, index_next, mcmc_state, opt_state, opt_get_params, clipping_params, wfs, shared_modules):
-    # update elements in WF dataclass
+    if internal_optimzier.name == "adam":
+        adam_state = update_adam_opt_state(opt_state_old[0], params)
+        opt_state = (adam_state, params, opt_state[-2], opt_state[-1])
+    else:
+        opt_state = (None, params, opt_state[-2], opt_state[-1])
+    return opt_state
+
+
+def update_bfgs_opt_state(opt_state_old, opt_state, params, internal_optimzier):
+
+    if internal_optimzier.name == "adam":
+        adam_state = update_adam_opt_state(opt_state_old[0], params)
+        opt_state = (adam_state, opt_state[1])
+    else:
+        raise("Shared optimization for other internal optimizer than Adam for BFGS is not supported!")
+    return opt_state
+
+
+def update_opt_state(opt_state_old, params, opt_state, opt_config: OptimizationConfig):
+    if opt_config.optimizer.name == "adam":
+        opt_state = update_adam_opt_state(opt_state_old, params)
+    elif opt_config.optimizer.name == "slbfgs":
+        opt_state = update_bfgs_opt_state(opt_state_old, opt_state, params, opt_config.optimizer.internal_optimizer)
+    elif opt_config.optimizer.name == "kfac":
+        opt_state = update_kfac_opt_state(opt_state_old, opt_state, params, opt_config.optimizer.internal_optimizer)
+    else:
+        raise("Optimizer currently not supported to update opt_state for shared optimization!")
+    return opt_state
+
+
+def update_wf(index, index_next, mcmc_state, opt_state, opt_get_param, clipping_params, wfs, opt_config: OptimizationConfig):
+    shared_modules = opt_config.shared_optimization.shared_modules
+    # adjust parameters for all wfs - adjust only next optimized wf
     wfs[index].mcmc_state = mcmc_state
     wfs[index].opt_state = opt_state
     wfs[index].clipping_params = clipping_params
 
-    # update shared modules for next wavefunction
-    params_next = update_shared_weights(opt_get_params(wfs[index_next].opt_state), opt_get_params(opt_state),
-                                        shared_modules)
-    wfs[index_next].opt_state = update_opt_state(wfs[index_next].opt_state, params_next)
+    params = opt_get_param(opt_state)
+    params_next = opt_get_param(
+        wfs[index_next].opt_state)  # tree_unflatten(wfs[index_next].opt_state[1], wfs[index_next].opt_state[0])
+    for i, mod in enumerate(["embed", "jastrow", "bf_fac", "bf_shift"]):
+        if mod in shared_modules:
+            # if mod == 'orbital_bf_fac':
+            #     params_next['bf_fac']['up_output'] = params['bf_fac']['up_output']
+            #     params_next['bf_fac']['dn_output'] = params['bf_fac']['dn_output']
+            # elif mod == 'general_bf_fac':
+            #     params_next['bf_fac']['up'] = params['bf_fac']['up']
+            #     params_next['bf_fac']['dn'] = params['bf_fac']['dn']
+            #     params_next['bf_fac']['scale'] = params['bf_fac']['scale']
+            # else:
+                params_next[mod] = params[mod]
+    wfs[index_next].opt_state = update_opt_state(wfs[index_next].opt_state, params_next, opt_state, opt_config)
 
     return wfs
 
-
-def get_index(n_epoch, n_wfs, method="round_robin"):
+def get_index(n_epoch, wfs, config: SharedOptimizationConfig):
+    method = config.scheduling_method
     if method == "round_robin":
-        return n_epoch % n_wfs
+        return n_epoch % len(wfs)
+    elif method == 'stddev':
+        wf_ages = n_epoch - jnp.array([wf.age for wf in wfs])
+        if jnp.any(n_epoch) < len(wfs):
+            index = n_epoch % len(wfs)
+        elif jnp.any(wf_ages > config.max_age):
+            index = jnp.argmax(wf_ages)
+        else:
+            stddevs = [wf.current_metrics['E_std'] for wf in wfs]
+            index = np.argmax(stddevs)
+        return index
     else:
         raise ("Wavefunction scheduler currently not supported.")
 
@@ -167,7 +221,7 @@ def get_index(n_epoch, n_wfs, method="round_robin"):
 def optimize_inter(config: Configuration, wfs, mcmc, log_psi_squared):
     wfs, opt_get_params, optimize_epoch = warm_up_opt(wfs, mcmc, config, log_psi_squared)
     n_wfs = len(wfs)
-    index = get_index(0, n_wfs)
+    index = get_index(0, wfs, config.optimization.shared_optimization)
     t_start = time.time()
 
     for n_epoch in range(config.optimization.n_epochs * n_wfs):
@@ -178,14 +232,16 @@ def optimize_inter(config: Configuration, wfs, mcmc, log_psi_squared):
                                                                          wfs[index].clipping_params,
                                                                          wfs[index].fixed_params)
 
-        #TODO: store recent metrics
+        # update metrics + epoch counter
+        wfs[index].current_metrics = {'E_mean': jnp.nanmean(E_epoch), 'E_std': jnp.nanstd(E_epoch)}
+        wfs[index].n_opt_epochs += 1
 
         # get next indext for optimization
-        index_next = get_index(n_epoch, n_wfs) # TODO: pass wfs instead of n_wfs
+        index_next = get_index(n_epoch, wfs, config.optimization.shared_optimization)
 
         # update wf[index] with optimization results and wf[next_index] with new shared weights
         wfs = update_wf(index, index_next, mcmc_state, opt_state, opt_get_params, clipping_params, wfs,
-                        config.optimization.shared_modules)
+                        config.optimization)
 
         # collect epoch time
         t_end = time.time()
@@ -197,7 +253,7 @@ def optimize_inter(config: Configuration, wfs, mcmc, log_psi_squared):
                     # update opt_state with current shared weights
                     wf_params = opt_get_params(wf.opt_state)
                     wf_params = update_shared_weights(wf_params, opt_get_params(opt_state),
-                                                      config.optimization.shared_modules)
+                                                      config.optimization.shared_optimization.shared_modules)
                     wf.opt_state = update_opt_state(wf.opt_state, wf_params)
 
                     # create full data dict
@@ -223,8 +279,8 @@ def optimize_inter(config: Configuration, wfs, mcmc, log_psi_squared):
     # update shared weights from last opt_state for all wfs
     for wf in wfs:
         wf_params = opt_get_params(wf.opt_state)
-        wf_params = update_shared_weights(wf_params, opt_get_params(opt_state), config.optimization.shared_modules)
-        wf.opt_state = update_opt_state(wf.opt_state, wf_params)
+        wf_params = update_shared_weights(wf_params, opt_get_params(opt_state), config.optimization.shared_optimization.shared_modules)
+        wf.opt_state = update_opt_state(wf.opt_state, wf_params, opt_state, config.optimization)
 
     return wfs, opt_get_params
 
@@ -276,15 +332,15 @@ if __name__ == "__main__":
                                                                     mcmc,
                                                                     mcmc_state,
                                                                     config.evaluation,
-                                                                    wf[i].loggers)
+                                                                    wf.loggers)
             # Postprocessing
             E_mean = jnp.nanmean(E_eval)
             E_mean_sigma = jnp.nanstd(E_eval) / jnp.sqrt(len(E_eval))
 
-            wf[i].loggers.log_metrics(dict(E_mean=E_mean, E_mean_sigma=E_mean_sigma), metric_type="eval")
+            wf.loggers.log_metrics(dict(E_mean=E_mean, E_mean_sigma=E_mean_sigma), metric_type="eval")
             if wf.physical.E_ref is not None:
                 error_eval, sigma_eval = 1e3 * (E_mean - wf.physical.E_ref), 1e3 * E_mean_sigma
-                wf[i].loggers.log_metrics(dict(error_eval=error_eval, sigma_error_eval=sigma_eval,
+                wf.loggers.log_metrics(dict(error_eval=error_eval, sigma_error_eval=sigma_eval,
                                                error_plus_2_stdev=error_eval + 2 * sigma_eval))
                 error_set.append(error_eval)
                 sigma_set.append(sigma_eval)
@@ -292,7 +348,7 @@ if __name__ == "__main__":
 
             if forces_eval is not None:
                 forces_mean = jnp.nanmean(forces_eval, axis=0)
-                wf[i].loggers.log_metric('forces_mean', forces_mean)
+                wf.loggers.log_metric('forces_mean', forces_mean)
 
         loggers_set.log_metrics(
             dict(error_eval=jnp.nanmean(jnp.array(error_set)), sigma_error_eval=jnp.nanmean(jnp.array(sigma_set)),

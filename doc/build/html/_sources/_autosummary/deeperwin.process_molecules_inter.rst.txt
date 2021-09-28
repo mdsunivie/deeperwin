@@ -1,4 +1,4 @@
-﻿deeperwin.process\_molecules\_inter
+deeperwin.process\_molecules\_inter
 ===================================
 
 .. automodule:: deeperwin.process_molecules_inter
@@ -18,6 +18,9 @@
       init_wf
       is_shared_module
       optimize_inter
+      update_adam_opt_state
+      update_bfgs_opt_state
+      update_kfac_opt_state
       update_opt_state
       update_shared_weights
       update_wf

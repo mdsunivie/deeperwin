@@ -7,6 +7,7 @@
   <title>deeperwin.process_molecules_inter.WF &mdash; deeperwin 1.0.0 documentation</title>
       <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/autodoc_pydantic.css" type="text/css" />
       <link rel="stylesheet" href="../_static/custom_style.css" type="text/css" />
     <link rel="shortcut icon" href="../_static/favicon.png"/>
   <!--[if lt IE 9]>
@@ -29,7 +30,7 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-            <a href="../index.html" class="icon icon-home"> deeperwin
+            <a href="../root.html" class="icon icon-home"> deeperwin
           </a>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
@@ -40,8 +41,9 @@
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="../introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../tutorial.html">DeepErwin Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Options</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="../api.html">Full documentation for developers</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="deeperwin.html">deeperwin</a><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.ase_bindings.html">deeperwin.ase_bindings</a></li>
@@ -64,6 +66,9 @@
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.process_molecules_inter.init_wf.html">deeperwin.process_molecules_inter.init_wf</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.process_molecules_inter.is_shared_module.html">deeperwin.process_molecules_inter.is_shared_module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.process_molecules_inter.optimize_inter.html">deeperwin.process_molecules_inter.optimize_inter</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.process_molecules_inter.update_adam_opt_state.html">deeperwin.process_molecules_inter.update_adam_opt_state</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.process_molecules_inter.update_bfgs_opt_state.html">deeperwin.process_molecules_inter.update_bfgs_opt_state</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.process_molecules_inter.update_kfac_opt_state.html">deeperwin.process_molecules_inter.update_kfac_opt_state</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.process_molecules_inter.update_opt_state.html">deeperwin.process_molecules_inter.update_opt_state</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.process_molecules_inter.update_shared_weights.html">deeperwin.process_molecules_inter.update_shared_weights</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.process_molecules_inter.update_wf.html">deeperwin.process_molecules_inter.update_wf</a></li>
@@ -87,14 +92,14 @@
 
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="../index.html">deeperwin</a>
+          <a href="../root.html">deeperwin</a>
       </nav>
 
       <div class="wy-nav-content">
         <div class="rst-content">
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li><a href="../root.html" class="icon icon-home"></a> &raquo;</li>
           <li><a href="../api.html">Full documentation for developers</a> &raquo;</li>
           <li><a href="deeperwin.html">deeperwin</a> &raquo;</li>
           <li><a href="deeperwin.process_molecules_inter.html">deeperwin.process_molecules_inter</a> &raquo;</li>
@@ -112,11 +117,11 @@
 <h1>deeperwin.process_molecules_inter.WF<a class="headerlink" href="#deeperwin-process-molecules-inter-wf" title="Permalink to this headline"></a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="deeperwin.process_molecules_inter.WF">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">deeperwin.process_molecules_inter.</span></span><span class="sig-name descname"><span class="pre">WF</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">clipping_params</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">(0,</span> <span class="pre">1000)</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/deeperwin/process_molecules_inter.html#WF"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.process_molecules_inter.WF" title="Permalink to this definition"></a></dt>
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">deeperwin.process_molecules_inter.</span></span><span class="sig-name descname"><span class="pre">WF</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">clipping_params</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">(0,</span> <span class="pre">1000)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_opt_epochs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">age</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/deeperwin/process_molecules_inter.html#WF"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.process_molecules_inter.WF" title="Permalink to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <dl class="py method">
 <dt class="sig sig-object py" id="deeperwin.process_molecules_inter.WF.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">clipping_params</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">(0,</span> <span class="pre">1000)</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#deeperwin.process_molecules_inter.WF.__init__" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">clipping_params</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">(0,</span> <span class="pre">1000)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_opt_epochs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">age</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#deeperwin.process_molecules_inter.WF.__init__" title="Permalink to this definition"></a></dt>
 <dd></dd></dl>
 
 <p class="rubric">Methods</p>
@@ -126,7 +131,7 @@
 <col style="width: 90%" />
 </colgroup>
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#deeperwin.process_molecules_inter.WF.__init__" title="deeperwin.process_molecules_inter.WF.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>([clipping_params])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#deeperwin.process_molecules_inter.WF.__init__" title="deeperwin.process_molecules_inter.WF.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>([clipping_params, n_opt_epochs, age])</p></td>
 <td><p></p></td>
 </tr>
 </tbody>
@@ -138,10 +143,16 @@
 <col style="width: 90%" />
 </colgroup>
 <tbody>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">checkpoints</span></code></p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">age</span></code></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">clipping_params</span></code></p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">checkpoints</span></code></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">clipping_params</span></code></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">current_metrics</span></code></p></td>
 <td><p></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">fixed_params</span></code></p></td>
@@ -156,10 +167,13 @@
 <tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">mcmc_state</span></code></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">opt_state</span></code></p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">n_opt_epochs</span></code></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">physical</span></code></p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">opt_state</span></code></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">physical</span></code></p></td>
 <td><p></p></td>
 </tr>
 </tbody>

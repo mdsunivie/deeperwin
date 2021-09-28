@@ -99,7 +99,7 @@ def main():
                     job_dirs.append(setup_job_dir(exp_dir, p))
                     job_config_dicts.append(job_config_dict)
         else:
-            if n_molecules > 1 and not exp_config.optimization.interdependent and not wandb_sweep:
+            if n_molecules > 1 and exp_config.optimization.shared_optimization is None and not wandb_sweep:
                 dump_config_dict(exp_dir, exp_config_dict)
                 for idx, p in enumerate(exp_config_dict["physical"]["changes"]):
                     job_name = idx_to_job_name(idx)
@@ -142,7 +142,7 @@ def main():
         # define which script will run
         if wandb_sweep:
             command = ["python", "-m", "wandb", "agent", "--count", str(n_runs_per_agent), str(sweep_id)]
-        elif job_config.optimization.interdependent:
+        elif job_config.optimization.shared_optimization is not None:
             command = ["python", str(get_fname_fullpath("process_molecules_inter.py")), "config.yml"]
         else:
             command = ["python", str(get_fname_fullpath("process_molecule.py")), "config.yml"]

@@ -587,6 +587,8 @@ class Optimizer(utils.Stateful):
       fixed_regularization = 0.00001
       reg = - sq_norm_scaled_grads / sq_preconditioned_grads
       reg = jnp.maximum(reg, 0.0) + fixed_regularization
+
+      # sq_norm_scaled_grads = jax.lax.cond(sq_norm_scaled_grads == jnp.nan, lambda x: 1.0, lambda x: x, sq_norm_scaled_grads)
       sq_norm_scaled_grads = sq_norm_scaled_grads + reg*sq_preconditioned_grads
       # We need to sync the norms here, because reduction can be
       # non-deterministic. They specifically are on GPUs by default for better

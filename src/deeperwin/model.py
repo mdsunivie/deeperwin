@@ -352,6 +352,11 @@ def build_backflow_factor(config: DeepErwinModelConfig, n_electrons, n_up, name=
         bf_up = ffwd_net(params['up'], embeddings[..., :n_up, :], linear_output=True)
         bf_dn = ffwd_net(params['dn'], embeddings[..., n_up:, :], linear_output=True)
 
+        ### Preliminary
+
+        # bf_up = ffwd_net(params['up_output'], bf_up, linear_output=True)
+        # bf_dn = ffwd_net(params['dn_output'], bf_dn, linear_output=True)
+
         bf_up = jnp.reshape(bf_up, bf_up.shape[:-2] + (n_dets * n_up * n_up,))
         bf_dn = jnp.reshape(bf_dn, bf_dn.shape[:-2] + (n_dets * n_dn * n_dn,))
 
@@ -374,6 +379,10 @@ def build_backflow_factor(config: DeepErwinModelConfig, n_electrons, n_up, name=
     bf_params = {}
     bf_params['up'] = init_ffwd_net(config.n_hidden_bf_factor + [n_dets * n_up], input_dim)
     bf_params['dn'] = init_ffwd_net(config.n_hidden_bf_factor + [n_dets * n_dn], input_dim)
+
+    bf_params['up_output'] = init_ffwd_net([n_dets * n_up], config.n_hidden_bf_factor[-1])
+    bf_params['dn_output'] = init_ffwd_net([n_dets * n_up], config.n_hidden_bf_factor[-1])
+
     bf_params['scale'] = jnp.array([-2.0])
     return name, _call_bf_factor, bf_params
 

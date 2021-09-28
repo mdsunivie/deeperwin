@@ -7,6 +7,7 @@
   <title>deeperwin.process_molecules_inter.optimize_inter &mdash; deeperwin 1.0.0 documentation</title>
       <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/autodoc_pydantic.css" type="text/css" />
       <link rel="stylesheet" href="../_static/custom_style.css" type="text/css" />
     <link rel="shortcut icon" href="../_static/favicon.png"/>
   <!--[if lt IE 9]>
@@ -20,7 +21,7 @@
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="deeperwin.process_molecules_inter.update_opt_state" href="deeperwin.process_molecules_inter.update_opt_state.html" />
+    <link rel="next" title="deeperwin.process_molecules_inter.update_adam_opt_state" href="deeperwin.process_molecules_inter.update_adam_opt_state.html" />
     <link rel="prev" title="deeperwin.process_molecules_inter.is_shared_module" href="deeperwin.process_molecules_inter.is_shared_module.html" /> 
 </head>
 
@@ -29,7 +30,7 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-            <a href="../index.html" class="icon icon-home"> deeperwin
+            <a href="../root.html" class="icon icon-home"> deeperwin
           </a>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
@@ -40,8 +41,9 @@
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="../introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../tutorial.html">DeepErwin Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Options</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="../api.html">Full documentation for developers</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="deeperwin.html">deeperwin</a><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.ase_bindings.html">deeperwin.ase_bindings</a></li>
@@ -64,6 +66,9 @@
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.process_molecules_inter.init_wf.html">deeperwin.process_molecules_inter.init_wf</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.process_molecules_inter.is_shared_module.html">deeperwin.process_molecules_inter.is_shared_module</a></li>
 <li class="toctree-l4 current"><a class="current reference internal" href="#">deeperwin.process_molecules_inter.optimize_inter</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.process_molecules_inter.update_adam_opt_state.html">deeperwin.process_molecules_inter.update_adam_opt_state</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.process_molecules_inter.update_bfgs_opt_state.html">deeperwin.process_molecules_inter.update_bfgs_opt_state</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.process_molecules_inter.update_kfac_opt_state.html">deeperwin.process_molecules_inter.update_kfac_opt_state</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.process_molecules_inter.update_opt_state.html">deeperwin.process_molecules_inter.update_opt_state</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.process_molecules_inter.update_shared_weights.html">deeperwin.process_molecules_inter.update_shared_weights</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.process_molecules_inter.update_wf.html">deeperwin.process_molecules_inter.update_wf</a></li>
@@ -87,14 +92,14 @@
 
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="../index.html">deeperwin</a>
+          <a href="../root.html">deeperwin</a>
       </nav>
 
       <div class="wy-nav-content">
         <div class="rst-content">
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li><a href="../root.html" class="icon icon-home"></a> &raquo;</li>
           <li><a href="../api.html">Full documentation for developers</a> &raquo;</li>
           <li><a href="deeperwin.html">deeperwin</a> &raquo;</li>
           <li><a href="deeperwin.process_molecules_inter.html">deeperwin.process_molecules_inter</a> &raquo;</li>
@@ -112,7 +117,7 @@
 <h1>deeperwin.process_molecules_inter.optimize_inter<a class="headerlink" href="#deeperwin-process-molecules-inter-optimize-inter" title="Permalink to this headline"></a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="deeperwin.process_molecules_inter.optimize_inter">
-<span class="sig-prename descclassname"><span class="pre">deeperwin.process_molecules_inter.</span></span><span class="sig-name descname"><span class="pre">optimize_inter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="deeperwin.configuration.Configuration.html#deeperwin.configuration.Configuration" title="deeperwin.configuration.Configuration"><span class="pre">deeperwin.configuration.Configuration</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">wfs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mcmc</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log_psi_squared</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/deeperwin/process_molecules_inter.html#optimize_inter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.process_molecules_inter.optimize_inter" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">deeperwin.process_molecules_inter.</span></span><span class="sig-name descname"><span class="pre">optimize_inter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../configuration.html#deeperwin.configuration.Configuration" title="deeperwin.configuration.Configuration"><span class="pre">deeperwin.configuration.Configuration</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">wfs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mcmc</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log_psi_squared</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/deeperwin/process_molecules_inter.html#optimize_inter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.process_molecules_inter.optimize_inter" title="Permalink to this definition"></a></dt>
 <dd></dd></dl>
 
 </section>
@@ -122,7 +127,7 @@
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="deeperwin.process_molecules_inter.is_shared_module.html" class="btn btn-neutral float-left" title="deeperwin.process_molecules_inter.is_shared_module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="deeperwin.process_molecules_inter.update_opt_state.html" class="btn btn-neutral float-right" title="deeperwin.process_molecules_inter.update_opt_state" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="deeperwin.process_molecules_inter.update_adam_opt_state.html" class="btn btn-neutral float-right" title="deeperwin.process_molecules_inter.update_adam_opt_state" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

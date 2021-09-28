@@ -38,7 +38,8 @@ extensions = [
     'sphinx.ext.githubpages',
     'sphinx.ext.napoleon',
     'sphinx.ext.autosectionlabel',
-    'sphinx.ext.autosummary'
+    'sphinx.ext.autosummary',
+    'sphinxcontrib.autodoc_pydantic'
 ]
 
 # Autosummary options
@@ -46,6 +47,14 @@ autosummary_generate = True
 
 # Autodoc settings
 autodoc_member_order = 'bysource'
+
+# Autodoc of pydantic models (configuration.py)
+autodoc_pydantic_model_show_json = False
+autodoc_pydantic_model_show_config_member = False
+autodoc_pydantic_model_show_config_summary = False
+autodoc_pydantic_model_show_validator_summary = False
+autodoc_pydantic_model_show_validator_members = False
+autodoc_pydantic_field_list_validators = False
 
 # Napoleon settings
 napoleon_google_docstring = True
@@ -62,7 +71,7 @@ napoleon_use_rtype = True
 napoleon_type_aliases = None
 napoleon_attr_annotations = True
 
-root_doc = "index"
+root_doc = "root"
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

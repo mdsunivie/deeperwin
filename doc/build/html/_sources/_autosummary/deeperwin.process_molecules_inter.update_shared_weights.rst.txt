@@ -1,0 +1,6 @@
+deeperwin.process\_molecules\_inter.update\_shared\_weights
+===========================================================
+
+.. currentmodule:: deeperwin.process_molecules_inter
+
+.. autofunction:: update_shared_weights
