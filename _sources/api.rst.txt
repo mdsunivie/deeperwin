@@ -19,7 +19,8 @@ If you have checked out the GIT repository, you will also find these directories
 
 .. autosummary::
    :toctree: _autosummary
-   :template: custom_module.rst
    :recursive:
+   :template: custom_module.rst
 
    deeperwin
+

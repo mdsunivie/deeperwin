@@ -7,6 +7,7 @@
   <title>deeperwin.model.build_backflow_shift &mdash; deeperwin 1.0.0 documentation</title>
       <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/autodoc_pydantic.css" type="text/css" />
       <link rel="stylesheet" href="../_static/custom_style.css" type="text/css" />
     <link rel="shortcut icon" href="../_static/favicon.png"/>
   <!--[if lt IE 9]>
@@ -29,7 +30,7 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-            <a href="../index.html" class="icon icon-home"> deeperwin
+            <a href="../root.html" class="icon icon-home"> deeperwin
           </a>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
@@ -40,8 +41,9 @@
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="../introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../tutorial.html">DeepErwin Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Options</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="../api.html">Full documentation for developers</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="deeperwin.html">deeperwin</a><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.ase_bindings.html">deeperwin.ase_bindings</a></li>
@@ -96,14 +98,14 @@
 
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="../index.html">deeperwin</a>
+          <a href="../root.html">deeperwin</a>
       </nav>
 
       <div class="wy-nav-content">
         <div class="rst-content">
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li><a href="../root.html" class="icon icon-home"></a> &raquo;</li>
           <li><a href="../api.html">Full documentation for developers</a> &raquo;</li>
           <li><a href="deeperwin.html">deeperwin</a> &raquo;</li>
           <li><a href="deeperwin.model.html">deeperwin.model</a> &raquo;</li>
@@ -121,12 +123,12 @@
 <h1>deeperwin.model.build_backflow_shift<a class="headerlink" href="#deeperwin-model-build-backflow-shift" title="Permalink to this headline"></a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="deeperwin.model.build_backflow_shift">
-<span class="sig-prename descclassname"><span class="pre">deeperwin.model.</span></span><span class="sig-name descname"><span class="pre">build_backflow_shift</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="deeperwin.configuration.DeepErwinModelConfig.html#deeperwin.configuration.DeepErwinModelConfig" title="deeperwin.configuration.DeepErwinModelConfig"><span class="pre">deeperwin.configuration.DeepErwinModelConfig</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_el</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'bf_shift'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/deeperwin/model.html#build_backflow_shift"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.model.build_backflow_shift" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">deeperwin.model.</span></span><span class="sig-name descname"><span class="pre">build_backflow_shift</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../configuration.html#deeperwin.configuration.DeepErwinModelConfig" title="deeperwin.configuration.DeepErwinModelConfig"><span class="pre">deeperwin.configuration.DeepErwinModelConfig</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_el</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'bf_shift'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/deeperwin/model.html#build_backflow_shift"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.model.build_backflow_shift" title="Permalink to this definition"></a></dt>
 <dd><p>Builds the backflow shift of the DeepErwin wavefunction model and initializes the respective trainable parameters.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>config</strong> (<a class="reference internal" href="deeperwin.configuration.DeepErwinModelConfig.html#deeperwin.configuration.DeepErwinModelConfig" title="deeperwin.configuration.DeepErwinModelConfig"><em>DeepErwinModelConfig</em></a>) – Hyperparameters of the DeepErwin model</p></li>
+<li><p><strong>config</strong> (<a class="reference internal" href="../configuration.html#deeperwin.configuration.DeepErwinModelConfig" title="deeperwin.configuration.DeepErwinModelConfig"><em>DeepErwinModelConfig</em></a>) – Hyperparameters of the DeepErwin model</p></li>
 <li><p><strong>n_el</strong> (<em>int</em>) – Number of electrons</p></li>
 <li><p><strong>name</strong> (<em>str</em>) – Name of the backflow shift instance</p></li>
 </ul>

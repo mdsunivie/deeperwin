@@ -7,6 +7,7 @@
   <title>deeperwin.optimization.build_optimizer &mdash; deeperwin 1.0.0 documentation</title>
       <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/autodoc_pydantic.css" type="text/css" />
       <link rel="stylesheet" href="../_static/custom_style.css" type="text/css" />
     <link rel="shortcut icon" href="../_static/favicon.png"/>
   <!--[if lt IE 9]>
@@ -29,7 +30,7 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-            <a href="../index.html" class="icon icon-home"> deeperwin
+            <a href="../root.html" class="icon icon-home"> deeperwin
           </a>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
@@ -40,8 +41,9 @@
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="../introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../tutorial.html">DeepErwin Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Options</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="../api.html">Full documentation for developers</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="deeperwin.html">deeperwin</a><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.ase_bindings.html">deeperwin.ase_bindings</a></li>
@@ -82,14 +84,14 @@
 
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="../index.html">deeperwin</a>
+          <a href="../root.html">deeperwin</a>
       </nav>
 
       <div class="wy-nav-content">
         <div class="rst-content">
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li><a href="../root.html" class="icon icon-home"></a> &raquo;</li>
           <li><a href="../api.html">Full documentation for developers</a> &raquo;</li>
           <li><a href="deeperwin.html">deeperwin</a> &raquo;</li>
           <li><a href="deeperwin.optimization.html">deeperwin.optimization</a> &raquo;</li>
@@ -107,7 +109,7 @@
 <h1>deeperwin.optimization.build_optimizer<a class="headerlink" href="#deeperwin-optimization-build-optimizer" title="Permalink to this headline"></a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="deeperwin.optimization.build_optimizer">
-<span class="sig-prename descclassname"><span class="pre">deeperwin.optimization.</span></span><span class="sig-name descname"><span class="pre">build_optimizer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">log_psi_squared_func</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grad_loss_func</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mcmc</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_params</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fixed_params</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">opt_config</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="deeperwin.configuration.OptimizationConfig.html#deeperwin.configuration.OptimizationConfig" title="deeperwin.configuration.OptimizationConfig"><span class="pre">deeperwin.configuration.OptimizationConfig</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_walkers</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mcmc_state</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/deeperwin/optimization.html#build_optimizer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.optimization.build_optimizer" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">deeperwin.optimization.</span></span><span class="sig-name descname"><span class="pre">build_optimizer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">log_psi_squared_func</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grad_loss_func</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mcmc</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_params</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fixed_params</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">opt_config</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../configuration.html#deeperwin.configuration.OptimizationConfig" title="deeperwin.configuration.OptimizationConfig"><span class="pre">deeperwin.configuration.OptimizationConfig</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_walkers</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mcmc_state</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/deeperwin/optimization.html#build_optimizer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.optimization.build_optimizer" title="Permalink to this definition"></a></dt>
 <dd><p>Builds an optimizer for optimizing the wavefunction model defined by <cite>log_psi_squared_func</cite>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -117,7 +119,7 @@
 <li><p><strong>mcmc</strong> (<a class="reference internal" href="deeperwin.mcmc.MetropolisHastingsMonteCarlo.html#deeperwin.mcmc.MetropolisHastingsMonteCarlo" title="deeperwin.mcmc.MetropolisHastingsMonteCarlo"><em>MetropolisHastingsMonteCarlo</em></a>) – Object that implements the MCMC algorithm</p></li>
 <li><p><strong>initial_params</strong> (<em>array</em>) – Initial trainable parameters for the model defined by <cite>log_psi_squared_func</cite></p></li>
 <li><p><strong>fixed_params</strong> (<em>array</em>) – Fixed paraemters of the model defined by <cite>log_psi_squared_func</cite></p></li>
-<li><p><strong>opt_config</strong> (<a class="reference internal" href="deeperwin.configuration.OptimizationConfig.html#deeperwin.configuration.OptimizationConfig" title="deeperwin.configuration.OptimizationConfig"><em>OptimizationConfig</em></a>) – Optimization hyperparameters</p></li>
+<li><p><strong>opt_config</strong> (<a class="reference internal" href="../configuration.html#deeperwin.configuration.OptimizationConfig" title="deeperwin.configuration.OptimizationConfig"><em>OptimizationConfig</em></a>) – Optimization hyperparameters</p></li>
 <li><p><strong>n_walkers</strong> (<em>int</em>) – Number of MCMC walkers</p></li>
 <li><p><strong>mcmc_state</strong> (<a class="reference internal" href="deeperwin.mcmc.MCMCState.html#deeperwin.mcmc.MCMCState" title="deeperwin.mcmc.MCMCState"><em>MCMCState</em></a>) – Initial state of the MCMC walkers</p></li>
 </ul>

@@ -1,4 +1,4 @@
-﻿deeperwin.configuration
+deeperwin.configuration
 =======================
 
 .. automodule:: deeperwin.configuration
@@ -21,45 +21,6 @@
    
 
    
-   
-   .. rubric:: Classes
-
-   .. autosummary::
-      :toctree:
-      :template: custom_class.rst
-   
-      AdamOptimizerConfig
-      BFGSOptimizerConfig
-      BasicLoggerConfig
-      CASSCFConfig
-      ClippingConfig
-      ComputationConfig
-      ConfigModel
-      Configuration
-      CuspCorrectionConfig
-      DeepErwinModelConfig
-      DispatchConfig
-      DummyEmbeddingConfig
-      EvaluationConfig
-      FixedLRSchedule
-      ForceEvaluationConfig
-      IntermediateEvaluationConfig
-      InverseLRScheduleConfig
-      KFACOptimizerConfig
-      LoggerBaseConfig
-      LoggingConfig
-      MCMCConfig
-      MCMCLangevinProposalConfig
-      MCMCSimpleProposalConfig
-      NetworkConfig
-      OptimizationConfig
-      PhysicalConfig
-      PhysicalConfigChange
-      PickleLoggerConfig
-      RestartConfig
-      SimpleSchnetConfig
-      StandardOptimizerConfig
-      WandBConfig
    
    
 

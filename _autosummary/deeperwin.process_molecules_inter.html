@@ -7,6 +7,7 @@
   <title>deeperwin.process_molecules_inter &mdash; deeperwin 1.0.0 documentation</title>
       <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/autodoc_pydantic.css" type="text/css" />
       <link rel="stylesheet" href="../_static/custom_style.css" type="text/css" />
     <link rel="shortcut icon" href="../_static/favicon.png"/>
   <!--[if lt IE 9]>
@@ -29,7 +30,7 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-            <a href="../index.html" class="icon icon-home"> deeperwin
+            <a href="../root.html" class="icon icon-home"> deeperwin
           </a>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
@@ -40,8 +41,9 @@
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="../introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../tutorial.html">DeepErwin Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Options</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="../api.html">Full documentation for developers</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="deeperwin.html">deeperwin</a><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.ase_bindings.html">deeperwin.ase_bindings</a></li>
@@ -64,6 +66,9 @@
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.process_molecules_inter.init_wf.html">deeperwin.process_molecules_inter.init_wf</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.process_molecules_inter.is_shared_module.html">deeperwin.process_molecules_inter.is_shared_module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.process_molecules_inter.optimize_inter.html">deeperwin.process_molecules_inter.optimize_inter</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.process_molecules_inter.update_adam_opt_state.html">deeperwin.process_molecules_inter.update_adam_opt_state</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.process_molecules_inter.update_bfgs_opt_state.html">deeperwin.process_molecules_inter.update_bfgs_opt_state</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.process_molecules_inter.update_kfac_opt_state.html">deeperwin.process_molecules_inter.update_kfac_opt_state</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.process_molecules_inter.update_opt_state.html">deeperwin.process_molecules_inter.update_opt_state</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.process_molecules_inter.update_shared_weights.html">deeperwin.process_molecules_inter.update_shared_weights</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.process_molecules_inter.update_wf.html">deeperwin.process_molecules_inter.update_wf</a></li>
@@ -87,14 +92,14 @@
 
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="../index.html">deeperwin</a>
+          <a href="../root.html">deeperwin</a>
       </nav>
 
       <div class="wy-nav-content">
         <div class="rst-content">
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li><a href="../root.html" class="icon icon-home"></a> &raquo;</li>
           <li><a href="../api.html">Full documentation for developers</a> &raquo;</li>
           <li><a href="deeperwin.html">deeperwin</a> &raquo;</li>
       <li>deeperwin.process_molecules_inter</li>
@@ -117,7 +122,7 @@
 <col style="width: 90%" />
 </colgroup>
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.process_molecules_inter.get_index.html#deeperwin.process_molecules_inter.get_index" title="deeperwin.process_molecules_inter.get_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_index</span></code></a>(n_epoch, n_wfs[, method])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.process_molecules_inter.get_index.html#deeperwin.process_molecules_inter.get_index" title="deeperwin.process_molecules_inter.get_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_index</span></code></a>(n_epoch, wfs, config)</p></td>
 <td><p></p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="deeperwin.process_molecules_inter.init_wf.html#deeperwin.process_molecules_inter.init_wf" title="deeperwin.process_molecules_inter.init_wf"><code class="xref py py-obj docutils literal notranslate"><span class="pre">init_wf</span></code></a>(config)</p></td>
@@ -129,16 +134,25 @@
 <tr class="row-even"><td><p><a class="reference internal" href="deeperwin.process_molecules_inter.optimize_inter.html#deeperwin.process_molecules_inter.optimize_inter" title="deeperwin.process_molecules_inter.optimize_inter"><code class="xref py py-obj docutils literal notranslate"><span class="pre">optimize_inter</span></code></a>(config, wfs, mcmc, ...)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.process_molecules_inter.update_opt_state.html#deeperwin.process_molecules_inter.update_opt_state" title="deeperwin.process_molecules_inter.update_opt_state"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_opt_state</span></code></a>(opt_state, params)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.process_molecules_inter.update_adam_opt_state.html#deeperwin.process_molecules_inter.update_adam_opt_state" title="deeperwin.process_molecules_inter.update_adam_opt_state"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_adam_opt_state</span></code></a>(opt_state, params)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.process_molecules_inter.update_shared_weights.html#deeperwin.process_molecules_inter.update_shared_weights" title="deeperwin.process_molecules_inter.update_shared_weights"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_shared_weights</span></code></a>(dest_weights, ...)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.process_molecules_inter.update_bfgs_opt_state.html#deeperwin.process_molecules_inter.update_bfgs_opt_state" title="deeperwin.process_molecules_inter.update_bfgs_opt_state"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_bfgs_opt_state</span></code></a>(opt_state_old, ...)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.process_molecules_inter.update_wf.html#deeperwin.process_molecules_inter.update_wf" title="deeperwin.process_molecules_inter.update_wf"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_wf</span></code></a>(index, index_next, mcmc_state, ...)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.process_molecules_inter.update_kfac_opt_state.html#deeperwin.process_molecules_inter.update_kfac_opt_state" title="deeperwin.process_molecules_inter.update_kfac_opt_state"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_kfac_opt_state</span></code></a>(opt_state_old, ...)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.process_molecules_inter.warm_up_opt.html#deeperwin.process_molecules_inter.warm_up_opt" title="deeperwin.process_molecules_inter.warm_up_opt"><code class="xref py py-obj docutils literal notranslate"><span class="pre">warm_up_opt</span></code></a>(wfs, mcmc, config, log_psi_squared)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.process_molecules_inter.update_opt_state.html#deeperwin.process_molecules_inter.update_opt_state" title="deeperwin.process_molecules_inter.update_opt_state"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_opt_state</span></code></a>(opt_state_old, params, ...)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.process_molecules_inter.update_shared_weights.html#deeperwin.process_molecules_inter.update_shared_weights" title="deeperwin.process_molecules_inter.update_shared_weights"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_shared_weights</span></code></a>(dest_weights, ...)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.process_molecules_inter.update_wf.html#deeperwin.process_molecules_inter.update_wf" title="deeperwin.process_molecules_inter.update_wf"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_wf</span></code></a>(index, index_next, mcmc_state, ...)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.process_molecules_inter.warm_up_opt.html#deeperwin.process_molecules_inter.warm_up_opt" title="deeperwin.process_molecules_inter.warm_up_opt"><code class="xref py py-obj docutils literal notranslate"><span class="pre">warm_up_opt</span></code></a>(wfs, mcmc, config, log_psi_squared)</p></td>
 <td><p></p></td>
 </tr>
 </tbody>
@@ -150,7 +164,7 @@
 <col style="width: 90%" />
 </colgroup>
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.process_molecules_inter.WF.html#deeperwin.process_molecules_inter.WF" title="deeperwin.process_molecules_inter.WF"><code class="xref py py-obj docutils literal notranslate"><span class="pre">WF</span></code></a>([clipping_params])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.process_molecules_inter.WF.html#deeperwin.process_molecules_inter.WF" title="deeperwin.process_molecules_inter.WF"><code class="xref py py-obj docutils literal notranslate"><span class="pre">WF</span></code></a>([clipping_params, n_opt_epochs, age])</p></td>
 <td><p></p></td>
 </tr>
 </tbody>
