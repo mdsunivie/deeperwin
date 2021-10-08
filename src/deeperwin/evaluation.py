@@ -6,6 +6,7 @@ import logging
 import time
 
 import jax
+import functools
 import numpy as np
 from jax import numpy as jnp
 
@@ -15,7 +16,7 @@ from deeperwin.loggers import DataLogger
 from deeperwin.mcmc import MCMCState, MetropolisHastingsMonteCarlo, calculate_metrics
 
 
-@jax.partial(jax.jit, static_argnums=(0, 1))
+@functools.partial(jax.jit, static_argnums=(0, 1))
 def _evaluation_step(log_psi_squared, mcmc, mcmc_state, params):
     mcmc_state = mcmc.run_inter_steps(log_psi_squared, params, mcmc_state, "eval")
     E_loc = get_local_energy(log_psi_squared, *mcmc_state.model_args, *params)

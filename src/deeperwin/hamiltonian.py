@@ -5,6 +5,7 @@ Computation of local energies and forces.
 import logging
 
 import jax
+import functools
 import numpy as np
 from jax import numpy as jnp
 
@@ -126,9 +127,9 @@ def calculate_forces(r, R, Z, log_psi_sqr, log_sqr_func, func_params, config: Fo
 
     diff_el_ion, r_el_ion = get_el_ion_distance_matrix(r, R)
     if config.use_polynomial:
-        force_function = jax.partial(_calculate_forces_polynomial_fit, R_core=config.R_core, poly_coeffs=poly_coeffs)
+        force_function = functools.partial(_calculate_forces_polynomial_fit, R_core=config.R_core, poly_coeffs=poly_coeffs)
     else:
-        force_function = jax.partial(_calculate_forces_directly, R_cut=config.R_cut)
+        force_function = functools.partial(_calculate_forces_directly, R_cut=config.R_cut)
     forces = force_function(diff_el_ion, r_el_ion, Z)
 
     if config.use_antithetic_sampling:
