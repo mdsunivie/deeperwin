@@ -1,14 +1,17 @@
 """
 Helper functions for K-FAC 2nd-order optimization.
 """
+import logging
 
 from deeperwin.configuration import OptimizationConfig
 from deeperwin.hamiltonian import *
 from deeperwin.kfac_ferminet_alpha import loss_functions
 from deeperwin.kfac_ferminet_alpha import optimizer as kfac_optim
 from deeperwin.utils import build_inverse_schedule, get_builtin_optimizer, calculate_clipping_state
+from jax.flatten_util import ravel_pytree
 
 
+LOGGER = logging.getLogger("dpe")
 def build_grad_loss_kfac(log_psi_func, clipping_config: ClippingConfig, use_fwd_fwd_hessian=False):
     # Build custom total energy jvp. Based on https://github.com/deepmind/ferminet/blob/jax/ferminet/train.py
     @jax.custom_jvp
@@ -21,7 +24,7 @@ def build_grad_loss_kfac(log_psi_func, clipping_config: ClippingConfig, use_fwd_
             E_loc = clip_energies(E_loc, center, width, clipping_config)
         else:
             E_loc = clip_energies(E_loc, *clipping, clipping_config)
-        loss = jnp.mean(E_loc)
+        loss = jnp.nanmean(E_loc)
         return loss, ((R, Z, fixed_params, clipping), E_loc)
 
     @total_energy.defjvp
@@ -34,7 +37,6 @@ def build_grad_loss_kfac(log_psi_func, clipping_config: ClippingConfig, use_fwd_
         loss_functions.register_normal_predictive_distribution(psi_primal[:, None])  # Register loss for kfac optimizer
         primals_out = loss, ((R, Z, fixed_params, clipping), E_loc)
         tangents_out = jnp.dot(psi_tangent, diff), ((R, Z, fixed_params, clipping), E_loc)
-
         return primals_out, tangents_out
 
     grad_loss_func = jax.value_and_grad(total_energy, argnums=0, has_aux=True)
@@ -53,14 +55,13 @@ def build_optimize_epoch_kfac_test(grad_loss_func, initial_params, opt_config: O
         inverse_update_period=opt_config.optimizer.update_inverse_period,
         value_func_has_rng=False,
         learning_rate_schedule=learning_rate_scheduler,
-        num_burnin_steps=0,
+        num_burnin_steps=opt_config.optimizer.n_burn_in,
         register_only_generic=opt_config.optimizer.register_generic,
         norm_constraint=opt_config.optimizer.norm_constraint,
         estimation_mode=opt_config.optimizer.estimation_mode,
         min_damping=opt_config.optimizer.min_damping,
         multi_device=False,
         curvature_ema=1.0 - opt_config.optimizer.curvature_ema
-        # debug=True
     )
 
     key_init = jax.random.PRNGKey(1245123)
@@ -73,7 +74,6 @@ def build_optimize_epoch_kfac_test(grad_loss_func, initial_params, opt_config: O
                                                                       opt_config.schedule,
                                                                       opt_config.learning_rate)
         adam_state = opt_init(initial_params)
-
         opt_state = (adam_state, get_params_adam(adam_state), kfac_opt_state, opt_key)
 
         def _get_params(state):
@@ -103,18 +103,30 @@ def build_optimize_epoch_kfac_test(grad_loss_func, initial_params, opt_config: O
         mcmc_state = mcmc.run_inter_steps(log_psi_squared, (params, fixed_params), mcmc_state)
         r_batches = mcmc_state.r.reshape([n_batches, opt_config.batch_size, -1, 3])
 
+        if epoch == 0 and opt_config.optimizer.n_burn_in !=0:
+            r_it = []
+            for j in range(opt_config.optimizer.n_burn_in // n_batches + 1):
+                mcmc_state = mcmc.run_inter_steps(log_psi_squared, (params, fixed_params), mcmc_state)
+                r_additional_batches = mcmc_state.r.reshape([n_batches, opt_config.batch_size, -1, 3])
+                for k in range(n_batches):
+                    r_it.append(r_additional_batches[k])
+
         damping = damping_scheduler(epoch)
         momentum = opt_config.optimizer.momentum
 
         E_epoch = jnp.zeros(n_walkers)
         for i in range(n_batches):
-            r_batch = r_batches[i]
+            r_batch = [r_batches[i]]
+            if epoch==0 and i ==0 and opt_config.optimizer.n_burn_in !=0:
+                r_it.append(r_batch[0])
+                r_batch = r_it
+
             key, key_batch = jax.random.split(key, 2)
             params, kfac_opt_state, func_state, stats, grads = optimizer.step(
                 params,
                 kfac_opt_state,
                 key_batch,
-                iter([r_batch]),
+                iter(r_batch),
                 func_state=func_state,
                 momentum=momentum,
                 damping=damping)
@@ -122,6 +134,11 @@ def build_optimize_epoch_kfac_test(grad_loss_func, initial_params, opt_config: O
             E_batch = stats['aux']
             E_epoch = jax.lax.dynamic_update_slice(E_epoch, E_batch, (i * opt_config.batch_size,))
             if opt_config.optimizer.internal_optimizer is not None:
+                grads, unravel_func = ravel_pytree(grads)
+                if jnp.sum(jnp.isnan(grads)) >0:
+                    LOGGER.warning(f"Nan gradients {jnp.sum(jnp.isnan(grads))} detected in KFAC!")
+                grads = jnp.nan_to_num(grads, nan=0.0)
+                grads = unravel_func(grads)
                 params, adam_state = update_with_adam(epoch, grads, adam_state)
 
         mcmc_state.log_psi_sqr = log_psi_squared(*mcmc_state.model_args, params, fixed_params)

@@ -47,6 +47,7 @@
 <li class="toctree-l1 current"><a class="reference internal" href="../api.html">Full documentation for developers</a><ul class="current">
 <li class="toctree-l2 current"><a class="current reference internal" href="#">deeperwin</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.ase_bindings.html">deeperwin.ase_bindings</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.available_gpus.html">deeperwin.available_gpus</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.bfgs.html">deeperwin.bfgs</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.configuration.html">deeperwin.configuration</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.dispatch.html">deeperwin.dispatch</a></li>
@@ -61,10 +62,11 @@
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.optimization.html">deeperwin.optimization</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.orbitals.html">deeperwin.orbitals</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.process_molecule.html">deeperwin.process_molecule</a></li>
-<li class="toctree-l3"><a class="reference internal" href="deeperwin.process_molecules_inter.html">deeperwin.process_molecules_inter</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.process_molecules_shared.html">deeperwin.process_molecules_shared</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.register_curvature.html">deeperwin.register_curvature</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.sweep_agent.html">deeperwin.sweep_agent</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.utils.html">deeperwin.utils</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.wandb_utils.html">deeperwin.wandb_utils</a></li>
 </ul>
 </li>
 </ul>
@@ -109,59 +111,65 @@
 <tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.ase_bindings.html#module-deeperwin.ase_bindings" title="deeperwin.ase_bindings"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.ase_bindings</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.bfgs.html#module-deeperwin.bfgs" title="deeperwin.bfgs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.bfgs</span></code></a></p></td>
-<td><p>Implementation of the BFGS 2nd-order optimizer.</p></td>
-</tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../configuration.html#module-deeperwin.configuration" title="deeperwin.configuration"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.configuration</span></code></a></p></td>
-<td><p>DeepErwin hyperparameter and configuration management.</p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.dispatch.html#module-deeperwin.dispatch" title="deeperwin.dispatch"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.dispatch</span></code></a></p></td>
-<td><p>Dispatch management for different machines (clusters, local, ...)</p></td>
-</tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.evaluation.html#module-deeperwin.evaluation" title="deeperwin.evaluation"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.evaluation</span></code></a></p></td>
-<td><p>Logic for wavefunction evaluation.</p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.hamiltonian.html#module-deeperwin.hamiltonian" title="deeperwin.hamiltonian"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.hamiltonian</span></code></a></p></td>
-<td><p>Computation of local energies and forces.</p></td>
-</tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.kfac.html#module-deeperwin.kfac" title="deeperwin.kfac"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.kfac</span></code></a></p></td>
-<td><p>Helper functions for K-FAC 2nd-order optimization.</p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.html#module-deeperwin.kfac_ferminet_alpha" title="deeperwin.kfac_ferminet_alpha"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.kfac_ferminet_alpha</span></code></a></p></td>
-<td><p>Module for anything that an end user would use.</p></td>
-</tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.loggers.html#module-deeperwin.loggers" title="deeperwin.loggers"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.loggers</span></code></a></p></td>
-<td><p>Logging of metrics and weights to local disk and web services.</p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.main.html#module-deeperwin.main" title="deeperwin.main"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.main</span></code></a></p></td>
-<td><p>DeepErwin CLI</p></td>
-</tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.mcmc.html#module-deeperwin.mcmc" title="deeperwin.mcmc"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.mcmc</span></code></a></p></td>
-<td><p>Logic for Markov chain Monte Carlo (MCMC) steps.</p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.model.html#module-deeperwin.model" title="deeperwin.model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.model</span></code></a></p></td>
-<td><p>Definitions of wavefunction models (DeepErwin, baseline)</p></td>
-</tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.optimization.html#module-deeperwin.optimization" title="deeperwin.optimization"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.optimization</span></code></a></p></td>
-<td><p>Logic for wavefunction optimization.</p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.orbitals.html#module-deeperwin.orbitals" title="deeperwin.orbitals"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.orbitals</span></code></a></p></td>
-<td><p>Contains the physical baseline model (e.g.</p></td>
-</tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.process_molecule.html#module-deeperwin.process_molecule" title="deeperwin.process_molecule"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.process_molecule</span></code></a></p></td>
-<td><p>CLI to process a single molecule.</p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.process_molecules_inter.html#module-deeperwin.process_molecules_inter" title="deeperwin.process_molecules_inter"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.process_molecules_inter</span></code></a></p></td>
-<td><p>CLI to process multiple molecules with interdependent optimization.</p></td>
-</tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.register_curvature.html#module-deeperwin.register_curvature" title="deeperwin.register_curvature"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.register_curvature</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.available_gpus.html#module-deeperwin.available_gpus" title="deeperwin.available_gpus"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.available_gpus</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.sweep_agent.html#module-deeperwin.sweep_agent" title="deeperwin.sweep_agent"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.sweep_agent</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.bfgs.html#module-deeperwin.bfgs" title="deeperwin.bfgs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.bfgs</span></code></a></p></td>
+<td><p>Implementation of the BFGS 2nd-order optimizer.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../configuration.html#module-deeperwin.configuration" title="deeperwin.configuration"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.configuration</span></code></a></p></td>
+<td><p>DeepErwin hyperparameter and configuration management.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.dispatch.html#module-deeperwin.dispatch" title="deeperwin.dispatch"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.dispatch</span></code></a></p></td>
+<td><p>Dispatch management for different machines (clusters, local, ...)</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.evaluation.html#module-deeperwin.evaluation" title="deeperwin.evaluation"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.evaluation</span></code></a></p></td>
+<td><p>Logic for wavefunction evaluation.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.hamiltonian.html#module-deeperwin.hamiltonian" title="deeperwin.hamiltonian"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.hamiltonian</span></code></a></p></td>
+<td><p>Computation of local energies and forces.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.kfac.html#module-deeperwin.kfac" title="deeperwin.kfac"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.kfac</span></code></a></p></td>
+<td><p>Helper functions for K-FAC 2nd-order optimization.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.html#module-deeperwin.kfac_ferminet_alpha" title="deeperwin.kfac_ferminet_alpha"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.kfac_ferminet_alpha</span></code></a></p></td>
+<td><p>Module for anything that an end user would use.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.loggers.html#module-deeperwin.loggers" title="deeperwin.loggers"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.loggers</span></code></a></p></td>
+<td><p>Logging of metrics and weights to local disk and web services.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.main.html#module-deeperwin.main" title="deeperwin.main"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.main</span></code></a></p></td>
+<td><p>DeepErwin CLI</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.mcmc.html#module-deeperwin.mcmc" title="deeperwin.mcmc"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.mcmc</span></code></a></p></td>
+<td><p>Logic for Markov chain Monte Carlo (MCMC) steps.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.model.html#module-deeperwin.model" title="deeperwin.model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.model</span></code></a></p></td>
+<td><p>Definitions of wavefunction models (DeepErwin, baseline)</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.optimization.html#module-deeperwin.optimization" title="deeperwin.optimization"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.optimization</span></code></a></p></td>
+<td><p>Logic for wavefunction optimization.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.orbitals.html#module-deeperwin.orbitals" title="deeperwin.orbitals"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.orbitals</span></code></a></p></td>
+<td><p>Contains the physical baseline model (e.g.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.process_molecule.html#module-deeperwin.process_molecule" title="deeperwin.process_molecule"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.process_molecule</span></code></a></p></td>
+<td><p>CLI to process a single molecule.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.process_molecules_shared.html#module-deeperwin.process_molecules_shared" title="deeperwin.process_molecules_shared"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.process_molecules_shared</span></code></a></p></td>
+<td><p>CLI to process multiple molecules with shared optimization.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.register_curvature.html#module-deeperwin.register_curvature" title="deeperwin.register_curvature"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.register_curvature</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.sweep_agent.html#module-deeperwin.sweep_agent" title="deeperwin.sweep_agent"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.sweep_agent</span></code></a></p></td>
 <td><p>CLI for wandb sweeps.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.utils.html#module-deeperwin.utils" title="deeperwin.utils"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.utils</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.utils.html#module-deeperwin.utils" title="deeperwin.utils"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.utils</span></code></a></p></td>
 <td><p>Helper functions.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.wandb_utils.html#module-deeperwin.wandb_utils" title="deeperwin.wandb_utils"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.wandb_utils</span></code></a></p></td>
+<td><p></p></td>
 </tr>
 </tbody>
 </table>

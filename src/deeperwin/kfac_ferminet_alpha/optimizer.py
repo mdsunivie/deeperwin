@@ -20,6 +20,7 @@ import jax
 import jax.lax as lax
 import jax.numpy as jnp
 import jax.random as jnr
+from jax.flatten_util import ravel_pytree
 
 from deeperwin.kfac_ferminet_alpha import estimator
 from deeperwin.kfac_ferminet_alpha import tag_graph_matcher as tgm
@@ -415,6 +416,15 @@ class Optimizer(utils.Stateful):
 
     # Compute current loss and gradients
     out, grads = self.value_and_grad_func(*func_args)
+    # Catch NaNs
+    grads, unravel_func = ravel_pytree(grads)
+    grads = jnp.nan_to_num(grads, nan=0.0)
+    grads = unravel_func(grads)
+
+    # out, unravel_func = ravel_pytree(out)
+    # out = jnp.nan_to_num(out, nan=0.0)
+    # out = unravel_func(out)
+
     loss, new_func_state, aux = utils.extract_func_outputs(
         out, self.value_func_has_aux, self.value_func_has_state)
     # Sync loss and grads
@@ -584,12 +594,12 @@ class Optimizer(utils.Stateful):
       sq_norm_scaled_grads = sq_norm_grads * learning_rate**2
 
       sq_preconditioned_grads = utils.inner_product(preconditioned_grads, preconditioned_grads) * learning_rate**2
-      fixed_regularization = 0.00001
-      reg = - sq_norm_scaled_grads / sq_preconditioned_grads
-      reg = jnp.maximum(reg, 0.0) + fixed_regularization
+      # fixed_regularization = 0.00001
+      # reg = - sq_norm_scaled_grads / sq_preconditioned_grads
+      # reg = jnp.maximum(reg, 0.0) + fixed_regularization
 
-      # sq_norm_scaled_grads = jax.lax.cond(sq_norm_scaled_grads == jnp.nan, lambda x: 1.0, lambda x: x, sq_norm_scaled_grads)
-      sq_norm_scaled_grads = sq_norm_scaled_grads + reg*sq_preconditioned_grads
+      sq_norm_scaled_grads = jax.lax.cond(sq_norm_scaled_grads == jnp.nan, lambda x: 1.0, lambda x: x, sq_norm_scaled_grads)
+      # sq_norm_scaled_grads = sq_norm_scaled_grads + reg*sq_preconditioned_grads
       # We need to sync the norms here, because reduction can be
       # non-deterministic. They specifically are on GPUs by default for better
       # performance. Hence although grads and preconditioned_grads are synced,

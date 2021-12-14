@@ -201,15 +201,17 @@ class MetropolisHastingsMonteCarlo:
         return self._run_mcmc_steps(func, func_params, state, self.config.n_burn_in_eval)
 
 
-def calculate_metrics(epoch_nr: int, n_geometries: int, E_epoch: jnp.array, mcmc_state: MCMCState,
+def calculate_metrics(epoch_nr: int, E_epoch: jnp.array, mcmc_state: MCMCState,
                       time_per_epoch: float,
-                      metric_type: str):
+                      metric_type: str, epoch_per_geometry: int = None):
     metrics = {}
     metrics[metric_type + "_E_mean"] = float(jnp.mean(E_epoch))
     metrics[metric_type + "_E_std"] = float(jnp.std(E_epoch))
     metrics[metric_type + "_mcmc_stepsize"] = float(mcmc_state.stepsize)
     metrics[metric_type + "_mcmc_max_age"] = float(jnp.max(mcmc_state.walker_age))
     metrics[metric_type + "_t_epoch"] = time_per_epoch
-    metrics[metric_type + "_epoch_per_geom"] = epoch_nr / n_geometries
+    if epoch_per_geometry is None:
+        epoch_per_geometry = epoch_nr
+    metrics[metric_type + "_epoch_per_geom"] = epoch_per_geometry
 
     return metrics, int(epoch_nr), metric_type

@@ -92,6 +92,7 @@
 <span class="kn">import</span> <span class="nn">jax.lax</span> <span class="k">as</span> <span class="nn">lax</span>
 <span class="kn">import</span> <span class="nn">jax.numpy</span> <span class="k">as</span> <span class="nn">jnp</span>
 <span class="kn">import</span> <span class="nn">jax.random</span> <span class="k">as</span> <span class="nn">jnr</span>
+<span class="kn">from</span> <span class="nn">jax.flatten_util</span> <span class="kn">import</span> <span class="n">ravel_pytree</span>
 
 <span class="kn">from</span> <span class="nn">deeperwin.kfac_ferminet_alpha</span> <span class="kn">import</span> <span class="n">estimator</span>
 <span class="kn">from</span> <span class="nn">deeperwin.kfac_ferminet_alpha</span> <span class="kn">import</span> <span class="n">tag_graph_matcher</span> <span class="k">as</span> <span class="n">tgm</span>
@@ -487,6 +488,15 @@
 
     <span class="c1"># Compute current loss and gradients</span>
     <span class="n">out</span><span class="p">,</span> <span class="n">grads</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value_and_grad_func</span><span class="p">(</span><span class="o">*</span><span class="n">func_args</span><span class="p">)</span>
+    <span class="c1"># Catch NaNs</span>
+    <span class="n">grads</span><span class="p">,</span> <span class="n">unravel_func</span> <span class="o">=</span> <span class="n">ravel_pytree</span><span class="p">(</span><span class="n">grads</span><span class="p">)</span>
+    <span class="n">grads</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">nan_to_num</span><span class="p">(</span><span class="n">grads</span><span class="p">,</span> <span class="n">nan</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+    <span class="n">grads</span> <span class="o">=</span> <span class="n">unravel_func</span><span class="p">(</span><span class="n">grads</span><span class="p">)</span>
+
+    <span class="c1"># out, unravel_func = ravel_pytree(out)</span>
+    <span class="c1"># out = jnp.nan_to_num(out, nan=0.0)</span>
+    <span class="c1"># out = unravel_func(out)</span>
+
     <span class="n">loss</span><span class="p">,</span> <span class="n">new_func_state</span><span class="p">,</span> <span class="n">aux</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">extract_func_outputs</span><span class="p">(</span>
         <span class="n">out</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">value_func_has_aux</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">value_func_has_state</span><span class="p">)</span>
     <span class="c1"># Sync loss and grads</span>
@@ -656,12 +666,12 @@
       <span class="n">sq_norm_scaled_grads</span> <span class="o">=</span> <span class="n">sq_norm_grads</span> <span class="o">*</span> <span class="n">learning_rate</span><span class="o">**</span><span class="mi">2</span>
 
       <span class="n">sq_preconditioned_grads</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">inner_product</span><span class="p">(</span><span class="n">preconditioned_grads</span><span class="p">,</span> <span class="n">preconditioned_grads</span><span class="p">)</span> <span class="o">*</span> <span class="n">learning_rate</span><span class="o">**</span><span class="mi">2</span>
-      <span class="n">fixed_regularization</span> <span class="o">=</span> <span class="mf">0.00001</span>
-      <span class="n">reg</span> <span class="o">=</span> <span class="o">-</span> <span class="n">sq_norm_scaled_grads</span> <span class="o">/</span> <span class="n">sq_preconditioned_grads</span>
-      <span class="n">reg</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">reg</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span> <span class="o">+</span> <span class="n">fixed_regularization</span>
+      <span class="c1"># fixed_regularization = 0.00001</span>
+      <span class="c1"># reg = - sq_norm_scaled_grads / sq_preconditioned_grads</span>
+      <span class="c1"># reg = jnp.maximum(reg, 0.0) + fixed_regularization</span>
 
-      <span class="c1"># sq_norm_scaled_grads = jax.lax.cond(sq_norm_scaled_grads == jnp.nan, lambda x: 1.0, lambda x: x, sq_norm_scaled_grads)</span>
-      <span class="n">sq_norm_scaled_grads</span> <span class="o">=</span> <span class="n">sq_norm_scaled_grads</span> <span class="o">+</span> <span class="n">reg</span><span class="o">*</span><span class="n">sq_preconditioned_grads</span>
+      <span class="n">sq_norm_scaled_grads</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">lax</span><span class="o">.</span><span class="n">cond</span><span class="p">(</span><span class="n">sq_norm_scaled_grads</span> <span class="o">==</span> <span class="n">jnp</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">,</span> <span class="n">sq_norm_scaled_grads</span><span class="p">)</span>
+      <span class="c1"># sq_norm_scaled_grads = sq_norm_scaled_grads + reg*sq_preconditioned_grads</span>
       <span class="c1"># We need to sync the norms here, because reduction can be</span>
       <span class="c1"># non-deterministic. They specifically are on GPUs by default for better</span>
       <span class="c1"># performance. Hence although grads and preconditioned_grads are synced,</span>

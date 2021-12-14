@@ -47,6 +47,7 @@
 <li class="toctree-l1 current"><a class="reference internal" href="../api.html">Full documentation for developers</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="deeperwin.html">deeperwin</a><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.ase_bindings.html">deeperwin.ase_bindings</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.available_gpus.html">deeperwin.available_gpus</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.bfgs.html">deeperwin.bfgs</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.configuration.html">deeperwin.configuration</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.dispatch.html">deeperwin.dispatch</a></li>
@@ -61,6 +62,7 @@
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.model.build_backflow_factor.html">deeperwin.model.build_backflow_factor</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.model.build_backflow_shift.html">deeperwin.model.build_backflow_shift</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.model.build_dummy_embedding.html">deeperwin.model.build_dummy_embedding</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.model.build_ferminet_embedding.html">deeperwin.model.build_ferminet_embedding</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.model.build_jastrow_factor.html">deeperwin.model.build_jastrow_factor</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.model.build_log_psi_squared.html">deeperwin.model.build_log_psi_squared</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.model.build_log_psi_squared_baseline_model.html">deeperwin.model.build_log_psi_squared_baseline_model</a></li>
@@ -68,7 +70,6 @@
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.model.calculate_shift_decay.html">deeperwin.model.calculate_shift_decay</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.model.dense_layer.html">deeperwin.model.dense_layer</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.model.ffwd_net.html">deeperwin.model.ffwd_net</a></li>
-<li class="toctree-l4"><a class="reference internal" href="deeperwin.model.get_number_of_params.html">deeperwin.model.get_number_of_params</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.model.get_pairwise_features.html">deeperwin.model.get_pairwise_features</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.model.get_rbf_features.html">deeperwin.model.get_rbf_features</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.model.init_ffwd_net.html">deeperwin.model.init_ffwd_net</a></li>
@@ -81,10 +82,11 @@
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.optimization.html">deeperwin.optimization</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.orbitals.html">deeperwin.orbitals</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.process_molecule.html">deeperwin.process_molecule</a></li>
-<li class="toctree-l3"><a class="reference internal" href="deeperwin.process_molecules_inter.html">deeperwin.process_molecules_inter</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.process_molecules_shared.html">deeperwin.process_molecules_shared</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.register_curvature.html">deeperwin.register_curvature</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.sweep_agent.html">deeperwin.sweep_agent</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.utils.html">deeperwin.utils</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.wandb_utils.html">deeperwin.wandb_utils</a></li>
 </ul>
 </li>
 </ul>
@@ -137,29 +139,29 @@
 <tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.model.build_dummy_embedding.html#deeperwin.model.build_dummy_embedding" title="deeperwin.model.build_dummy_embedding"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_dummy_embedding</span></code></a>(config[, name])</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.model.build_jastrow_factor.html#deeperwin.model.build_jastrow_factor" title="deeperwin.model.build_jastrow_factor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_jastrow_factor</span></code></a>(config, n_up[, name])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.model.build_ferminet_embedding.html#deeperwin.model.build_ferminet_embedding" title="deeperwin.model.build_ferminet_embedding"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_ferminet_embedding</span></code></a>(config, n_el, n_up, ...)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.model.build_jastrow_factor.html#deeperwin.model.build_jastrow_factor" title="deeperwin.model.build_jastrow_factor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_jastrow_factor</span></code></a>(config, n_up[, name])</p></td>
 <td><p>Builds the Jastrow factor of the DeepErwin wavefunction model and initializes the respective model parameters.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.model.build_log_psi_squared.html#deeperwin.model.build_log_psi_squared" title="deeperwin.model.build_log_psi_squared"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_log_psi_squared</span></code></a>(config, physical_config)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.model.build_log_psi_squared.html#deeperwin.model.build_log_psi_squared" title="deeperwin.model.build_log_psi_squared"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_log_psi_squared</span></code></a>(config, physical_config)</p></td>
 <td><p>Builds log(psi(.)^2) for a wavefunction psi that is based on the DeepErwin model and initializes the respective trainable and fixed parameters.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.model.build_log_psi_squared_baseline_model.html#deeperwin.model.build_log_psi_squared_baseline_model" title="deeperwin.model.build_log_psi_squared_baseline_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_log_psi_squared_baseline_model</span></code></a>(...[, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.model.build_log_psi_squared_baseline_model.html#deeperwin.model.build_log_psi_squared_baseline_model" title="deeperwin.model.build_log_psi_squared_baseline_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_log_psi_squared_baseline_model</span></code></a>(...[, ...])</p></td>
 <td><p>Builds log(psi(.)^2) for a wavefunction psi that is based on a CASSCF solution and additional cusp correction.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.model.build_simple_schnet.html#deeperwin.model.build_simple_schnet" title="deeperwin.model.build_simple_schnet"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_simple_schnet</span></code></a>(config, n_el, n_up, ...)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.model.build_simple_schnet.html#deeperwin.model.build_simple_schnet" title="deeperwin.model.build_simple_schnet"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_simple_schnet</span></code></a>(config, n_el, n_up, ...)</p></td>
 <td><p>Builds the electron coordinate embedding of the DeepErwin wavefunction model and initializes the respective trainable parameters.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.model.calculate_shift_decay.html#deeperwin.model.calculate_shift_decay" title="deeperwin.model.calculate_shift_decay"><code class="xref py py-obj docutils literal notranslate"><span class="pre">calculate_shift_decay</span></code></a>(d_el_ion, Z, ...)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.model.calculate_shift_decay.html#deeperwin.model.calculate_shift_decay" title="deeperwin.model.calculate_shift_decay"><code class="xref py py-obj docutils literal notranslate"><span class="pre">calculate_shift_decay</span></code></a>(d_el_ion, Z, ...)</p></td>
 <td><p>Computes the scaling factor ensuring that the contribution of the backflow shift decays in the proximity of a nucleus.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.model.dense_layer.html#deeperwin.model.dense_layer" title="deeperwin.model.dense_layer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dense_layer</span></code></a>(X, W, b, register)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.model.dense_layer.html#deeperwin.model.dense_layer" title="deeperwin.model.dense_layer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dense_layer</span></code></a>(X, W, b, register)</p></td>
 <td><p>Computes a single dense linear layer, i.e. <cite>W</cite> * <cite>X</cite> + <cite>b</cite>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.model.ffwd_net.html#deeperwin.model.ffwd_net" title="deeperwin.model.ffwd_net"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ffwd_net</span></code></a>(params, X[, linear_output, register])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.model.ffwd_net.html#deeperwin.model.ffwd_net" title="deeperwin.model.ffwd_net"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ffwd_net</span></code></a>(params, X[, linear_output, register])</p></td>
 <td><p>Computes the output of a fully-connected feed-forward neural network with a tanh non-linearity.</p></td>
-</tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.model.get_number_of_params.html#deeperwin.model.get_number_of_params" title="deeperwin.model.get_number_of_params"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_number_of_params</span></code></a>(nested_params)</p></td>
-<td><p>Returns the number of parameters in a nested structure.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="deeperwin.model.get_pairwise_features.html#deeperwin.model.get_pairwise_features" title="deeperwin.model.get_pairwise_features"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_pairwise_features</span></code></a>(dist, model_config[, ...])</p></td>
 <td><p>Computes pairwise features based on particle distances.</p></td>

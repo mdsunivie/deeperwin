@@ -2,7 +2,6 @@
 DeepErwin hyperparameter and configuration management.
 """
 
-import warnings
 from abc import ABC, abstractmethod
 from typing import Union, Literal, Optional, List
 
@@ -64,7 +63,7 @@ class ConfigModel(BaseModel):
         return values
 
     @classmethod
-    def update_config(cls, config_dict, config_changes):
+    def update_config(cls, config_dict: dict, config_changes):
         # First loop: Build an updated dictionary
         for key, value in config_changes:
             set_with_nested_key(config_dict, key, value)
@@ -74,7 +73,8 @@ class ConfigModel(BaseModel):
         # Second loop: Update the values using the parsed values to get correct type; Not strictly necessary,
         # but yields nicer looking input-config files
         for key, value in config_changes:
-            set_with_nested_key(config_dict, key, get_attribute_by_nested_key(config, key))
+            if has_attribute_nested_key(config, key):
+                set_with_nested_key(config_dict, key, get_attribute_by_nested_key(config, key))
         return config_dict, config
 
     class Config:
@@ -98,6 +98,23 @@ class NetworkConfig(ConfigModel, ABC):
             return cls.get_default_network_shape(field.name.replace("n_hidden_", ""), values['net_width'],
                                                  values['net_depth'])
         return n_hidden
+
+
+class FermiNetConfig(NetworkConfig):
+    name: Literal["fermi"] = "fermi"
+
+    embedding_dim: int = 64
+
+    rbf = False
+
+    n_hidden_one_el: List[int] = [40, 40, 40, 40]
+
+    n_hidden_two_el: List[int] = [32, 32, 32]
+
+    @staticmethod
+    def get_default_network_shape(key, width, depth):
+        pass
+
 
 
 class SimpleSchnetConfig(NetworkConfig):
@@ -206,6 +223,11 @@ class DeepErwinModelConfig(NetworkConfig):
     Note, that using powers of -1 or +1 can lead to cusps in the input features, which may or may not be desirable.
     """
 
+    envelope_type: Literal["casscf", "isotropic_exp"] = "casscf"
+    """Which baseline orbitals to use before applying the backflow-factor
+      - casscf: Use molecular orbitals from pySCF calculation
+      - istoropic_exp: Use a weighted sum of decaying exponentials on each nucleus"""
+
     sigma_pauli: bool = True
     """How to calculate the width or the radial-basis-function features: True = Implementation according to PauliNet, False = Implementation according to original DeepErwin"""
 
@@ -221,7 +243,7 @@ class DeepErwinModelConfig(NetworkConfig):
     n_pairwise_features: Optional[int] = None
     """Total number of pairwise features to be used as input to the embedding network. Calculated automatically as :code:`n_rbf_features + len(distance_feature_powers)`"""
 
-    embedding: Union[SimpleSchnetConfig, DummyEmbeddingConfig] = SimpleSchnetConfig()
+    embedding: Union[SimpleSchnetConfig, DummyEmbeddingConfig, FermiNetConfig] = SimpleSchnetConfig()
     """Config-options for the electron-embedding"""
 
     baseline: CASSCFConfig = CASSCFConfig()
@@ -324,10 +346,26 @@ class AdamOptimizerConfig(StandardOptimizerConfig):
     b2: float = 0.999
     eps: float = 1e-8
 
+class AdamScaledOptimizerConfig(StandardOptimizerConfig):
+    name: Literal["adam_scaled"] = "adam_scaled"
+    b1: float = 0.9
+    b2: float = 0.999
+    eps: float = 1e-8
+
+    scaled_modules: Optional[List[str]] = None
+    """List of parameters for which the learning rate is being scaled. If None and using shared optimization, the modules according to the shared list are used"""
+
+    scale_lr = 0.1
+    """Factor which to apply to the learning rates of specified modules"""
+
 
 class KFACOptimizerConfig(ConfigModel):
     name: Literal["kfac"] = "kfac"
+    """Identifier. Fixed"""
+
     order: Literal[2] = 2
+    """Degree of optimizer. Fixed"""
+
     momentum: float = 0.0
     norm_constraint: float = 0.001
     damping: float = 0.0005
@@ -335,12 +373,15 @@ class KFACOptimizerConfig(ConfigModel):
     estimation_mode: str = 'fisher_gradients'
     register_generic: bool = True
     update_inverse_period: int = 1
+    """Period of how often the fisher matrix is being updated (in batches). e.g. update_inverse_period==1 means that it is updated after every gradient step."""
+
+    n_burn_in: int = 0
     decay_time: int = 6000
     decay_time_damping: int = 6000
     min_damping: float = 1e-4
     curvature_ema: float = 0.05
-    internal_optimizer: Union[AdamOptimizerConfig, StandardOptimizerConfig] = AdamOptimizerConfig()
-
+    internal_optimizer: Union[AdamOptimizerConfig, StandardOptimizerConfig, AdamScaledOptimizerConfig] = AdamOptimizerConfig()
+    """Internal optimizer to use for applying the preconditioned gradients calculated by KFAC. Use SGD for 'pure' KFAC (not recommended)."""
 
 class BFGSOptimizerConfig(ConfigModel):
     name: Literal["slbfgs"] = "slbfgs"
@@ -371,18 +412,20 @@ class BFGSOptimizerConfig(ConfigModel):
 
 class IntermediateEvaluationConfig(ConfigModel):
     n_epochs: int = 500
+    """How many evaluation epochs to use for intermediate evaluation."""
+
     opt_epochs: List[int] = []
+    """List of epochs at which to run an intermediate evaluation to accurately assess wavefunction accuracy."""
 
 class SharedOptimizationConfig(ConfigModel):
-    use: Literal[True, False] = True
-    shared_modules: Optional[List[Literal["embed", "jastrow", "bf_fac", "bf_shift"]]] = None
+    use: bool = True
+    shared_modules: Optional[List[Literal["embed", "jastrow", "bf_fac_general", "bf_shift", "bf_fac_orbital"]]] = None
     scheduling_method: Union[Literal["round_robin", "stddev"]] = "round_robin"
     max_age: int = 50
 
-
 class OptimizationConfig(ConfigModel):
     optimizer: Union[
-        AdamOptimizerConfig, StandardOptimizerConfig, KFACOptimizerConfig, BFGSOptimizerConfig] = AdamOptimizerConfig()
+        AdamOptimizerConfig, StandardOptimizerConfig, KFACOptimizerConfig, BFGSOptimizerConfig, AdamScaledOptimizerConfig] = AdamOptimizerConfig()
     """Which optimizer to use and its corresponding sub-options"""
 
     schedule: Union[InverseLRScheduleConfig, FixedLRSchedule] = InverseLRScheduleConfig()
@@ -412,19 +455,49 @@ class OptimizationConfig(ConfigModel):
     """Config for running intermediate evaluation runs during wavefunction optimization to obtain accurate estimates of current accuracy"""
 
     shared_optimization: Optional[SharedOptimizationConfig] = None
-    """Config for interdependent optimization of multiple wavefunctions using weight-sharing between them"""
+    """Config for shared optimization of multiple wavefunctions using weight-sharing between them"""
 
+    @root_validator
+    def scale_lr_for_shared_modules(cls, values):
+        if values['shared_optimization'] is None:
+            return values
+        shared_modules = values['shared_optimization'].shared_modules
+        optimizer = values['optimizer']
+
+        if isinstance(optimizer, AdamScaledOptimizerConfig):
+            if optimizer.scaled_modules is None:
+                optimizer.scaled_modules = shared_modules
+        if hasattr(optimizer, 'internal_optimizer'):
+            internal_optimizer = optimizer.internal_optimizer
+            if isinstance(internal_optimizer, AdamScaledOptimizerConfig):
+                if internal_optimizer.scaled_modules is None:
+                    internal_optimizer.scaled_modules = shared_modules
+        return values
 
 class RestartConfig(ConfigModel):
     path: str
     reuse_params: bool = True
     reuse_mcmc_state: bool = True
+    reuse_opt_state: bool = True
+    reuse_clipping_state: bool = True
     recursive: bool = True
     checkpoints: bool = True
 
+class ReuseConfig(ConfigModel):
+    path: str
+    """Path to a previous calculation directory, containing a results.bz2 file"""
+
+    reuse_trainable_params: bool = True
+    """Whether to re-use the trainable weights of the neural networks. Use *module_to_reuse* to specify only specific parts of the model to be re-used."""
+
+    reuse_mcmc_state: bool = False
+    """Whether to re-use the position of MCMC walkers. This may only make sense when calculating a wavefunction for the same (or very similar) geometry"""
+
+    reuse_modules: Optional[List[str]] = None
+    """Model-specific list of strings, detailing which submodules should be re-used vs. re-initialized randomly. Names of modules to re-used is the same as the list of modules for weight-sharing-constraints."""
 
 class ForceEvaluationConfig(ConfigModel):
-    use: bool = False
+    use: bool = True
     R_cut: float = 0.1
     R_core: float = 0.5
     use_polynomial: bool = False
@@ -434,6 +507,7 @@ class ForceEvaluationConfig(ConfigModel):
 
 class EvaluationConfig(ConfigModel):
     n_epochs: int = 2000
+    calculate_energies: bool = True
     forces: Optional[ForceEvaluationConfig] = None
 
 
@@ -484,51 +558,74 @@ class PhysicalConfig(ConfigModel):
     _DEFAULT_GEOMETRIES = dict(H2=[[0.0, 0.0, 0.0], [1.4, 0.0, 0.0]],
                                N2=[[0.0, 0.0, 0.0], [2.06800, 0.0, 0.0]],
                                LiH=[[0.0, 0.0, 0.0], [3.015, 0.0, 0.0]],
+                               Li2=[[0.0, 0.0, 0.0], [5.051048595, 0.0, 0.0]],
                                HChain10=[[1.8 * i, 0.0, 0.0] for i in range(10)],
                                HChain6=[[1.8 * i, 0.0, 0.0] for i in range(6)],
+                               H4plus=[[0.0, -0.561033, 0.0], [-0.418394, 0.280517, 0.0], [0.418394, 0.280517, 0.0], [0.0, -1.952293, 0.0]],
                                Ethene=[[1.26517164, 0, 0], [-1.26517164, 0, 0], [2.328293764, 1.7554138407, 0],
                                        [2.328293764, -1.7554138407, 0],
                                        [-2.328293764, 1.7554138407, 0], [-2.328293764, -1.7554138407, 0]],
                                EtheneBarrier=[[1.26517164, 0, 0], [-1.26517164, 0, 0], [2.328293764, 0, 1.7554138407],
                                               [2.328293764, 0, -1.7554138407],
                                               [-2.328293764, 1.7554138407, 0], [-2.328293764, -1.7554138407, 0]],
-                               Cyclobutadiene=[
-                                   [-1.4777688, -1.2793472, 0],
-                                   [+1.4777688, -1.2793472, 0],
-                                   [+1.4777688, +1.2793472, 0],
-                                   [-1.4777688, +1.2793472, 0],
-                                   [-2.9180622, -2.7226601, 0],
-                                   [+2.9180622, -2.7226601, 0],
-                                   [+2.9180622, +2.7226601, 0],
-                                   [-2.9180622, +2.7226601, 0]
-                               ])
+                               Cyclobutadiene=[[0.0000000e+00, 0.0000000e+00, 0.0000000e+00],
+                                               [2.9555318e+00, 0.0000000e+00, 0],
+                                               [2.9555318e+00, 2.5586891e+00, 0],
+                                               [0.0000000e+00, 2.5586891e+00, 0],
+                                               [-1.4402903e+00, -1.4433100e+00, 0],
+                                               [4.3958220e+00, -1.4433100e+00, 0],
+                                               [4.3958220e+00, 4.0019994e+00, 0],
+                                               [-1.4402903e+00, 4.0019994e+00, 0]],
+                               Cyclobutadiene_TS=[[0.0000000e+00, 0.0000000e+00, 0],
+                                                  [2.7419927e+00, 0.0000000e+00, 0],
+                                                  [2.7419927e+00, 2.7419927e+00, 0],
+                                                  [0.0000000e+00, 2.7419927e+00, 0],
+                                                  [-1.4404647e+00, -1.4404647e+00, 0],
+                                                  [4.1824574e+00, -1.4404647e+00, 0],
+                                                  [4.1824574e+00, 4.1824574e+00, 0],
+                                                  [-1.4404647e+00, 4.1824574e+00, 0]],
+                               Methane=[[0, 0, 0],
+                                        [+1.18599212, +1.18599212, +1.18599212],
+                                        [+1.18599212, -1.18599212, -1.18599212],
+                                        [-1.18599212, +1.18599212, -1.18599212],
+                                        [-1.18599212, -1.18599212, +1.18599212]]
+                               )
     _DEFAULT_CHARGES = dict(H2=[1, 1],
                             N2=[7, 7],
                             LiH=[3, 1],
+                            Li2=[3,3],
                             HChain10=[1] * 10,
                             HChain6=[1] * 6,
+                            H4plus=[1] * 4,
                             Ethene=[6, 6, 1, 1, 1, 1],
                             EtheneBarrier=[6, 6, 1, 1, 1, 1],
-                            Cyclobutadiene=[6, 6, 6, 6, 1, 1, 1, 1])
+                            Cyclobutadiene=[6, 6, 6, 6, 1, 1, 1, 1],
+                            Cyclobutadiene_TS=[6, 6, 6, 6, 1, 1, 1, 1],
+                            Methane=[6,1,1,1,1])
     _DEFAULT_SPIN = dict(H=1, He=0, Li=1, Be=0, B=1, C=2, N=3, O=2, F=1, Ne=0, Na=1, Mg=0, Al=1, Si=2, P=3, S=2, Cl=1,
-                         Ar=0, Ethene=0, Cyclobutadiene=0, HChain6=0, HChain10=0)
+                         Ar=0, Ethene=0, Cyclobutadiene=0, Cyclobutadiene_TS=0, HChain6=0, HChain10=0, Li2=0, Methane=0)
     _DEFAULT_EL_ION_MAPPINGS = dict(H2=[0, 1],
                                     N2=[0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1],
                                     LiH=[0, 1, 0, 0],
+                                    Li2=[0,0,1,0,1,1],
                                     HChain6=[0, 2, 4, 1, 3, 5],
                                     HChain10=[0, 2, 4, 6, 8, 1, 3, 5, 7, 9],
+                                    H4plus=[0, 3, 1],
                                     Ethene=[0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 2, 4, 3, 5],
                                     Cyclobutadiene=[0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 6, 0, 0, 0, 1, 1, 1, 2, 2, 2,
-                                                    3, 3, 3, 5, 7]
+                                                    3, 3, 3, 5, 7],
+                                    Cyclobutadiene_TS=[0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 6, 0, 0, 0, 1, 1, 1, 2, 2, 2,
+                                                    3, 3, 3, 5, 7],
+                                    Methane=[0,0,0,1,2,0,0,0,3,4]
                                     )
-    _DEFAULT_CAS_N_ACTIVE_ORBITALS = dict(He=2, Li=9, Be=8, LiH=10, B=12, C=12, N=12, O=12, F=12,
-                                          Ne=12, H2=4, Li2=16, Be2=16, B2=16, C2=16, N2=16,
+    _DEFAULT_CAS_N_ACTIVE_ORBITALS = dict(He=2, Li=9, Be=8, LiH=10, Li2=16, B=12, C=12, N=12, O=12, F=12,
+                                          Ne=12, H2=4, Be2=16, B2=16, C2=16, N2=16,
                                           H2p=1, H3plus=9, H4plus=12, H4Rect=12, HChain6=12, HChain10=10,
-                                          Ethene=12, Cyclobutadiene=12)
+                                          Ethene=10, Cyclobutadiene=10, Cyclobutadiene_TS=10, Methane=10)
 
-    _DEFAULT_CAS_N_ACTIVE_ELECTRONS = dict(He=2, Li=3, Be=2, LiH=2, B=3, C=4, N=5, O=6, F=7, Ne=8, H2=2, Li2=2, Be2=4,
+    _DEFAULT_CAS_N_ACTIVE_ELECTRONS = dict(He=2, Li=3, Be=2, LiH=2, Li2=6, B=3, C=4, N=5, O=6, F=7, Ne=8, H2=2, Be2=4,
                                            B2=6, C2=8, N2=6, H2p=1, H3plus=2, H4plus=3, H4Rect=4, HChain6=6,
-                                           HChain10=10, Ethene=12, Cyclobutadiene=12)
+                                           HChain10=10, Ethene=10, Cyclobutadiene=10, Cyclobutadiene_TS=10, Methane=10)
 
     _REFERENCE_ENERGIES = {'He': -2.90372, 'Li': -7.478067, 'Be': -14.66733, 'B': -24.65371, 'C': -37.84471,
                            'N': -54.58882,
@@ -536,7 +633,8 @@ class PhysicalConfig(ConfigModel):
                            'N2': -109.5423, 'Li2': -14.9954, 'CO': -113.3255, 'Be2': -29.338, 'B2': -49.4141,
                            'C2': -75.9265, 'O2': -150.3274, 'F2': -199.5304, 'H4Rect': -2.0155,
                            'H3plus': -1.3438355180000001, 'H4plus': -1.8527330000000002, 'HChain6': -3.40583160,
-                           'HChain10': -5.6655, 'Ethene': -78.57744597}
+                           'HChain10': -5.6655, 'Ethene': -78.57744597, 'Cyclobutadiene': -154.671, 'Cyclobutadiene_TS': -154.655,
+                           'Methane': -40.488989}
 
     @validator("R", always=True)
     def populate_R(cls, v, values):
@@ -654,7 +752,7 @@ class LoggingConfig(ConfigModel):
 
 
 class DispatchConfig(ConfigModel):
-    system: Literal["local", "vsc3", "vsc4", "dgx", "auto"] = "auto"
+    system: Literal["local", "local_background", "vsc3", "vsc4", "dgx", "auto"] = "auto"
     """Which compute-cluster to use for this experiment. 'auto' detects whether the code is running on a known compute-cluster and selects the corresponding profile, or otherwise defaults to local execution"""
 
     queue: Literal[
@@ -702,7 +800,10 @@ class Configuration(ConfigModel):
     """Options regarding where the code is being run, i.e. locally vs asynchronysly on a compute-cluster"""
 
     restart: Optional[RestartConfig] = None
-    """Restarting from a previous calculation, reusing model weights and MCMC walkers"""
+    """Restarting from a previous calculation or checkpoint, fully restoring and continuing an interrupted run."""
+
+    reuse: Optional[ReuseConfig] = None
+    """Reuse information from a previosu runt to smartly initialize weights or MCMC walkers."""
 
     comment: Optional[str] = None
     """Optional coment to keep track of experiments"""
@@ -722,7 +823,16 @@ class Configuration(ConfigModel):
     @root_validator
     def experiment_has_name(cls, values):
         if values['experiment_name'] is None:
-            values['experiment_name'] = values["physical"].name
+            if values['physical'] is None:
+                values['experiment_name'] = "exp"
+            else:
+                values['experiment_name'] = values["physical"].name
+        return values
+
+    @root_validator
+    def no_reuse_while_shared(cls, values):
+        if (values['optimization'].shared_optimization is not None) and (values['reuse'] is not None):
+            raise ValueError("Re-using weights not currently supported for shared optimization")
         return values
 
 
@@ -736,6 +846,14 @@ def get_attribute_by_nested_key(config: Configuration, key):
         child_key = ".".join(tokens[1:])
         return get_attribute_by_nested_key(getattr(config, parent_key), child_key)
 
+def has_attribute_nested_key(config: Configuration, key):
+    tokens = key.split('.')
+    config_curr = config
+    for token in tokens:
+        if not hasattr(config_curr,token):
+            return False
+        config_curr = getattr(config_curr,token)
+    return True
 
 def set_with_nested_key(config_dict, key, value):
     if "." not in key:
@@ -766,5 +884,8 @@ def build_nested_dict(flattened_dict):
 
 
 if __name__ == '__main__':
-    c = Configuration(physical=PhysicalConfig(name='LiH'))
-    print(c)
+    c = Configuration(physical=PhysicalConfig(name='Methane'),
+                      optimization=OptimizationConfig(shared_optimization=SharedOptimizationConfig(shared_modules=['jastrow']),
+                                                      optimizer=KFACOptimizerConfig(
+                                                          internal_optimizer=AdamScaledOptimizerConfig()
+                                                      )))

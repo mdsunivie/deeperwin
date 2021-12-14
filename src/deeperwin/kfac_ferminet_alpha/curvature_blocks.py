@@ -124,6 +124,7 @@ class NaiveDiagonal(CurvatureBlock):
       pmap_axis_name: str
   ) -> None:
     dw, = info["outputs_tangent"]
+    dw = jnp.nan_to_num(dw, nan=0.0)
     diagonal_update = dw * dw / batch_size
     self.diagonal_factor.update(diagonal_update, ema_old, ema_new)
     self.diagonal_factor.sync(pmap_axis_name)
@@ -266,11 +267,13 @@ class DenseTwoKroneckerFactored(TwoKroneckerFactored):
     del pmap_axis_name
     (x,), (dy,) = info["inputs"], info["outputs_tangent"]
 
-
     utils.check_first_dim_is_batch_size(batch_size, x, dy)
     if self.has_bias:
       x_one = jnp.ones_like(x[:, :1])
       x = jnp.concatenate([x, x_one], axis=1)
+
+    #x = jnp.nan_to_num(x, nan=0.0)
+    #dy = jnp.nan_to_num(dy, nan=0.0)
     input_stats = jnp.matmul(x.T, x) / batch_size
     output_stats = jnp.matmul(dy.T, dy) / batch_size
     self.inputs_factor.update(input_stats, ema_old, ema_new)

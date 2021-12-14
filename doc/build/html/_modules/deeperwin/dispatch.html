@@ -137,6 +137,8 @@
 
 
 <div class="viewcode-block" id="load_run"><a class="viewcode-back" href="../../_autosummary/deeperwin.dispatch.load_run.html#deeperwin.dispatch.load_run">[docs]</a><span class="k">def</span> <span class="nf">load_run</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">contains_run</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not load run from path, due to missing files or wrong path: </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="n">results</span> <span class="o">=</span> <span class="n">load_from_file</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;results.bz2&quot;</span><span class="p">))</span>
     <span class="n">parsed_config</span> <span class="o">=</span> <span class="n">Configuration</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;full_config.yml&quot;</span><span class="p">))</span>
     <span class="k">return</span> <span class="n">results</span><span class="p">,</span> <span class="n">parsed_config</span></div>
@@ -209,6 +211,10 @@
 <div class="viewcode-block" id="dispatch_to_local"><a class="viewcode-back" href="../../_autosummary/deeperwin.dispatch.dispatch_to_local.html#deeperwin.dispatch.dispatch_to_local">[docs]</a><span class="k">def</span> <span class="nf">dispatch_to_local</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">run_dir</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Configuration</span><span class="p">):</span>
     <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">cwd</span><span class="o">=</span><span class="n">run_dir</span><span class="p">)</span></div>
 
+<div class="viewcode-block" id="dispatch_to_local_background"><a class="viewcode-back" href="../../_autosummary/deeperwin.dispatch.dispatch_to_local_background.html#deeperwin.dispatch.dispatch_to_local_background">[docs]</a><span class="k">def</span> <span class="nf">dispatch_to_local_background</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">run_dir</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Configuration</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Dispatching to local_background: </span><span class="si">{</span><span class="n">command</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">run_dir</span><span class="p">,</span> <span class="s1">&#39;GPU.out&#39;</span><span class="p">),</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">stdout</span><span class="o">=</span><span class="n">f</span><span class="p">,</span> <span class="n">stderr</span><span class="o">=</span><span class="n">f</span><span class="p">,</span> <span class="n">start_new_session</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">cwd</span><span class="o">=</span><span class="n">run_dir</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="dispatch_to_vsc3"><a class="viewcode-back" href="../../_autosummary/deeperwin.dispatch.dispatch_to_vsc3.html#deeperwin.dispatch.dispatch_to_vsc3">[docs]</a><span class="k">def</span> <span class="nf">dispatch_to_vsc3</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">run_dir</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Configuration</span><span class="p">):</span>
     <span class="n">time_in_minutes</span> <span class="o">=</span> <span class="n">duration_string_to_minutes</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">dispatch</span><span class="o">.</span><span class="n">time</span><span class="p">)</span>
@@ -263,9 +269,9 @@
         <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">amount</span> <span class="o">*</span> <span class="mi">1440</span><span class="p">)</span>
     <span class="k">elif</span> <span class="n">unit</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;h&#39;</span><span class="p">,</span> <span class="s1">&#39;hour&#39;</span><span class="p">,</span> <span class="s1">&#39;hours&#39;</span><span class="p">]:</span>
         <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">amount</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="n">unit</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;m&#39;</span><span class="p">,</span> <span class="s1">&#39;min&#39;</span><span class="p">,</span> <span class="s1">&#39;minute&#39;</span><span class="p">,</span> <span class="s1">&#39;minutes&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]:</span>
+    <span class="k">elif</span> <span class="n">unit</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;m&#39;</span><span class="p">,</span> <span class="s1">&#39;min&#39;</span><span class="p">,</span> <span class="s1">&#39;mins&#39;</span><span class="p">,</span> <span class="s1">&#39;minute&#39;</span><span class="p">,</span> <span class="s1">&#39;minutes&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]:</span>
         <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">amount</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="n">unit</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;s&#39;</span><span class="p">,</span> <span class="s1">&#39;sec&#39;</span><span class="p">,</span> <span class="s1">&#39;second&#39;</span><span class="p">,</span> <span class="s1">&#39;seconds&#39;</span><span class="p">]:</span>
+    <span class="k">elif</span> <span class="n">unit</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;s&#39;</span><span class="p">,</span> <span class="s1">&#39;sec&#39;</span><span class="p">,</span> <span class="s1">&#39;secs&#39;</span><span class="p">,</span> <span class="s1">&#39;second&#39;</span><span class="p">,</span> <span class="s1">&#39;seconds&#39;</span><span class="p">]:</span>
         <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">amount</span> <span class="o">/</span> <span class="mi">60</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid unit of time: </span><span class="si">{</span><span class="n">unit</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
@@ -279,7 +285,6 @@
 <span class="s2">#SBATCH --qos </span><span class="si">{</span><span class="n">queue</span><span class="si">}</span><span class="s2"></span>
 <span class="s2">#SBATCH --output CPU.out</span>
 <span class="s2">#SBATCH --time </span><span class="si">{</span><span class="n">time</span><span class="si">}</span><span class="s2"></span>
-
 <span class="s2">module purge</span>
 <span class="si">{</span><span class="n">command</span><span class="si">}</span><span class="s2">&quot;&quot;&quot;</span></div>
 
@@ -287,7 +292,7 @@
 <div class="viewcode-block" id="get_jobfile_content_vsc3"><a class="viewcode-back" href="../../_autosummary/deeperwin.dispatch.get_jobfile_content_vsc3.html#deeperwin.dispatch.get_jobfile_content_vsc3">[docs]</a><span class="k">def</span> <span class="nf">get_jobfile_content_vsc3</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">jobname</span><span class="p">,</span> <span class="n">queue</span><span class="p">,</span> <span class="n">time</span><span class="p">,</span> <span class="n">conda_env</span><span class="p">):</span>
     <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;&quot;&quot;#!/bin/bash</span>
 <span class="s2">#SBATCH -J </span><span class="si">{</span><span class="n">jobname</span><span class="si">}</span><span class="s2"></span>
-<span class="s2">#SBATCH -N 1</span>
+<span class="si">{</span><span class="s1">&#39;#SBATCH -N 1&#39;</span> <span class="k">if</span> <span class="n">queue</span> <span class="o">!=</span> <span class="s2">&quot;gpu_a40dual&quot;</span> <span class="k">else</span> <span class="s1">&#39;&#39;</span><span class="si">}</span><span class="s2"></span>
 <span class="s2">#SBATCH --partition </span><span class="si">{</span><span class="n">queue</span><span class="si">}</span><span class="s2"></span>
 <span class="s2">#SBATCH --qos </span><span class="si">{</span><span class="n">queue</span><span class="si">}</span><span class="s2"></span>
 <span class="s2">#SBATCH --output GPU.out</span>
@@ -295,11 +300,9 @@
 <span class="s2">#SBATCH --gres=gpu:1</span>
 
 <span class="s2">module purge</span>
-<span class="s2">module load cuda/10.1.168</span>
+<span class="s2">module load cuda/11.2.2</span>
 <span class="s2">source /opt/sw/x86_64/glibc-2.17/ivybridge-ep/anaconda3/5.3.0/etc/profile.d/conda.sh</span>
 <span class="s2">conda activate </span><span class="si">{</span><span class="n">conda_env</span><span class="si">}</span><span class="s2"></span>
-
-<span class="s2">export CUDA_VISIBLE_DEVICES=&quot;0&quot;</span>
 <span class="si">{</span><span class="n">command</span><span class="si">}</span><span class="s2">&quot;&quot;&quot;</span></div>
 
 
@@ -325,7 +328,9 @@
     <span class="n">dispatch_to</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">dispatch</span><span class="o">.</span><span class="n">system</span>
     <span class="k">if</span> <span class="n">dispatch_to</span> <span class="o">==</span> <span class="s2">&quot;auto&quot;</span><span class="p">:</span>
         <span class="n">dispatch_to</span> <span class="o">=</span> <span class="s2">&quot;local&quot;</span>
-        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="s2">&quot;/etc/slurm/slurm.conf&quot;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">uname</span><span class="p">()[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;gpu1-mat&quot;</span><span class="p">:</span> <span class="c1"># HGX</span>
+            <span class="n">dispatch_to</span> <span class="o">=</span> <span class="s2">&quot;local_background&quot;</span>
+        <span class="k">elif</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="s2">&quot;/etc/slurm/slurm.conf&quot;</span><span class="p">):</span>
             <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;/etc/slurm/slurm.conf&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
                 <span class="n">slurm_conf</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">readlines</span><span class="p">()</span>
                 <span class="k">if</span> <span class="s1">&#39;slurm.vda.univie.ac.at&#39;</span> <span class="ow">in</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">slurm_conf</span><span class="p">):</span>

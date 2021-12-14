@@ -15,6 +15,8 @@ from deeperwin.hamiltonian import get_local_energy, calculate_forces
 from deeperwin.loggers import DataLogger
 from deeperwin.mcmc import MCMCState, MetropolisHastingsMonteCarlo, calculate_metrics
 
+LOGGER = logging.getLogger("dpe")
+
 
 @functools.partial(jax.jit, static_argnums=(0, 1))
 def _evaluation_step(log_psi_squared, mcmc, mcmc_state, params):
@@ -31,11 +33,13 @@ def _build_force_polynomial_coefficients(R_core, polynomial_degree):
     coeff = np.reshape(coeff, [-1, 1, 1, 1, 1])
     return coeff
 
-
-def build_evaluation_step(log_psi_sqr_func, mcmc, eval_config):
+def build_evaluation_step(log_psi_sqr_func, mcmc, eval_config: EvaluationConfig):
     def _evaluation_step(mcmc_state: MCMCState, params):
         mcmc_state = mcmc.run_inter_steps(log_psi_sqr_func, params, mcmc_state)
-        E_loc = get_local_energy(log_psi_sqr_func, *mcmc_state.model_args, *params)
+        if eval_config.calculate_energies:
+            E_loc = get_local_energy(log_psi_sqr_func, *mcmc_state.model_args, *params)
+        else:
+            E_loc = None
         if eval_config.forces is not None:
             poly_coeffs = _build_force_polynomial_coefficients(eval_config.forces.R_core,
                                                                eval_config.forces.polynomial_degree)
@@ -44,7 +48,6 @@ def build_evaluation_step(log_psi_sqr_func, mcmc, eval_config):
         else:
             forces = None
         return mcmc_state, E_loc, forces
-
     return jax.jit(_evaluation_step)
 
 
@@ -55,23 +58,27 @@ def evaluate_wavefunction(
         mcmc: MetropolisHastingsMonteCarlo,
         mcmc_state: MCMCState,
         config: EvaluationConfig,
-        logger: DataLogger = None
+        logger: DataLogger = None,
+        evaluation_step_func=None
 ):
     params = (trainable_params, fixed_params)
-    logging.debug("Starting burn-in for evaluation...")
+    LOGGER.debug("Starting burn-in for evaluation...")
     mcmc_state = mcmc.run_burn_in_eval(log_psi_squared, params, mcmc_state)
 
-    _evaluation_step = build_evaluation_step(log_psi_squared, mcmc, config)
+    if evaluation_step_func is None:
+        evaluation_step_func = build_evaluation_step(log_psi_squared, mcmc, config)
 
     t_start = time.time()
     E_eval_mean = []
     forces_mean = []
     for n_epoch in range(config.n_epochs):
-        mcmc_state, E_epoch, forces = _evaluation_step(mcmc_state, (trainable_params, fixed_params))
+        mcmc_state, E_epoch, forces = evaluation_step_func(mcmc_state, (trainable_params, fixed_params))
         t_end = time.time()
-        E_eval_mean.append(jnp.mean(E_epoch))
+        if E_epoch is not None:
+            E_eval_mean.append(jnp.nanmean(E_epoch))
         if logger is not None:
-            logger.log_metrics(*calculate_metrics(n_epoch, 1, E_epoch, mcmc_state, (t_end - t_start), "eval"))
+            if E_epoch is not None:
+                logger.log_metrics(*calculate_metrics(n_epoch, E_epoch, mcmc_state, (t_end - t_start), "eval"))
             if forces is not None:
                 logger.log_metric("forces", forces, n_epoch, "eval")
                 forces_mean.append(forces)

@@ -1,12 +1,22 @@
+#!/usr/bin/env python3
 """
 CLI to process a single molecule.
 """
-
-#!/usr/bin/env python3
-import argparse
-import logging
 import os
+import sys
+import time
+if len(sys.argv) > 2:
+    try:
+        print(f"Sleeping for collision avoidance: {sys.argv[2]} seconds")
+        time.sleep(float(sys.argv[2]))
+        sys.argv = sys.argv[:-1]
+    except ValueError:
+        print("Invalid sleeping time for collision avoidance specified. Skipping sleeping.")
 
+from deeperwin.available_gpus import get_free_GPU_id
+os.environ['CUDA_VISIBLE_DEVICES'] = get_free_GPU_id()
+
+import argparse
 import jax.numpy as jnp
 from jax.config import config as jax_config
 from jax.lib import xla_bridge
@@ -14,11 +24,11 @@ from ruamel import yaml
 
 from deeperwin.configuration import Configuration
 from deeperwin.dispatch import prepare_checkpoints, contains_run, load_run
-from deeperwin.loggers import LoggerCollection
+from deeperwin.loggers import LoggerCollection, build_dpe_root_logger
 from deeperwin.mcmc import MCMCState, MetropolisHastingsMonteCarlo, resize_nr_of_walkers
-from deeperwin.model import build_log_psi_squared, get_number_of_params
+from deeperwin.model import build_log_psi_squared
 from deeperwin.optimization import optimize_wavefunction, evaluate_wavefunction
-from deeperwin.utils import getCodeVersion, make_opt_state_picklable
+from deeperwin.utils import getCodeVersion, prepare_data_for_logging, get_number_of_params, split_trainable_params, merge_trainable_params, unpickle_opt_state
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Optimization of wavefunction for a single molecular configuration.")
@@ -28,22 +38,36 @@ if __name__ == '__main__':
     # load and parse config
     config = Configuration.load(args.config_file)
 
+    # Initialize loggers for logging debug/info messages
+    logger = build_dpe_root_logger(config.logging.basic)
+
     # update restart config with passed config file
     is_restart = config.restart is not None
     params_from_restart = False
-    mcmc_from_restart = False
+    loaded_mcmc_state = None
+    opt_state = None
+    clipping_state = None
     if is_restart:
-        if config.restart.recursive:
-            logging.warning('Ignoring setting restart.recursive.')
-        if not contains_run(config.restart.path):
-            raise Exception("Restart path does not contain a valid run.")
         restart_results, restart_config = load_run(config.restart.path)
         with open(args.config_file) as f:
             raw_config = yaml.safe_load(f)
         config = Configuration.update_config(restart_config.dict(), raw_config.items())[1]
+        if config.reuse is not None:
+            logger.warning("Restart overrules re-use of weights: Ignoring re-use config-option")
+            config.reuse = None
+        if config.restart.recursive:
+            logger.warning('Ignoring setting restart.recursive.')
         params_from_restart = config.restart.reuse_params
-        mcmc_from_restart = config.restart.reuse_mcmc_state
+        loaded_mcmc_state = restart_results['weights']['mcmc'] if config.restart.reuse_mcmc_state else None
+        if config.restart.reuse_opt_state:
+            if 'opt' in restart_results['weights']:
+                opt_state = unpickle_opt_state(restart_results['weights']['opt'])
+            else:
+                logger.warning("No optimizer state stored in loaded restart-file. Re-initializeing opt-state.")
+        if config.restart.reuse_clipping_state:
+            clipping_state = restart_results['weights'].get('clipping', None)
         config.optimization.n_epochs_prev = restart_config.optimization.n_epochs + restart_config.optimization.n_epochs_prev
+
     # save full config
     config.save("full_config.yml")
 
@@ -53,11 +77,10 @@ if __name__ == '__main__':
     loggers.log_params(config.get_as_flattened_dict())
     loggers.log_tags(config.logging.tags)
 
-    os.environ["CUDA_VISIBLE_DEVICES"] = "0" if config.computation.use_gpu else "-1"
 
     jax_config.update("jax_enable_x64", config.computation.float_precision == "float64")
     jax_config.update("jax_disable_jit", config.computation.disable_jit)
-    logging.debug(f"Used hardware: {xla_bridge.get_backend().platform}")
+    logger.debug(f"Used hardware: {xla_bridge.get_backend().platform}")
 
     # Initialization of model
     loggers.log_param("code_version", getCodeVersion())
@@ -66,33 +89,42 @@ if __name__ == '__main__':
     if params_from_restart:
         fixed_params = restart_results['weights']['fixed']
         trainable_params = restart_results['weights']['trainable']
+
+    if config.reuse is not None:
+        data_to_reuse, _ = load_run(config.reuse.path)
+        if config.reuse.reuse_trainable_params:
+            if config.reuse.reuse_modules is None:
+                params_to_reuse = data_to_reuse['weights']['trainable'] # reuse all modules
+            else:
+                # Only reuse selected modules and split off all unused ones
+                params_to_reuse, _ = split_trainable_params(data_to_reuse['weights']['trainable'], config.reuse.reuse_modules)
+            logger.debug(f"Reusing {get_number_of_params(params_to_reuse)} weights")
+            trainable_params = merge_trainable_params(params_to_reuse, trainable_params)
+        loaded_mcmc_state = restart_results['weights']['mcmc'] if config.reuse.reuse_mcmc_state else None
+
     loggers.log_metrics(dict(E_hf=fixed_params["E_hf"], E_casscf=fixed_params["E_casscf"]))
     loggers.log_param("n_params", get_number_of_params(trainable_params))
 
     # Initialization of MCMC and restart/reload of parameters
     mcmc = MetropolisHastingsMonteCarlo(config.mcmc)
-    mcmc_state = MCMCState.initialize_around_nuclei(config.mcmc.n_walkers_opt,
-                                                    config.physical) if not mcmc_from_restart else \
-    restart_results['weights']['mcmc']
+    mcmc_state = loaded_mcmc_state or MCMCState.initialize_around_nuclei(config.mcmc.n_walkers_opt, config.physical)
     mcmc_state.log_psi_sqr = log_psi_squared(*mcmc_state.model_args, trainable_params, fixed_params)
 
     # Wavefunction optimization
     if config.optimization.n_epochs > 0:
-        logging.info("Starting optimization...")
+        logger.info("Starting optimization...")
         checkpoints = prepare_checkpoints(".", config.optimization.checkpoints, config) if len(
             config.optimization.checkpoints) > 0 else {}
-        mcmc_state, trainable_params, opt_state = optimize_wavefunction(
-            log_psi_squared, trainable_params, fixed_params, mcmc, mcmc_state, config.optimization, checkpoints, loggers
+        mcmc_state, trainable_params, opt_state, clipping_state = optimize_wavefunction(
+            log_psi_squared, trainable_params, fixed_params, mcmc, mcmc_state, config.optimization, checkpoints, loggers, opt_state, clipping_state
         )
-    full_data = dict(trainable=trainable_params, fixed=fixed_params, mcmc=mcmc_state)
-    if config.logging.log_opt_state and config.optimization.n_epochs > 0:
-        full_data['opt'] = make_opt_state_picklable(opt_state)
+    full_data = prepare_data_for_logging(trainable_params, fixed_params, mcmc_state, opt_state, clipping_state)
     loggers.log_weights(full_data)
 
     # Wavefunction evaluation
     mcmc_state = resize_nr_of_walkers(mcmc_state, config.mcmc.n_walkers_eval)
     if config.evaluation.n_epochs > 0:
-        logging.info("Starting evaluation...")
+        logger.info("Starting evaluation...")
         E_eval, forces_eval, mcmc_state = evaluate_wavefunction(
             log_psi_squared, trainable_params, fixed_params, mcmc, mcmc_state, config.evaluation, loggers
         )
@@ -105,8 +137,8 @@ if __name__ == '__main__':
         if config.physical.E_ref is not None:
             error_eval, sigma_eval = 1e3 * (E_mean - config.physical.E_ref), 1e3 * E_mean_sigma
             loggers.log_metrics(dict(error_eval=error_eval, sigma_error_eval=sigma_eval,
-                                     error_plus_2_stdev=error_eval + 2 * sigma_eval))
+                                     error_plus_2_stdev=error_eval + 2 * sigma_eval), force_log=True)
         if forces_eval is not None:
             forces_mean = jnp.nanmean(forces_eval, axis=0)
-            loggers.log_metric('forces_mean', forces_mean)
+            loggers.log_metric('forces_mean', forces_mean, force_log=True)
     loggers.on_run_end()

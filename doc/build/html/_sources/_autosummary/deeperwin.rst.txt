@@ -29,6 +29,7 @@
    :recursive:
 
    deeperwin.ase_bindings
+   deeperwin.available_gpus
    deeperwin.bfgs
    deeperwin.configuration
    deeperwin.dispatch
@@ -43,8 +44,9 @@
    deeperwin.optimization
    deeperwin.orbitals
    deeperwin.process_molecule
-   deeperwin.process_molecules_inter
+   deeperwin.process_molecules_shared
    deeperwin.register_curvature
    deeperwin.sweep_agent
    deeperwin.utils
+   deeperwin.wandb_utils
 

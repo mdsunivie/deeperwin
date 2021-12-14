@@ -123,12 +123,12 @@ def inner_product(obj1: T, obj2: T) -> jnp.ndarray:
   elements_product = jax.tree_multimap(lambda x, y: jnp.sum(x * y), obj1, obj2)
   return sum(jax.tree_flatten(elements_product)[0])
 
-
 def psd_inv_cholesky(matrix: jnp.ndarray, damping: jnp.ndarray) -> jnp.ndarray:
   assert matrix.ndim == 2
   identity = jnp.eye(matrix.shape[0])
   matrix = matrix + damping * identity
-  return linalg.solve(matrix, identity, sym_pos=True)
+
+  return jnp.linalg.pinv(matrix) #linalg.solve(matrix, identity, sym_pos=True)
 
 
 def solve_maybe_small(a: jnp.ndarray, b: jnp.ndarray) -> jnp.ndarray:
@@ -285,7 +285,7 @@ class WeightedMovingAverage:
 
   def update(self, value: jnp.ndarray, old_weight_multiplier: float,
              new_weight: float) -> None:
-    self._weight = old_weight_multiplier * self._weight + new_weight
+    self._weight = jnp.where(jnp.isnan(new_weight), self._weight, old_weight_multiplier * self._weight + new_weight)
     self._array = old_weight_multiplier * self._array + new_weight * value
 
   def sync(self, pmap_axis_name: str) -> None:

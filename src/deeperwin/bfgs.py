@@ -9,8 +9,13 @@ from jax.flatten_util import ravel_pytree
 
 from deeperwin.configuration import BFGSOptimizerConfig, OptimizationConfig
 from deeperwin.mcmc import MCMCState, MetropolisHastingsMonteCarlo
-from deeperwin.utils import get_builtin_optimizer, calculate_clipping_state
+from deeperwin.utils import get_builtin_optimizer, calculate_clipping_state, _update_adam_opt_state
 
+def _update_bfgs_opt_state(opt_state_old, params):
+    params, _ = ravel_pytree(params)
+    adam_state = _update_adam_opt_state(opt_state_old[0], params)
+    opt_state = (adam_state, opt_state_old[1])
+    return opt_state
 
 def calculate_hvp_by_2loop_recursion(inv_hessian, v):
     """
@@ -144,4 +149,4 @@ def build_bfgs_optimizer(
     rho_init = jnp.zeros([bfgs_config.memory_length])
     initial_state = opt_init(initial_params_flat), (s_init, y_init, rho_init)
 
-    return _get_params, optimize_epoch_bfgs, initial_state
+    return _get_params, optimize_epoch_bfgs, initial_state, _update_bfgs_opt_state

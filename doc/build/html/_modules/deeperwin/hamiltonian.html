@@ -78,6 +78,7 @@
 
 <span class="kn">import</span> <span class="nn">jax</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">functools</span>
 <span class="kn">from</span> <span class="nn">jax</span> <span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">jnp</span>
 
 <span class="kn">from</span> <span class="nn">deeperwin.configuration</span> <span class="kn">import</span> <span class="n">ClippingConfig</span><span class="p">,</span> <span class="n">ForceEvaluationConfig</span>
@@ -198,9 +199,9 @@
 
     <span class="n">diff_el_ion</span><span class="p">,</span> <span class="n">r_el_ion</span> <span class="o">=</span> <span class="n">get_el_ion_distance_matrix</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">R</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">use_polynomial</span><span class="p">:</span>
-        <span class="n">force_function</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_calculate_forces_polynomial_fit</span><span class="p">,</span> <span class="n">R_core</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">R_core</span><span class="p">,</span> <span class="n">poly_coeffs</span><span class="o">=</span><span class="n">poly_coeffs</span><span class="p">)</span>
+        <span class="n">force_function</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_calculate_forces_polynomial_fit</span><span class="p">,</span> <span class="n">R_core</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">R_core</span><span class="p">,</span> <span class="n">poly_coeffs</span><span class="o">=</span><span class="n">poly_coeffs</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">force_function</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_calculate_forces_directly</span><span class="p">,</span> <span class="n">R_cut</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">R_cut</span><span class="p">)</span>
+        <span class="n">force_function</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_calculate_forces_directly</span><span class="p">,</span> <span class="n">R_cut</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">R_cut</span><span class="p">)</span>
     <span class="n">forces</span> <span class="o">=</span> <span class="n">force_function</span><span class="p">(</span><span class="n">diff_el_ion</span><span class="p">,</span> <span class="n">r_el_ion</span><span class="p">,</span> <span class="n">Z</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">use_antithetic_sampling</span><span class="p">:</span>

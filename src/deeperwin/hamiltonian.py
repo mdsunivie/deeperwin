@@ -5,8 +5,8 @@ Computation of local energies and forces.
 import logging
 
 import jax
-import functools
 import numpy as np
+import functools
 from jax import numpy as jnp
 
 from deeperwin.configuration import ClippingConfig, ForceEvaluationConfig

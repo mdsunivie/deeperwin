@@ -1,15 +1,14 @@
 """
 Definitions of wavefunction models (DeepErwin, baseline)
 """
-
 import logging
 
 import numpy as np
 from jax import numpy as jnp
 
-from deeperwin.configuration import DeepErwinModelConfig, SimpleSchnetConfig, PhysicalConfig, CASSCFConfig
+from deeperwin.configuration import DeepErwinModelConfig, SimpleSchnetConfig, PhysicalConfig, CASSCFConfig, FermiNetConfig
 from deeperwin.orbitals import build_el_el_cusp_correction, evaluate_molecular_orbitals, get_baseline_solution
-from deeperwin.utils import get_el_ion_distance_matrix, get_distance_matrix
+from deeperwin.utils import get_el_ion_distance_matrix, get_distance_matrix, convert_to_jnp, get_number_of_params
 
 try:
     from register_curvature import register_repeated_dense
@@ -18,25 +17,11 @@ except ImportError:
     def register_repeated_dense(y, X, W, b):
         return y
 
-
     def register_scale_and_shift(y, inputs, has_scale, has_shift):
         return y
 
 
-def get_number_of_params(nested_params):
-    """
-    Returns the number of parameters in a nested structure.
-
-    Args:
-        nested_params: Possibly nested structure that holds different model parameters.
-
-    """
-    if hasattr(nested_params, 'shape'):
-        return int(np.prod(nested_params.shape))
-    elif isinstance(nested_params, dict):
-        return sum([get_number_of_params(p) for p in nested_params.values()])
-    else:
-        return sum([get_number_of_params(p) for p in nested_params])
+logger = logging.getLogger("dpe")
 
 
 def scale(X, params, register):
@@ -183,6 +168,58 @@ def build_dummy_embedding(config, name='dummy_embed'):
     return name, _call_dummy_embed, dummy_params
 
 
+def build_ferminet_embedding(config: FermiNetConfig, n_el, n_up, input_dim_two_el, name = "embed"):
+    def _construct_symmetric_features(two_el, one_el):
+        f_pairs_u_u = two_el[..., :n_up, :n_up - 1, :]
+        f_pairs_d_d = two_el[..., n_up:n_el, n_up:n_el - 1, :]
+        f_pairs_u_d = two_el[..., :n_up, n_up - 1:n_el - 1, :]
+        f_pairs_d_u = two_el[..., n_up:n_el, :n_up, :]
+
+        f_ion_up = one_el[..., :n_up, :]
+        f_ion_dn = one_el[..., n_up:, :]
+
+        g_one = [jnp.mean(f_ion_up, keepdims=True, axis=-2), jnp.mean(f_ion_dn, keepdims=True, axis=-2)]
+        g_two = [jnp.concatenate([jnp.mean(f_pairs_u_u, axis=-2), jnp.mean(f_pairs_d_u, axis=-2)], axis=-2),
+                 jnp.concatenate([jnp.mean(f_pairs_d_d, axis=-2), jnp.mean(f_pairs_u_d, axis=-2)], axis=-2)]
+
+        g_one = [jnp.tile(el, [n_el, 1]) for el in g_one]
+
+        return jnp.concatenate([one_el] + g_one + g_two, axis=-1)
+
+    residual = lambda x, y : (x+y)/jnp.sqrt(2.0) if x.shape == y.shape else y
+
+    def _call_embed(features_el_el, features_el_ion, Z, params):
+        h_one = jnp.reshape(features_el_ion, features_el_ion.shape[:-2] + (features_el_ion.shape[-1]*features_el_ion.shape[-2],))
+        h_two = features_el_el
+        for i in range(len(params['double_el'])):
+            h_one_in = _construct_symmetric_features(h_two, h_one)
+
+            h_one_next = ffwd_net(params['one_el'][i], h_one_in)
+            h_two_next = ffwd_net(params['double_el'][i], h_two)
+
+            h_one = residual(h_one, h_one_next)
+            h_two = residual(h_two, h_two_next)
+        if len(params['double_el']) == len(params['one_el']):
+            output = _construct_symmetric_features(h_two, h_one)
+        else:
+            h_one_in = _construct_symmetric_features(h_two, h_one)
+            h_one_next = ffwd_net(params['one_el'][-1], h_one_in, linear_output=False)
+            output = residual(h_one, h_one_next)
+        return output, h_two, h_one[..., jnp.newaxis, :]
+
+    embed_params = {}
+
+    one_el_inp = [5*input_dim_two_el]+ [3*neurons + 2*config.n_hidden_two_el[i]  for i, neurons in enumerate(config.n_hidden_one_el[:-1])]
+    one_el_out = config.n_hidden_one_el
+
+    shape_two_el = [input_dim_two_el] + config.n_hidden_two_el
+
+    embed_params['one_el'] = [init_ffwd_net([one_el_out[i]], one_el_inp[i]) for i in range(len(one_el_inp))]
+    embed_params['double_el'] = [init_ffwd_net([shape_two_el[i+1]], shape_two_el[i]) for i in range(len(config.n_hidden_two_el))]
+    return name, _call_embed, embed_params
+
+
+
 def build_simple_schnet(config: SimpleSchnetConfig, n_el, n_up, input_dim, name="embed"):
     """
     Builds the electron coordinate embedding of the DeepErwin wavefunction model and initializes the respective trainable parameters.
@@ -215,7 +252,6 @@ def build_simple_schnet(config: SimpleSchnetConfig, n_el, n_up, input_dim, name=
         f_pairs_d_u = jnp.reshape(f_pairs_d_u, f_pairs_d_u.shape[:-3] + (n_up * n_dn, input_dim))
         f_pairs_same = jnp.concatenate([f_pairs_u_u, f_pairs_d_d], axis=-2)
         f_pairs_diff = jnp.concatenate([f_pairs_u_d, f_pairs_d_u], axis=-2)
-
         Z = jnp.transpose(jnp.tile(Z[:, jnp.newaxis], features_el_el.shape[:-3]))
         Z = jnp.reshape(Z, features_el_el.shape[:-3] + (Z.shape[-1], 1))
         ion_embeddings = ffwd_net(params['ion_emb'], Z, linear_output=False, register=True)
@@ -320,8 +356,15 @@ def build_backflow_shift(config: DeepErwinModelConfig, n_el, name="bf_shift"):
         return shift
 
     bf_params = {}
-    bf_params['w_el'] = init_ffwd_net(config.n_hidden_bf_shift + [config.output_shift], 2 * input_dim)
-    bf_params['w_ion'] = init_ffwd_net(config.n_hidden_bf_shift + [config.output_shift], 2 * input_dim)
+    if config.embedding.name == "fermi":
+        input_dim_el = config.embedding.n_hidden_two_el[-1] + config.embedding.n_hidden_one_el[-1]
+        input_dim_ion = config.embedding.n_hidden_one_el[-1] + config.embedding.n_hidden_one_el[-2]
+    else:
+        input_dim_el = 2 * input_dim
+        input_dim_ion = 2 * input_dim
+
+    bf_params['w_el'] = init_ffwd_net(config.n_hidden_bf_shift + [config.output_shift], input_dim_el)
+    bf_params['w_ion'] = init_ffwd_net(config.n_hidden_bf_shift + [config.output_shift], input_dim_ion)
 
     bf_params['scale_el'] = jnp.array([-3.5])
     if config.use_trainable_shift_decay_radius:
@@ -348,20 +391,22 @@ def build_backflow_factor(config: DeepErwinModelConfig, n_electrons, n_up, name=
     input_dim = config.embedding.embedding_dim
 
     def _call_bf_factor(embeddings, params):
-        # n_dn = embeddings.shape[-2] - n_up
-        bf_up = ffwd_net(params['up'], embeddings[..., :n_up, :], linear_output=True)
-        bf_dn = ffwd_net(params['dn'], embeddings[..., n_up:, :], linear_output=True)
 
-        ### Preliminary
+        embeddings_up = embeddings[..., :n_up, :]
+        embeddings_dn = embeddings[..., n_up:, :]
 
-        # bf_up = ffwd_net(params['up_output'], bf_up, linear_output=True)
-        # bf_dn = ffwd_net(params['dn_output'], bf_dn, linear_output=True)
+        if len(config.n_hidden_bf_factor) != 0:
+            embeddings_up = ffwd_net(params['general']['up'], embeddings_up, linear_output=True) #TODO: TRUE or False?
+            embeddings_dn = ffwd_net(params['general']['dn'], embeddings_dn, linear_output=True)
+
+        bf_up = ffwd_net(params['orbital']['up_output'], embeddings_up, linear_output=True)
+        bf_dn = ffwd_net(params['orbital']['dn_output'], embeddings_dn, linear_output=True)
 
         bf_up = jnp.reshape(bf_up, bf_up.shape[:-2] + (n_dets * n_up * n_up,))
         bf_dn = jnp.reshape(bf_dn, bf_dn.shape[:-2] + (n_dets * n_dn * n_dn,))
 
         bf = jnp.concatenate([bf_up, bf_dn], axis=-1)
-        bf = 1.0 + scale(bf, params['scale'], register=config.register_scale)
+        bf = 1.0 + scale(bf, params['general']['scale'], register=config.register_scale)
 
         bf_up = jnp.reshape(bf[..., :n_dets * n_up * n_up], bf_up.shape[:-1] + (
             n_up, n_dets * n_up))  # output-shape: [batch x n_up x n_dets * n_up_orb]
@@ -376,14 +421,17 @@ def build_backflow_factor(config: DeepErwinModelConfig, n_electrons, n_up, name=
 
         return bf_up, bf_dn
 
-    bf_params = {}
-    bf_params['up'] = init_ffwd_net(config.n_hidden_bf_factor + [n_dets * n_up], input_dim)
-    bf_params['dn'] = init_ffwd_net(config.n_hidden_bf_factor + [n_dets * n_dn], input_dim)
+    bf_params = dict(general=dict(), orbital=dict())
+    bf_params['general']['up'] = init_ffwd_net(config.n_hidden_bf_factor, input_dim)
+    bf_params['general']['dn'] = init_ffwd_net(config.n_hidden_bf_factor, input_dim)
+    bf_params['general']['scale'] = jnp.array([-2.0])
 
-    bf_params['up_output'] = init_ffwd_net([n_dets * n_up], config.n_hidden_bf_factor[-1])
-    bf_params['dn_output'] = init_ffwd_net([n_dets * n_up], config.n_hidden_bf_factor[-1])
+    if len(config.n_hidden_bf_factor) != 0:
+        input_dim = config.n_hidden_bf_factor[-1]
 
-    bf_params['scale'] = jnp.array([-2.0])
+    bf_params['orbital']['up_output'] = init_ffwd_net([n_dets * n_up], input_dim)
+    bf_params['orbital']['dn_output'] = init_ffwd_net([n_dets * n_dn], input_dim)
+
     return name, _call_bf_factor, bf_params
 
 
@@ -466,12 +514,36 @@ def init_log_psi_squared_fixed_params(casscf_config: CASSCFConfig, physical_conf
     Returns:
         dict: Initial fixed parameters
     """
-    logging.debug("Calculating baseline solution...")
+    logger.debug("Calculating baseline solution...")
     baseline_solution, (E_hf, E_cas) = get_baseline_solution(physical_config, casscf_config)
-    initial_fixed_params = dict(baseline=baseline_solution, E_hf=E_hf, E_casscf=E_cas)
-    logging.debug(f"Finished baseline calculation: E_casscf={E_cas:.6f}")
-    return initial_fixed_params
 
+    initial_fixed_params = dict(baseline=baseline_solution, E_hf=E_hf, E_casscf=E_cas)
+    logger.debug(f"Finished baseline calculation: E_casscf={E_cas:.6f}")
+    return convert_to_jnp(initial_fixed_params)
+
+def _isotropic_envelop(el_ion_dist, alpha, c, n_up):
+    """
+    Evaluates evelopes (=baseline orbital) consisting of isotropic decaying exponentials centered on each nucleus.
+
+    Args:
+        el_ion_dist: [... x n_el x n_ions]
+        alpha: [n_dets x n_orbitals x n_ions]
+        c: [n_dets x n_orbitals x n_ions]
+
+    Returns:
+        mo_matrix_up, mo_matrix_dn
+    """
+    n_determinants = alpha.shape[0]
+    d_up = el_ion_dist[..., np.newaxis, :n_up, np.newaxis, :] # [batch x 1 (dets) x el x 1 (orb) x ion]
+    d_dn = el_ion_dist[..., np.newaxis, n_up:, np.newaxis, :]
+    alpha_up = alpha[:, np.newaxis, :n_up, :] # [dets x 1 (el) x orb x ion]
+    alpha_dn = alpha[:, np.newaxis, n_up:, :]
+    c_up = c[:, np.newaxis, :n_up, :]  # [dets x 1 (el) x orb x ion]
+    c_dn = c[:, np.newaxis, n_up:, :]
+
+    mo_up = jnp.sum(c_up * jnp.exp(-alpha_up * d_up), axis=-1) # sum over ions
+    mo_dn = jnp.sum(c_dn * jnp.exp(-alpha_dn * d_dn), axis=-1) # sum over ions
+    return mo_up, mo_dn, jnp.ones(n_determinants)
 
 def build_log_psi_squared(config: DeepErwinModelConfig, physical_config: PhysicalConfig, init_fixed_params=True,
                           name="log_psi_squared_deeperwin"):
@@ -488,7 +560,7 @@ def build_log_psi_squared(config: DeepErwinModelConfig, physical_config: Physica
         A tuple (name, call, trainable_params, fixed_params) where call is a callable representing the built model. The dictionaries trainable_params and fixed_params contain the respective initial model parameters.
 
     """
-    n_electrons, n_up = physical_config.n_electrons, physical_config.n_up
+    n_electrons, n_up, n_ions = physical_config.n_electrons, physical_config.n_up, len(physical_config.Z)
     initial_trainable_params = {}
 
     initial_fixed_params = init_log_psi_squared_fixed_params(config.baseline,
@@ -499,20 +571,28 @@ def build_log_psi_squared(config: DeepErwinModelConfig, physical_config: Physica
     elif config.embedding.name == "simple_schnet":
         name_embed, embed_call, embed_params = build_simple_schnet(config.embedding, n_electrons, n_up,
                                                                    config.n_pairwise_features)
+    elif config.embedding.name == "fermi":
+        name_embed, embed_call, embed_params = build_ferminet_embedding(config.embedding, n_electrons, n_up,
+                                                                   config.n_pairwise_features)
     initial_trainable_params[name_embed] = embed_params
     if config.use_bf_factor:
         name_bf_factor, bf_factor_call, bf_factor_params = build_backflow_factor(config, n_electrons, n_up)
-        initial_trainable_params[name_bf_factor] = bf_factor_params
+        initial_trainable_params[name_bf_factor+"_general"] = bf_factor_params['general']
+        initial_trainable_params[name_bf_factor+"_orbital"] = bf_factor_params['orbital']
     if config.use_bf_shift:
         name_bf_shift, bf_shift_call, bf_shift_params = build_backflow_shift(config, n_electrons)
         initial_trainable_params[name_bf_shift] = bf_shift_params
     if config.use_jastrow:
         name_jastrow, jastrow_call, jastrow_params = build_jastrow_factor(config, n_up)
         initial_trainable_params[name_jastrow] = jastrow_params
+    if config.envelope_type == "isotropic_exp":
+        initial_trainable_params['envelope'] = dict(alpha=jnp.ones([config.baseline.n_determinants, n_electrons, n_ions]),
+                                                    c=jnp.ones([config.baseline.n_determinants, n_electrons, n_ions]))
 
     el_el_cusp_call = build_el_el_cusp_correction(n_electrons, n_up, config.baseline.cusps)
 
     def _call(r, R, Z, params, fixed_params):
+        Z = jnp.array(Z, dtype=jnp.float32)
         # Calculate basic features from input coordinates
         diff_el_el, dist_el_el = get_distance_matrix(r)
         diff_el_ion, dist_el_ion = get_el_ion_distance_matrix(r, R)
@@ -520,8 +600,18 @@ def build_log_psi_squared(config: DeepErwinModelConfig, physical_config: Physica
         features_el_ion = get_pairwise_features(dist_el_ion, config, dist_feat=True)
 
         # Calculate embedding of electron coordinates
-        embeddings, pairwise_feat, pairwise_feat_ions = embed_call(features_el_el, features_el_ion, Z,
-                                                                   params[name_embed])
+        if config.embedding.name == "fermi":
+            if config.embedding.rbf:
+                embeddings, pairwise_feat, pairwise_feat_ions = embed_call(features_el_el, features_el_ion, Z,
+                                                                           params[name_embed])
+            else:
+                features_el_el = jnp.concatenate([diff_el_el, dist_el_el[..., jnp.newaxis]], axis=-1)
+                features_el_ion = jnp.concatenate([diff_el_ion, dist_el_ion[..., jnp.newaxis]], axis=-1)
+                embeddings, pairwise_feat, pairwise_feat_ions = embed_call(features_el_el, features_el_ion, Z,
+                                                                           params[name_embed])
+        else:
+            embeddings, pairwise_feat, pairwise_feat_ions = embed_call(features_el_el, features_el_ion, Z,
+                                                                       params[name_embed])
         if config.use_bf_shift:
             backflow_shift = bf_shift_call(embeddings, diff_el_el, dist_el_el, pairwise_feat, diff_el_ion, dist_el_ion,
                                            pairwise_feat_ions, Z, params[name_bf_shift])
@@ -529,13 +619,17 @@ def build_log_psi_squared(config: DeepErwinModelConfig, physical_config: Physica
             diff_el_ion, dist_el_ion = get_el_ion_distance_matrix(r, R)
 
         # Evaluate atomic and molecular orbitals for every determinant
-        mo_matrix_up, mo_matrix_dn, ci_weights = _build_baseline_slater_determinants(diff_el_ion, dist_el_ion,
-                                                                                     fixed_params, n_up,
-                                                                                     config.baseline.cusps.cusp_type)
+        if config.envelope_type == "casscf":
+            mo_matrix_up, mo_matrix_dn, ci_weights = _build_baseline_slater_determinants(diff_el_ion, dist_el_ion,
+                                                                                         fixed_params, n_up,
+                                                                                         config.baseline.cusps.cusp_type)
+        elif config.envelope_type == "isotropic_exp":
+            mo_matrix_up, mo_matrix_dn, ci_weights = _isotropic_envelop(dist_el_ion, params['envelope']['alpha'], params['envelope']['c'], n_up)
 
         # Modify molecular orbitals using backflow factor
         if config.use_bf_factor:
-            backflow_factor_up, backflow_factor_dn = bf_factor_call(embeddings, params[name_bf_factor])
+            backflow_factor_up, backflow_factor_dn = bf_factor_call(embeddings, dict(general=params[name_bf_factor+"_general"],
+                                                                                     orbital=params[name_bf_factor+"_orbital"]))
             mo_matrix_up *= backflow_factor_up
             mo_matrix_dn *= backflow_factor_dn
 
@@ -551,7 +645,7 @@ def build_log_psi_squared(config: DeepErwinModelConfig, physical_config: Physica
             log_psi_sqr += el_el_cusp_call(dist_el_el)
         return log_psi_sqr
 
-    logging.debug(f"Number of parameters: {get_number_of_params(initial_trainable_params)}")
+    logger.debug(f"Number of parameters: {get_number_of_params(initial_trainable_params)}")
 
     return name, _call, initial_trainable_params, initial_fixed_params
 

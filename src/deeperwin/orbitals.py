@@ -13,6 +13,8 @@ from deeperwin.configuration import PhysicalConfig, CASSCFConfig
 from deeperwin.configuration import CuspCorrectionConfig
 from deeperwin.utils import get_el_ion_distance_matrix
 
+logger = logging.getLogger("dpe")
+
 #################################################################################
 ############################ Orbital functions ##################################
 #################################################################################
@@ -190,20 +192,20 @@ def get_baseline_solution(physical_config: PhysicalConfig, casscf_config: CASSCF
     ind_orbitals = _get_orbital_indices(casscf)
     ci_weights = casscf.ci.flatten()
 
-    logging.debug(f"Total nuber of CASSCF-determinants before truncation: {len(ci_weights)}")
+    logger.debug(f"Total nuber of CASSCF-determinants before truncation: {len(ci_weights)}")
 
     if casscf_config.n_determinants < len(ci_weights):
         ind_largest = np.argsort(np.abs(ci_weights))[::-1][:casscf_config.n_determinants]
         share_captured = np.sum(ci_weights[ind_largest]**2) / np.sum(ci_weights**2)
-        logging.debug(f"Share of CI-weights captured by {casscf_config.n_determinants} dets: {share_captured:.3%}")
+        logger.debug(f"Share of CI-weights captured by {casscf_config.n_determinants} dets: {share_captured:.3%}")
         ci_weights = ci_weights[ind_largest]
         ci_weights = jnp.array(ci_weights / np.sum(ci_weights ** 2))
         ind_orbitals = ind_orbitals[0][ind_largest], ind_orbitals[1][ind_largest]
 
     # delete unused molecular orbitals (i.e. orbitals that appear in none of the selected determinants)
-    for spin in range(2):
-        n_mo_max = np.max(ind_orbitals[spin]) + 1
-        mo_coeff[spin] = mo_coeff[spin][:, :n_mo_max]
+    # for spin in range(2):
+    #     n_mo_max = np.max(ind_orbitals[spin]) + 1
+    #     mo_coeff[spin] = mo_coeff[spin][:, :n_mo_max]
 
     # Calculate cusp-correction-parameters for molecular orbitals
     if casscf_config.cusps.cusp_type == "mo":
@@ -279,13 +281,13 @@ def build_el_el_cusp_correction(n_electrons, n_up, config: CuspCorrectionConfig)
 
 
 def _get_local_energy_of_cusp_orbital(r_c, offset, sign, poly, Z, phi_others=0.0):
-    r = jnp.linspace(1e-6, r_c, 100)[:, np.newaxis]
+    r = np.linspace(1e-6, r_c, 100)[:, np.newaxis]
     p_0 = poly[0] + poly[1] * r + poly[2] * r ** 2 + poly[3] * r ** 3 + poly[4] * r ** 4
     p_1 = poly[1] + 2 * poly[2] * r + 3 * poly[3] * r ** 2 + 4 * poly[4] * r ** 3
     p_2 = 2 * poly[2] + 6 * poly[3] * r + 12 * poly[4] * r ** 2
-    prefac = sign * jnp.exp(p_0) / (offset + sign*jnp.exp(p_0) + phi_others)
+    prefac = sign * np.exp(p_0) / (offset + sign*np.exp(p_0) + phi_others)
     E_l = -prefac * (p_1/r +0.5 *p_2 + 0.5 * p_1**2) - Z/r
-    penalty = jnp.nanvar(E_l, axis=0)
+    penalty = np.nanvar(E_l, axis=0)
     # penalty = jnp.max(jnp.abs(E_l - E_l[-1]), axis=0)
     return penalty
 
@@ -300,16 +302,16 @@ def _calculate_mo_cusp_params(phi_rc_0, phi_rc_1, phi_rc_2, phi_0, phi_0_others,
     offset = 2 * phi_rc_0 - phi_new_0 # = "C"
     phi_rc_shifted = phi_rc_0 - offset # = "R(r_c)"
 
-    x1 = jnp.log(jnp.abs(phi_rc_shifted))
+    x1 = np.log(jnp.abs(phi_rc_shifted))
     x2 = phi_rc_1 / phi_rc_shifted
     x3 = phi_rc_2 / phi_rc_shifted
     x4 = -Z * (phi_new_0 + phi_0_others) / (phi_new_0 - offset)
-    x5 = jnp.log(jnp.abs(phi_new_0 - offset))
+    x5 = np.log(np.abs(phi_new_0 - offset))
 
     rc2 = r_c*r_c
     rc3 = rc2 * r_c
     rc4 = rc2 * rc2
-    poly = jnp.array([
+    poly = np.array([
         x5,
         x4,
         6*x1/rc2 - 3*x2/r_c + 0.5 * x3 -3*x4/r_c - 6*x5/rc2 - 0.5*x2*x2,
@@ -317,7 +319,7 @@ def _calculate_mo_cusp_params(phi_rc_0, phi_rc_1, phi_rc_2, phi_0, phi_0_others,
         3*x1/rc4 - 2*x2/rc3 + 0.5*x3/rc2 - x4/rc3 - 3*x5/rc4 - 0.5*x2*x2/rc2
     ])
     E_loc_cusp = _get_local_energy_of_cusp_orbital(r_c, offset, sign, poly, Z, phi_0_others)
-    ind_opt = jnp.nanargmin(E_loc_cusp)
+    ind_opt = np.nanargmin(E_loc_cusp)
     return offset[ind_opt], sign[ind_opt], poly[:,ind_opt]
 
 def _calculate_ao_cusp_params(ind_nuc, alpha, gto_coeffs, angular_momenta, Z):

@@ -22,7 +22,7 @@
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="deeperwin.model.build_log_psi_squared" href="deeperwin.model.build_log_psi_squared.html" />
-    <link rel="prev" title="deeperwin.model.build_dummy_embedding" href="deeperwin.model.build_dummy_embedding.html" /> 
+    <link rel="prev" title="deeperwin.model.build_ferminet_embedding" href="deeperwin.model.build_ferminet_embedding.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -47,6 +47,7 @@
 <li class="toctree-l1 current"><a class="reference internal" href="../api.html">Full documentation for developers</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="deeperwin.html">deeperwin</a><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.ase_bindings.html">deeperwin.ase_bindings</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.available_gpus.html">deeperwin.available_gpus</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.bfgs.html">deeperwin.bfgs</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.configuration.html">deeperwin.configuration</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.dispatch.html">deeperwin.dispatch</a></li>
@@ -61,6 +62,7 @@
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.model.build_backflow_factor.html">deeperwin.model.build_backflow_factor</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.model.build_backflow_shift.html">deeperwin.model.build_backflow_shift</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.model.build_dummy_embedding.html">deeperwin.model.build_dummy_embedding</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.model.build_ferminet_embedding.html">deeperwin.model.build_ferminet_embedding</a></li>
 <li class="toctree-l4 current"><a class="current reference internal" href="#">deeperwin.model.build_jastrow_factor</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.model.build_log_psi_squared.html">deeperwin.model.build_log_psi_squared</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.model.build_log_psi_squared_baseline_model.html">deeperwin.model.build_log_psi_squared_baseline_model</a></li>
@@ -68,7 +70,6 @@
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.model.calculate_shift_decay.html">deeperwin.model.calculate_shift_decay</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.model.dense_layer.html">deeperwin.model.dense_layer</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.model.ffwd_net.html">deeperwin.model.ffwd_net</a></li>
-<li class="toctree-l4"><a class="reference internal" href="deeperwin.model.get_number_of_params.html">deeperwin.model.get_number_of_params</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.model.get_pairwise_features.html">deeperwin.model.get_pairwise_features</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.model.get_rbf_features.html">deeperwin.model.get_rbf_features</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.model.init_ffwd_net.html">deeperwin.model.init_ffwd_net</a></li>
@@ -81,10 +82,11 @@
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.optimization.html">deeperwin.optimization</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.orbitals.html">deeperwin.orbitals</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.process_molecule.html">deeperwin.process_molecule</a></li>
-<li class="toctree-l3"><a class="reference internal" href="deeperwin.process_molecules_inter.html">deeperwin.process_molecules_inter</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.process_molecules_shared.html">deeperwin.process_molecules_shared</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.register_curvature.html">deeperwin.register_curvature</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.sweep_agent.html">deeperwin.sweep_agent</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.utils.html">deeperwin.utils</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.wandb_utils.html">deeperwin.wandb_utils</a></li>
 </ul>
 </li>
 </ul>
@@ -145,7 +147,7 @@
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="deeperwin.model.build_dummy_embedding.html" class="btn btn-neutral float-left" title="deeperwin.model.build_dummy_embedding" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="deeperwin.model.build_ferminet_embedding.html" class="btn btn-neutral float-left" title="deeperwin.model.build_ferminet_embedding" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
         <a href="deeperwin.model.build_log_psi_squared.html" class="btn btn-neutral float-right" title="deeperwin.model.build_log_psi_squared" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 

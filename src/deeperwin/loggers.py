@@ -16,6 +16,24 @@ from deeperwin.configuration import LoggingConfig, BasicLoggerConfig, LoggerBase
     WandBConfig
 from deeperwin.dispatch import save_to_file
 
+def build_dpe_root_logger(config: BasicLoggerConfig):
+    # Step 1: Set up root logger, logging everything to console
+    formatter = logging.Formatter("%(asctime)s %(name)-12s %(levelname)-8s %(message)s")
+    handlers = []
+    if config and config.log_to_stdout:
+        handler = logging.StreamHandler(sys.stdout)
+        handler.setLevel(logging.DEBUG)
+        handler.setFormatter(formatter)
+        handlers.append(handler)
+    if config and config.fname is not None:
+        handler = logging.FileHandler(config.fname, mode='w')
+        handler.setLevel(logging.DEBUG)
+        handler.setFormatter(formatter)
+        handlers.append(handler)
+    logging.basicConfig(level=config.log_level, handlers=handlers, force=True)
+
+    # Step 2: Set up dpe-logger: Currently no handlers, but will also automatically log into root
+    return logging.getLogger("dpe")
 
 class DataLogger(ABC):
     """
@@ -41,10 +59,10 @@ class DataLogger(ABC):
         d[key] = value
         self.log_params(d)
 
-    def log_metric(self, key, value, epoch=None, metric_type: Literal["", "opt", "eval"] = ""):
+    def log_metric(self, key, value, epoch=None, metric_type: Literal["", "opt", "eval"] = "", force_log=False):
         d = {}
         d[key] = value
-        self.log_metrics(d, epoch, metric_type)
+        self.log_metrics(d, epoch, metric_type, force_log)
 
     def log_tags(self, tags: List[str]):
         self.log_param("tags", tags)
@@ -54,7 +72,7 @@ class DataLogger(ABC):
         pass
 
     @abstractmethod
-    def log_metrics(self, metrics: Dict[str, Any], epoch=None, metric_type: Literal["", "opt", "eval"] = ""):
+    def log_metrics(self, metrics: Dict[str, Any], epoch=None, metric_type: Literal["", "opt", "eval"] = "", force_log=False):
         pass
 
     def log_checkpoint(self, chkpt_dir):
@@ -83,9 +101,9 @@ class LoggerCollection(DataLogger):
     def build_loggers(config: LoggingConfig, name, save_path=".", prefix=''):
         loggers = []
         if config.basic is not None:
-            loggers.append(BasicLogger(config.basic, name, save_path))
+            loggers.append(BasicLogger(config.basic, name, save_path, prefix))
         if config.pickle is not None:
-            loggers.append(PickleLogger(config.pickle, name, save_path))
+            loggers.append(PickleLogger(config.pickle, name, save_path, config.log_opt_state))
         if config.wandb is not None:
             loggers.append(WandBLogger(config.wandb, name, save_path, prefix))
         return loggers
@@ -100,15 +118,16 @@ class LoggerCollection(DataLogger):
 
     def on_run_end(self):
         for l in self.loggers:
+            print(l) #TODO: Remove
             l.on_run_end()
 
     def log_params(self, params: Dict[str, Any]):
         for l in self.loggers:
             l.log_params(params)
 
-    def log_metrics(self, metrics: Dict[str, Any], epoch=None, metric_type: Literal["", "opt", "eval"] = ""):
+    def log_metrics(self, metrics: Dict[str, Any], epoch=None, metric_type: Literal["", "opt", "eval"] = "", force_log=False):
         for l in self.loggers:
-            l.log_metrics(metrics, epoch, metric_type)
+            l.log_metrics(metrics, epoch, metric_type, force_log)
 
     def log_tags(self, tags: List[str]):
         for l in self.loggers:
@@ -121,9 +140,8 @@ class LoggerCollection(DataLogger):
 
 class WandBLogger(DataLogger):
     def __init__(self, config: WandBConfig, name, save_path='.', prefix=''):
-        super(WandBLogger, self).__init__(config, name, save_path)
-        self.run = None
-        self.prefix = prefix
+        super().__init__(config, name, save_path)
+        self.prefix = (prefix + "_") if len(prefix) > 0 else ""
 
     @staticmethod
     def _convert_metric_datatype(x):
@@ -141,44 +159,39 @@ class WandBLogger(DataLogger):
 
     def on_run_begin(self):
         if wandb.run is None:
-            self.run = wandb.init(dir=self.save_path, project=self.logger_config.project, name=self.name,
-                                  entity=self.logger_config.entity, tags=[])
-        else:
-            self.run = wandb.run
+            wandb.init(dir=self.save_path, project=self.logger_config.project, name=self.name, entity=self.logger_config.entity, tags=[])
+
 
     def on_run_end(self):
         if wandb.run is not None:
-            self.run.finish()
-        else:
-            self.run = None
+            wandb.run.finish()
 
     def log_params(self, params):
-        self.run.config.update(params)
+        wandb.run.config.update(params)
 
     def log_tags(self, tags: List[str]):
-        self.run.tags = self.run.tags + tuple(tags)
+        wandb.run.tags = wandb.run.tags + tuple(tags)
 
     def _log_metrics_async(self, metrics: Dict[str, Any]):
-        self.run.log(metrics)
+        wandb.run.log(metrics)
 
-    def log_metrics(self, metrics, epoch=None, metric_type: Literal["", "opt", "eval"] = ""):
+    def log_metrics(self, metrics, epoch=None, metric_type: Literal["", "opt", "eval"] = "", force_log=False):
+        if (not force_log) and self._should_skip_epoch(epoch):
+            return
         metrics_prefix = {}
         for k, v in metrics.items():
             metrics_prefix[self.prefix + k] = v
-        if self._should_skip_epoch(epoch):
-            return
         for key in metrics_prefix:
             metrics_prefix[key] = self._convert_metric_datatype(metrics_prefix[key])
         if epoch is None:
             for k, v in metrics_prefix.items():
-                self.run.summary[k] = v
+                wandb.run.summary[k] = v
         else:
             if metric_type == "opt":
                 metrics_prefix['opt_epoch'] = epoch
             elif metric_type == 'eval':
                 metrics_prefix['eval_epoch'] = epoch
-            thread = threading.Thread(target=self._log_metrics_async, args=[metrics_prefix])
-            thread.start()
+            wandb.run.log(metrics_prefix)
 
 
 class BasicLogger(DataLogger):
@@ -186,33 +199,27 @@ class BasicLogger(DataLogger):
     Logger using python built-ing logging module.
     """
 
-    def __init__(self, config: BasicLoggerConfig, name, save_path="."):
-        super(BasicLogger, self).__init__(config, name, save_path)
-        handlers = []
-        if config.log_to_stdout:
-            handler = logging.StreamHandler(sys.stdout)
-            handler.setLevel(logging.DEBUG)
-            handlers.append(handler)
-        if config.fname is not None:
-            handler = logging.FileHandler(os.path.join(save_path, config.fname), mode='w')
-            handler.setLevel(logging.DEBUG)
-            handlers.append(handler)
-        logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s',
-                            level=config.log_level,
-                            handlers=handlers,
-                            force=True)
+    def __init__(self, config: BasicLoggerConfig, name, save_path=".", prefix=""):
+        super().__init__(config, name, save_path)
+        formatter = logging.Formatter("%(asctime)s %(name)-12s %(levelname)-8s %(message)s")
+        fh = logging.FileHandler(os.path.join(save_path, config.fname), mode='w')
+        fh.setFormatter(formatter)
+        fh.setLevel(config.log_level)
+        logger_name = "dpe" if len(prefix) == 0 else f"dpe.{prefix}"
+        self.logger = logging.getLogger(logger_name)
+        self.logger.handlers.append(fh)
 
-    def log_metrics(self, metrics: Dict[str, Any], epoch=None, metric_type: Literal["", "opt", "eval"] = ""):
-        if self._should_skip_epoch(epoch):
+    def log_metrics(self, metrics: Dict[str, Any], epoch=None, metric_type: Literal["", "opt", "eval"] = "", force_log=False):
+        if (not force_log) and self._should_skip_epoch(epoch):
             return
         msg = "; ".join(f"{key}={value}" for key, value in metrics.items())
         if epoch is not None:
             msg = f"{metric_type} Epoch {epoch:>5d}: " + msg
-        logging.info(msg)
+        self.logger.info(msg)
 
     def log_params(self, params: Dict[str, Any]):
         msg = "; ".join(f"{key}={value}" for key, value in params.items())
-        logging.info(msg)
+        self.logger.info(msg)
 
 
 class PickleLogger(DataLogger):
@@ -220,14 +227,15 @@ class PickleLogger(DataLogger):
     Logger that stores full history in memory and dumps it as a binary file on exit.
     """
 
-    def __init__(self, config: PickleLoggerConfig, name, save_path="."):
-        super(PickleLogger, self).__init__(config, name, save_path)
+    def __init__(self, config: PickleLoggerConfig, name, save_path=".", log_opt_state=True):
+        super().__init__(config, name, save_path)
         self.metrics = dict(opt_epochs=[], eval_epochs=[])
         self.config = dict()
         self.weights = dict()
+        self.log_opt_state = log_opt_state
 
-    def log_metrics(self, metrics: Dict[str, Any], epoch=None, metric_type: Literal["", "opt", "eval"] = ""):
-        if self._should_skip_epoch(epoch):
+    def log_metrics(self, metrics: Dict[str, Any], epoch=None, metric_type: Literal["", "opt", "eval"] = "", force_log=False):
+        if (not force_log) and self._should_skip_epoch(epoch):
             return
         for key, value in metrics.items():
             if (key not in self.metrics) and (epoch is not None):
@@ -251,6 +259,8 @@ class PickleLogger(DataLogger):
         # weight_dict = copy.deepcopy(weight_dict)
         logging.debug("Pickle logger: Updating self.weights")
         self.weights.update(weight_dict)
+        if ('opt' in self.weights) and (not self.log_opt_state):
+            del self.weights['opt']
 
     def log_checkpoint(self, chkpt_dir):
         data = dict(metrics=self.metrics, config=self.config, weights=self.weights)
@@ -258,3 +268,4 @@ class PickleLogger(DataLogger):
 
     def on_run_end(self):
         self.log_checkpoint(self.save_path)
+

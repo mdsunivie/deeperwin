@@ -47,6 +47,7 @@
 <li class="toctree-l1 current"><a class="reference internal" href="../api.html">Full documentation for developers</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="deeperwin.html">deeperwin</a><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.ase_bindings.html">deeperwin.ase_bindings</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.available_gpus.html">deeperwin.available_gpus</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.bfgs.html">deeperwin.bfgs</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.configuration.html">deeperwin.configuration</a></li>
 <li class="toctree-l3 current"><a class="current reference internal" href="#">deeperwin.dispatch</a><ul>
@@ -56,6 +57,7 @@
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.dispatch_job.html">deeperwin.dispatch.dispatch_job</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.dispatch_to_dgx.html">deeperwin.dispatch.dispatch_to_dgx</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.dispatch_to_local.html">deeperwin.dispatch.dispatch_to_local</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.dispatch_to_local_background.html">deeperwin.dispatch.dispatch_to_local_background</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.dispatch_to_vsc3.html">deeperwin.dispatch.dispatch_to_vsc3</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.dispatch_to_vsc4.html">deeperwin.dispatch.dispatch_to_vsc4</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.dump_config_dict.html">deeperwin.dispatch.dump_config_dict</a></li>
@@ -88,10 +90,11 @@
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.optimization.html">deeperwin.optimization</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.orbitals.html">deeperwin.orbitals</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.process_molecule.html">deeperwin.process_molecule</a></li>
-<li class="toctree-l3"><a class="reference internal" href="deeperwin.process_molecules_inter.html">deeperwin.process_molecules_inter</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.process_molecules_shared.html">deeperwin.process_molecules_shared</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.register_curvature.html">deeperwin.register_curvature</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.sweep_agent.html">deeperwin.sweep_agent</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.utils.html">deeperwin.utils</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.wandb_utils.html">deeperwin.wandb_utils</a></li>
 </ul>
 </li>
 </ul>
@@ -153,61 +156,64 @@
 <tr class="row-even"><td><p><a class="reference internal" href="deeperwin.dispatch.dispatch_to_local.html#deeperwin.dispatch.dispatch_to_local" title="deeperwin.dispatch.dispatch_to_local"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dispatch_to_local</span></code></a>(command, run_dir, config)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.dispatch.dispatch_to_vsc3.html#deeperwin.dispatch.dispatch_to_vsc3" title="deeperwin.dispatch.dispatch_to_vsc3"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dispatch_to_vsc3</span></code></a>(command, run_dir, config)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.dispatch.dispatch_to_local_background.html#deeperwin.dispatch.dispatch_to_local_background" title="deeperwin.dispatch.dispatch_to_local_background"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dispatch_to_local_background</span></code></a>(command, ...)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.dispatch.dispatch_to_vsc4.html#deeperwin.dispatch.dispatch_to_vsc4" title="deeperwin.dispatch.dispatch_to_vsc4"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dispatch_to_vsc4</span></code></a>(command, run_dir, config)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.dispatch.dispatch_to_vsc3.html#deeperwin.dispatch.dispatch_to_vsc3" title="deeperwin.dispatch.dispatch_to_vsc3"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dispatch_to_vsc3</span></code></a>(command, run_dir, config)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.dispatch.dump_config_dict.html#deeperwin.dispatch.dump_config_dict" title="deeperwin.dispatch.dump_config_dict"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dump_config_dict</span></code></a>(directory, config_dict)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.dispatch.dispatch_to_vsc4.html#deeperwin.dispatch.dispatch_to_vsc4" title="deeperwin.dispatch.dispatch_to_vsc4"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dispatch_to_vsc4</span></code></a>(command, run_dir, config)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.dispatch.duration_string_to_minutes.html#deeperwin.dispatch.duration_string_to_minutes" title="deeperwin.dispatch.duration_string_to_minutes"><code class="xref py py-obj docutils literal notranslate"><span class="pre">duration_string_to_minutes</span></code></a>(s)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.dispatch.dump_config_dict.html#deeperwin.dispatch.dump_config_dict" title="deeperwin.dispatch.dump_config_dict"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dump_config_dict</span></code></a>(directory, config_dict)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.dispatch.find_runs_rec.html#deeperwin.dispatch.find_runs_rec" title="deeperwin.dispatch.find_runs_rec"><code class="xref py py-obj docutils literal notranslate"><span class="pre">find_runs_rec</span></code></a>(path[, include_checkpoints])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.dispatch.duration_string_to_minutes.html#deeperwin.dispatch.duration_string_to_minutes" title="deeperwin.dispatch.duration_string_to_minutes"><code class="xref py py-obj docutils literal notranslate"><span class="pre">duration_string_to_minutes</span></code></a>(s)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.dispatch.get_fname_fullpath.html#deeperwin.dispatch.get_fname_fullpath" title="deeperwin.dispatch.get_fname_fullpath"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_fname_fullpath</span></code></a>(fname)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.dispatch.find_runs_rec.html#deeperwin.dispatch.find_runs_rec" title="deeperwin.dispatch.find_runs_rec"><code class="xref py py-obj docutils literal notranslate"><span class="pre">find_runs_rec</span></code></a>(path[, include_checkpoints])</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.dispatch.get_jobfile_content_dgx.html#deeperwin.dispatch.get_jobfile_content_dgx" title="deeperwin.dispatch.get_jobfile_content_dgx"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_jobfile_content_dgx</span></code></a>(command, jobname, ...)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.dispatch.get_fname_fullpath.html#deeperwin.dispatch.get_fname_fullpath" title="deeperwin.dispatch.get_fname_fullpath"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_fname_fullpath</span></code></a>(fname)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.dispatch.get_jobfile_content_vsc3.html#deeperwin.dispatch.get_jobfile_content_vsc3" title="deeperwin.dispatch.get_jobfile_content_vsc3"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_jobfile_content_vsc3</span></code></a>(command, jobname, ...)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.dispatch.get_jobfile_content_dgx.html#deeperwin.dispatch.get_jobfile_content_dgx" title="deeperwin.dispatch.get_jobfile_content_dgx"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_jobfile_content_dgx</span></code></a>(command, jobname, ...)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.dispatch.get_jobfile_content_vsc4.html#deeperwin.dispatch.get_jobfile_content_vsc4" title="deeperwin.dispatch.get_jobfile_content_vsc4"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_jobfile_content_vsc4</span></code></a>(command, jobname, ...)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.dispatch.get_jobfile_content_vsc3.html#deeperwin.dispatch.get_jobfile_content_vsc3" title="deeperwin.dispatch.get_jobfile_content_vsc3"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_jobfile_content_vsc3</span></code></a>(command, jobname, ...)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.dispatch.idx_to_job_name.html#deeperwin.dispatch.idx_to_job_name" title="deeperwin.dispatch.idx_to_job_name"><code class="xref py py-obj docutils literal notranslate"><span class="pre">idx_to_job_name</span></code></a>(idx)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.dispatch.get_jobfile_content_vsc4.html#deeperwin.dispatch.get_jobfile_content_vsc4" title="deeperwin.dispatch.get_jobfile_content_vsc4"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_jobfile_content_vsc4</span></code></a>(command, jobname, ...)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.dispatch.is_checkpoint.html#deeperwin.dispatch.is_checkpoint" title="deeperwin.dispatch.is_checkpoint"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_checkpoint</span></code></a>(path)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.dispatch.idx_to_job_name.html#deeperwin.dispatch.idx_to_job_name" title="deeperwin.dispatch.idx_to_job_name"><code class="xref py py-obj docutils literal notranslate"><span class="pre">idx_to_job_name</span></code></a>(idx)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.dispatch.load_all_runs.html#deeperwin.dispatch.load_all_runs" title="deeperwin.dispatch.load_all_runs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_all_runs</span></code></a>(root_dir[, max_history_length])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.dispatch.is_checkpoint.html#deeperwin.dispatch.is_checkpoint" title="deeperwin.dispatch.is_checkpoint"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_checkpoint</span></code></a>(path)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.dispatch.load_from_file.html#deeperwin.dispatch.load_from_file" title="deeperwin.dispatch.load_from_file"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_from_file</span></code></a>(fname)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.dispatch.load_all_runs.html#deeperwin.dispatch.load_all_runs" title="deeperwin.dispatch.load_all_runs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_all_runs</span></code></a>(root_dir[, max_history_length])</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.dispatch.load_run.html#deeperwin.dispatch.load_run" title="deeperwin.dispatch.load_run"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_run</span></code></a>(path)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.dispatch.load_from_file.html#deeperwin.dispatch.load_from_file" title="deeperwin.dispatch.load_from_file"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_from_file</span></code></a>(fname)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.dispatch.prepare_checkpoints.html#deeperwin.dispatch.prepare_checkpoints" title="deeperwin.dispatch.prepare_checkpoints"><code class="xref py py-obj docutils literal notranslate"><span class="pre">prepare_checkpoints</span></code></a>(run_path, chkpt_epochs, ...)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.dispatch.load_run.html#deeperwin.dispatch.load_run" title="deeperwin.dispatch.load_run"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_run</span></code></a>(path)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.dispatch.save_to_file.html#deeperwin.dispatch.save_to_file" title="deeperwin.dispatch.save_to_file"><code class="xref py py-obj docutils literal notranslate"><span class="pre">save_to_file</span></code></a>(fname, **data)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.dispatch.prepare_checkpoints.html#deeperwin.dispatch.prepare_checkpoints" title="deeperwin.dispatch.prepare_checkpoints"><code class="xref py py-obj docutils literal notranslate"><span class="pre">prepare_checkpoints</span></code></a>(run_path, chkpt_epochs, ...)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.dispatch.setup_experiment_dir.html#deeperwin.dispatch.setup_experiment_dir" title="deeperwin.dispatch.setup_experiment_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">setup_experiment_dir</span></code></a>(directory[, force])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.dispatch.save_to_file.html#deeperwin.dispatch.save_to_file" title="deeperwin.dispatch.save_to_file"><code class="xref py py-obj docutils literal notranslate"><span class="pre">save_to_file</span></code></a>(fname, **data)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.dispatch.setup_job_dir.html#deeperwin.dispatch.setup_job_dir" title="deeperwin.dispatch.setup_job_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">setup_job_dir</span></code></a>(parent_dir, name)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.dispatch.setup_experiment_dir.html#deeperwin.dispatch.setup_experiment_dir" title="deeperwin.dispatch.setup_experiment_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">setup_experiment_dir</span></code></a>(directory[, force])</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.dispatch.shorten_parameter_name.html#deeperwin.dispatch.shorten_parameter_name" title="deeperwin.dispatch.shorten_parameter_name"><code class="xref py py-obj docutils literal notranslate"><span class="pre">shorten_parameter_name</span></code></a>(name)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.dispatch.setup_job_dir.html#deeperwin.dispatch.setup_job_dir" title="deeperwin.dispatch.setup_job_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">setup_job_dir</span></code></a>(parent_dir, name)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.dispatch.shorten_parameter_name.html#deeperwin.dispatch.shorten_parameter_name" title="deeperwin.dispatch.shorten_parameter_name"><code class="xref py py-obj docutils literal notranslate"><span class="pre">shorten_parameter_name</span></code></a>(name)</p></td>
 <td><p></p></td>
 </tr>
 </tbody>

@@ -65,6 +65,8 @@ def is_checkpoint(path):
 
 
 def load_run(path):
+    if not contains_run(path):
+        raise FileNotFoundError(f"Could not load run from path, due to missing files or wrong path: {path}")
     results = load_from_file(os.path.join(path, "results.bz2"))
     parsed_config = Configuration.load(os.path.join(path, "full_config.yml"))
     return results, parsed_config
@@ -137,6 +139,10 @@ def get_fname_fullpath(fname):
 def dispatch_to_local(command, run_dir, config: Configuration):
     subprocess.run(command, cwd=run_dir)
 
+def dispatch_to_local_background(command, run_dir, config: Configuration):
+    print(f"Dispatching to local_background: {command}")
+    with open(os.path.join(run_dir, 'GPU.out'), 'w') as f:
+        subprocess.Popen(command, stdout=f, stderr=f, start_new_session=True, cwd=run_dir)
 
 def dispatch_to_vsc3(command, run_dir, config: Configuration):
     time_in_minutes = duration_string_to_minutes(config.dispatch.time)
@@ -191,9 +197,9 @@ def duration_string_to_minutes(s):
         return int(amount * 1440)
     elif unit in ['h', 'hour', 'hours']:
         return int(amount * 60)
-    elif unit in ['m', 'min', 'minute', 'minutes', '']:
+    elif unit in ['m', 'min', 'mins', 'minute', 'minutes', '']:
         return int(amount)
-    elif unit in ['s', 'sec', 'second', 'seconds']:
+    elif unit in ['s', 'sec', 'secs', 'second', 'seconds']:
         return int(amount / 60)
     else:
         raise ValueError(f"Invalid unit of time: {unit}")
@@ -207,7 +213,6 @@ def get_jobfile_content_vsc4(command, jobname, queue, time):
 #SBATCH --qos {queue}
 #SBATCH --output CPU.out
 #SBATCH --time {time}
-
 module purge
 {command}"""
 
@@ -215,7 +220,7 @@ module purge
 def get_jobfile_content_vsc3(command, jobname, queue, time, conda_env):
     return f"""#!/bin/bash
 #SBATCH -J {jobname}
-#SBATCH -N 1
+{'#SBATCH -N 1' if queue != "gpu_a40dual" else ''}
 #SBATCH --partition {queue}
 #SBATCH --qos {queue}
 #SBATCH --output GPU.out
@@ -223,11 +228,9 @@ def get_jobfile_content_vsc3(command, jobname, queue, time, conda_env):
 #SBATCH --gres=gpu:1
 
 module purge
-module load cuda/10.1.168
+module load cuda/11.2.2
 source /opt/sw/x86_64/glibc-2.17/ivybridge-ep/anaconda3/5.3.0/etc/profile.d/conda.sh
 conda activate {conda_env}
-
-export CUDA_VISIBLE_DEVICES="0"
 {command}"""
 
 
@@ -253,7 +256,9 @@ def dispatch_job(fname, job_dir, config):
     dispatch_to = config.dispatch.system
     if dispatch_to == "auto":
         dispatch_to = "local"
-        if os.path.exists("/etc/slurm/slurm.conf"):
+        if os.uname()[1] == "gpu1-mat": # HGX
+            dispatch_to = "local_background"
+        elif os.path.exists("/etc/slurm/slurm.conf"):
             with open('/etc/slurm/slurm.conf') as f:
                 slurm_conf = f.readlines()
                 if 'slurm.vda.univie.ac.at' in ''.join(slurm_conf):

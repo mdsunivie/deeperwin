@@ -1,8 +1,7 @@
+#!/usr/bin/env python3
 """
 DeepErwin CLI
 """
-
-#!/usr/bin/env python3
 import argparse
 import itertools
 import warnings
@@ -18,8 +17,10 @@ def main():
     parser.add_argument('--force', '-f', action="store_true", help="Overwrite directories if they already exist")
     parser.add_argument('--wandb-sweep', nargs=3, default=[],
                         help="Start a hyperparmeter sweep using wandb, with a given sweep-identifier, number of agents and number of runs per agent, e.g. --wandb-sweep schroedinger_univie/sweep_debug/cpxe3iq9 3 10")
-    parser.add_argument('--exclude-param-name', action="store_true",
+    parser.add_argument('--exclude-param-name', '-e', action="store_true",
                         help="Do not inject a shortened string for the parameter name into the experiment name, leading to shorter (but less self explanatory) experiment names.")
+    parser.add_argument('--dry-run', action='store_true', help="Only set-up the directories and config-files, but do not dispatch the actual calculation.")
+    parser.add_argument('--start-time-offset', default=0, type=int, help="Add a delay (given in seconds) to the dispatched job at runtime, to avoid GPU-collisions")
 
     # args = parser.parse_args(
     #    ["config.yml", "-p", "optimization.n_epochs", "100", "-p", "evaluation.n_epochs", "30", "40", "-p",
@@ -132,7 +133,7 @@ def main():
                     job_config_dicts.append(exp_config_dict)
 
     # dispatch runs
-    for job_dir, job_config_dict in zip(job_dirs, job_config_dicts):
+    for job_nr, (job_dir, job_config_dict) in enumerate(zip(job_dirs, job_config_dicts)):
         # dump config dict
         dump_config_dict(job_dir, job_config_dict)
 
@@ -143,11 +144,12 @@ def main():
         if wandb_sweep:
             command = ["python", "-m", "wandb", "agent", "--count", str(n_runs_per_agent), str(sweep_id)]
         elif job_config.optimization.shared_optimization is not None:
-            command = ["python", str(get_fname_fullpath("process_molecules_inter.py")), "config.yml"]
+            command = ["python", str(get_fname_fullpath("process_molecules_shared.py")), "config.yml"]
         else:
-            command = ["python", str(get_fname_fullpath("process_molecule.py")), "config.yml"]
+            command = ["python", str(get_fname_fullpath("process_molecule.py")), "config.yml", str(job_nr*args.start_time_offset)]
 
-        dispatch_job(command, job_dir, job_config)
+        if not args.dry_run:
+            dispatch_job(command, job_dir, job_config)
 
 
 if __name__ == '__main__':

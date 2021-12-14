@@ -20,6 +20,7 @@ deeperwin.dispatch
       dispatch_job
       dispatch_to_dgx
       dispatch_to_local
+      dispatch_to_local_background
       dispatch_to_vsc3
       dispatch_to_vsc4
       dump_config_dict
