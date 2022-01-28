@@ -276,7 +276,7 @@ def build_simple_schnet(config: SimpleSchnetConfig, n_el, n_up, input_dim, name=
 
             embeddings_el_el = jnp.concatenate([
                 jnp.concatenate([w_u_u * h_u_u, w_u_d * h_u_d], axis=-2),
-                jnp.concatenate([w_d_d * h_d_d, w_d_u * h_d_u], axis=-2)],
+                jnp.concatenate([w_d_u * h_d_u, w_d_d * h_d_d], axis=-2)],
                 axis=-3)
             embeddings_el_ions = w_el_ions * ion_embeddings
 
