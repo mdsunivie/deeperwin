@@ -190,6 +190,7 @@ To disable weight-sharing, simply set :code:`optimization.shared_optimization = 
     optimization:
         shared_optimization:
             use: True
+            shared_modules: ["embed", "jastrow", "bf_fac_general", "bf_shift"]
 
 
 .. _arxiv publication: https://arxiv.org/pdf/2105.08351.pdf

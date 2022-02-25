@@ -1,6 +1,0 @@
-deeperwin.process\_molecules\_inter.update\_kfac\_opt\_state
-============================================================
-
-.. currentmodule:: deeperwin.process_molecules_inter
-
-.. autofunction:: update_kfac_opt_state

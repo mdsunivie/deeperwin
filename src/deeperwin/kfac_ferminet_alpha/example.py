@@ -19,7 +19,7 @@ import jax
 import jax.numpy as jnp
 
 import numpy as np
-import kfac_ferminet_alpha as kfac_ferminet_alpha
+import deeperwin.kfac_ferminet_alpha as kfac_ferminet_alpha
 from deeperwin.kfac_ferminet_alpha import utils
 
 
