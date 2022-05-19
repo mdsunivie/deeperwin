@@ -20,6 +20,7 @@ deeperwin.dispatch
       dispatch_job
       dispatch_to_dgx
       dispatch_to_local
+      dispatch_to_local_background
       dispatch_to_vsc3
       dispatch_to_vsc4
       dump_config_dict
@@ -31,11 +32,6 @@ deeperwin.dispatch
       get_jobfile_content_vsc4
       idx_to_job_name
       is_checkpoint
-      load_all_runs
-      load_from_file
-      load_run
-      prepare_checkpoints
-      save_to_file
       setup_experiment_dir
       setup_job_dir
       shorten_parameter_name

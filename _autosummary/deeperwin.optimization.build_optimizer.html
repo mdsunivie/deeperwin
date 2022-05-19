@@ -47,10 +47,12 @@
 <li class="toctree-l1 current"><a class="reference internal" href="../api.html">Full documentation for developers</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="deeperwin.html">deeperwin</a><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.ase_bindings.html">deeperwin.ase_bindings</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.available_gpus.html">deeperwin.available_gpus</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.bfgs.html">deeperwin.bfgs</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.configuration.html">deeperwin.configuration</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.dispatch.html">deeperwin.dispatch</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.evaluation.html">deeperwin.evaluation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.features.html">deeperwin.features</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.hamiltonian.html">deeperwin.hamiltonian</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.kfac.html">deeperwin.kfac</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.html">deeperwin.kfac_ferminet_alpha</a></li>
@@ -63,14 +65,14 @@
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.optimization.build_optimize_epoch_first_order.html">deeperwin.optimization.build_optimize_epoch_first_order</a></li>
 <li class="toctree-l4 current"><a class="current reference internal" href="#">deeperwin.optimization.build_optimizer</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.optimization.optimize_wavefunction.html">deeperwin.optimization.optimize_wavefunction</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.optimization.pretrain_orbitals.html">deeperwin.optimization.pretrain_orbitals</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.orbitals.html">deeperwin.orbitals</a></li>
-<li class="toctree-l3"><a class="reference internal" href="deeperwin.process_molecule.html">deeperwin.process_molecule</a></li>
-<li class="toctree-l3"><a class="reference internal" href="deeperwin.process_molecules_inter.html">deeperwin.process_molecules_inter</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.register_curvature.html">deeperwin.register_curvature</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.sweep_agent.html">deeperwin.sweep_agent</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.utils.html">deeperwin.utils</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.wandb_utils.html">deeperwin.wandb_utils</a></li>
 </ul>
 </li>
 </ul>
@@ -109,7 +111,7 @@
 <h1>deeperwin.optimization.build_optimizer<a class="headerlink" href="#deeperwin-optimization-build-optimizer" title="Permalink to this headline"></a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="deeperwin.optimization.build_optimizer">
-<span class="sig-prename descclassname"><span class="pre">deeperwin.optimization.</span></span><span class="sig-name descname"><span class="pre">build_optimizer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">log_psi_squared_func</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grad_loss_func</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mcmc</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_params</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fixed_params</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">opt_config</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../configuration.html#deeperwin.configuration.OptimizationConfig" title="deeperwin.configuration.OptimizationConfig"><span class="pre">deeperwin.configuration.OptimizationConfig</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_walkers</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mcmc_state</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/deeperwin/optimization.html#build_optimizer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.optimization.build_optimizer" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">deeperwin.optimization.</span></span><span class="sig-name descname"><span class="pre">build_optimizer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">log_psi_squared_func</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grad_loss_func</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mcmc</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_params</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fixed_params</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">opt_config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../configuration.html#deeperwin.configuration.OptimizationConfig" title="deeperwin.configuration.OptimizationConfig"><span class="pre">deeperwin.configuration.OptimizationConfig</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_walkers</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mcmc_state</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/deeperwin/optimization.html#build_optimizer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.optimization.build_optimizer" title="Permalink to this definition"></a></dt>
 <dd><p>Builds an optimizer for optimizing the wavefunction model defined by <cite>log_psi_squared_func</cite>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>

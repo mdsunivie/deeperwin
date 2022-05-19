@@ -16,7 +16,9 @@ deeperwin.configuration
    
       build_nested_dict
       get_attribute_by_nested_key
+      has_attribute_nested_key
       set_with_nested_key
+      update_config
    
    
 

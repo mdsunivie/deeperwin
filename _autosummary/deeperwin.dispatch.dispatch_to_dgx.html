@@ -47,6 +47,7 @@
 <li class="toctree-l1 current"><a class="reference internal" href="../api.html">Full documentation for developers</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="deeperwin.html">deeperwin</a><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.ase_bindings.html">deeperwin.ase_bindings</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.available_gpus.html">deeperwin.available_gpus</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.bfgs.html">deeperwin.bfgs</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.configuration.html">deeperwin.configuration</a></li>
 <li class="toctree-l3 current"><a class="reference internal" href="deeperwin.dispatch.html">deeperwin.dispatch</a><ul class="current">
@@ -56,6 +57,7 @@
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.dispatch_job.html">deeperwin.dispatch.dispatch_job</a></li>
 <li class="toctree-l4 current"><a class="current reference internal" href="#">deeperwin.dispatch.dispatch_to_dgx</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.dispatch_to_local.html">deeperwin.dispatch.dispatch_to_local</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.dispatch_to_local_background.html">deeperwin.dispatch.dispatch_to_local_background</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.dispatch_to_vsc3.html">deeperwin.dispatch.dispatch_to_vsc3</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.dispatch_to_vsc4.html">deeperwin.dispatch.dispatch_to_vsc4</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.dump_config_dict.html">deeperwin.dispatch.dump_config_dict</a></li>
@@ -67,17 +69,13 @@
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.get_jobfile_content_vsc4.html">deeperwin.dispatch.get_jobfile_content_vsc4</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.idx_to_job_name.html">deeperwin.dispatch.idx_to_job_name</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.is_checkpoint.html">deeperwin.dispatch.is_checkpoint</a></li>
-<li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.load_all_runs.html">deeperwin.dispatch.load_all_runs</a></li>
-<li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.load_from_file.html">deeperwin.dispatch.load_from_file</a></li>
-<li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.load_run.html">deeperwin.dispatch.load_run</a></li>
-<li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.prepare_checkpoints.html">deeperwin.dispatch.prepare_checkpoints</a></li>
-<li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.save_to_file.html">deeperwin.dispatch.save_to_file</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.setup_experiment_dir.html">deeperwin.dispatch.setup_experiment_dir</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.setup_job_dir.html">deeperwin.dispatch.setup_job_dir</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.dispatch.shorten_parameter_name.html">deeperwin.dispatch.shorten_parameter_name</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.evaluation.html">deeperwin.evaluation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.features.html">deeperwin.features</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.hamiltonian.html">deeperwin.hamiltonian</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.kfac.html">deeperwin.kfac</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.html">deeperwin.kfac_ferminet_alpha</a></li>
@@ -87,11 +85,10 @@
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.model.html">deeperwin.model</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.optimization.html">deeperwin.optimization</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.orbitals.html">deeperwin.orbitals</a></li>
-<li class="toctree-l3"><a class="reference internal" href="deeperwin.process_molecule.html">deeperwin.process_molecule</a></li>
-<li class="toctree-l3"><a class="reference internal" href="deeperwin.process_molecules_inter.html">deeperwin.process_molecules_inter</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.register_curvature.html">deeperwin.register_curvature</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.sweep_agent.html">deeperwin.sweep_agent</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.utils.html">deeperwin.utils</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.wandb_utils.html">deeperwin.wandb_utils</a></li>
 </ul>
 </li>
 </ul>
@@ -130,7 +127,7 @@
 <h1>deeperwin.dispatch.dispatch_to_dgx<a class="headerlink" href="#deeperwin-dispatch-dispatch-to-dgx" title="Permalink to this headline"></a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="deeperwin.dispatch.dispatch_to_dgx">
-<span class="sig-prename descclassname"><span class="pre">deeperwin.dispatch.</span></span><span class="sig-name descname"><span class="pre">dispatch_to_dgx</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">command</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">run_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../configuration.html#deeperwin.configuration.Configuration" title="deeperwin.configuration.Configuration"><span class="pre">deeperwin.configuration.Configuration</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/deeperwin/dispatch.html#dispatch_to_dgx"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.dispatch.dispatch_to_dgx" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">deeperwin.dispatch.</span></span><span class="sig-name descname"><span class="pre">dispatch_to_dgx</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">command</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">run_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../configuration.html#deeperwin.configuration.Configuration" title="deeperwin.configuration.Configuration"><span class="pre">deeperwin.configuration.Configuration</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/deeperwin/dispatch.html#dispatch_to_dgx"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.dispatch.dispatch_to_dgx" title="Permalink to this definition"></a></dt>
 <dd></dd></dl>
 
 </section>

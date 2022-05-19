@@ -1,6 +1,0 @@
-deeperwin.dispatch.save\_to\_file
-=================================
-
-.. currentmodule:: deeperwin.dispatch
-
-.. autofunction:: save_to_file

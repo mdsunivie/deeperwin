@@ -47,16 +47,19 @@
 <li class="toctree-l1 current"><a class="reference internal" href="../api.html">Full documentation for developers</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="deeperwin.html">deeperwin</a><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.ase_bindings.html">deeperwin.ase_bindings</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.available_gpus.html">deeperwin.available_gpus</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.bfgs.html">deeperwin.bfgs</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.configuration.html">deeperwin.configuration</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.dispatch.html">deeperwin.dispatch</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.evaluation.html">deeperwin.evaluation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.features.html">deeperwin.features</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.hamiltonian.html">deeperwin.hamiltonian</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.kfac.html">deeperwin.kfac</a></li>
 <li class="toctree-l3 current"><a class="current reference internal" href="#">deeperwin.kfac_ferminet_alpha</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.curvature_blocks.html">deeperwin.kfac_ferminet_alpha.curvature_blocks</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.distributions.html">deeperwin.kfac_ferminet_alpha.distributions</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.estimator.html">deeperwin.kfac_ferminet_alpha.estimator</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.example.html">deeperwin.kfac_ferminet_alpha.example</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.layers_and_loss_tags.html">deeperwin.kfac_ferminet_alpha.layers_and_loss_tags</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.loss_functions.html">deeperwin.kfac_ferminet_alpha.loss_functions</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.optimizer.html">deeperwin.kfac_ferminet_alpha.optimizer</a></li>
@@ -72,11 +75,10 @@
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.model.html">deeperwin.model</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.optimization.html">deeperwin.optimization</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.orbitals.html">deeperwin.orbitals</a></li>
-<li class="toctree-l3"><a class="reference internal" href="deeperwin.process_molecule.html">deeperwin.process_molecule</a></li>
-<li class="toctree-l3"><a class="reference internal" href="deeperwin.process_molecules_inter.html">deeperwin.process_molecules_inter</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.register_curvature.html">deeperwin.register_curvature</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.sweep_agent.html">deeperwin.sweep_agent</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.utils.html">deeperwin.utils</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.wandb_utils.html">deeperwin.wandb_utils</a></li>
 </ul>
 </li>
 </ul>
@@ -129,25 +131,28 @@
 <tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.estimator.html#module-deeperwin.kfac_ferminet_alpha.estimator" title="deeperwin.kfac_ferminet_alpha.estimator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.kfac_ferminet_alpha.estimator</span></code></a></p></td>
 <td><p>Defines the high-level Fisher estimator class.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.layers_and_loss_tags.html#module-deeperwin.kfac_ferminet_alpha.layers_and_loss_tags" title="deeperwin.kfac_ferminet_alpha.layers_and_loss_tags"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.kfac_ferminet_alpha.layers_and_loss_tags</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.example.html#module-deeperwin.kfac_ferminet_alpha.example" title="deeperwin.kfac_ferminet_alpha.example"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.kfac_ferminet_alpha.example</span></code></a></p></td>
+<td><p>Example of running KFAC.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.layers_and_loss_tags.html#module-deeperwin.kfac_ferminet_alpha.layers_and_loss_tags" title="deeperwin.kfac_ferminet_alpha.layers_and_loss_tags"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.kfac_ferminet_alpha.layers_and_loss_tags</span></code></a></p></td>
 <td><p>A module for registering already known functions for tagging patterns.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.loss_functions.html#module-deeperwin.kfac_ferminet_alpha.loss_functions" title="deeperwin.kfac_ferminet_alpha.loss_functions"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.kfac_ferminet_alpha.loss_functions</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.loss_functions.html#module-deeperwin.kfac_ferminet_alpha.loss_functions" title="deeperwin.kfac_ferminet_alpha.loss_functions"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.kfac_ferminet_alpha.loss_functions</span></code></a></p></td>
 <td><p>Loss functions to be used by LayerCollection.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.optimizer.html#module-deeperwin.kfac_ferminet_alpha.optimizer" title="deeperwin.kfac_ferminet_alpha.optimizer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.kfac_ferminet_alpha.optimizer</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.optimizer.html#module-deeperwin.kfac_ferminet_alpha.optimizer" title="deeperwin.kfac_ferminet_alpha.optimizer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.kfac_ferminet_alpha.optimizer</span></code></a></p></td>
 <td><p>A module for the main curvature optimizer class.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.tag_graph_matcher.html#module-deeperwin.kfac_ferminet_alpha.tag_graph_matcher" title="deeperwin.kfac_ferminet_alpha.tag_graph_matcher"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.kfac_ferminet_alpha.tag_graph_matcher</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.tag_graph_matcher.html#module-deeperwin.kfac_ferminet_alpha.tag_graph_matcher" title="deeperwin.kfac_ferminet_alpha.tag_graph_matcher"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.kfac_ferminet_alpha.tag_graph_matcher</span></code></a></p></td>
 <td><p>A module for tagging and graph manipulation.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.tests.html#module-deeperwin.kfac_ferminet_alpha.tests" title="deeperwin.kfac_ferminet_alpha.tests"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.kfac_ferminet_alpha.tests</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.tests.html#module-deeperwin.kfac_ferminet_alpha.tests" title="deeperwin.kfac_ferminet_alpha.tests"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.kfac_ferminet_alpha.tests</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.tracer.html#module-deeperwin.kfac_ferminet_alpha.tracer" title="deeperwin.kfac_ferminet_alpha.tracer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.kfac_ferminet_alpha.tracer</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.tracer.html#module-deeperwin.kfac_ferminet_alpha.tracer" title="deeperwin.kfac_ferminet_alpha.tracer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.kfac_ferminet_alpha.tracer</span></code></a></p></td>
 <td><p>Module for the Jax tracer functionality for tags.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.utils.html#module-deeperwin.kfac_ferminet_alpha.utils" title="deeperwin.kfac_ferminet_alpha.utils"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.kfac_ferminet_alpha.utils</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.utils.html#module-deeperwin.kfac_ferminet_alpha.utils" title="deeperwin.kfac_ferminet_alpha.utils"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deeperwin.kfac_ferminet_alpha.utils</span></code></a></p></td>
 <td><p>Utilities related to multi-device operations.</p></td>
 </tr>
 </tbody>

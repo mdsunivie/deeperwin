@@ -1,6 +1,0 @@
-deeperwin.process\_molecules\_inter.warm\_up\_opt
-=================================================
-
-.. currentmodule:: deeperwin.process_molecules_inter
-
-.. autofunction:: warm_up_opt

@@ -1,6 +1,0 @@
-deeperwin.process\_molecules\_inter.is\_shared\_module
-======================================================
-
-.. currentmodule:: deeperwin.process_molecules_inter
-
-.. autofunction:: is_shared_module

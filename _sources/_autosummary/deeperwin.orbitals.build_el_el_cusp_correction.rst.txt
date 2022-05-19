@@ -1,6 +1,0 @@
-deeperwin.orbitals.build\_el\_el\_cusp\_correction
-==================================================
-
-.. currentmodule:: deeperwin.orbitals
-
-.. autofunction:: build_el_el_cusp_correction

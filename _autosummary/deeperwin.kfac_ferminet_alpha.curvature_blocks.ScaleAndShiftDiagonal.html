@@ -47,16 +47,19 @@
 <li class="toctree-l1 current"><a class="reference internal" href="../api.html">Full documentation for developers</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="deeperwin.html">deeperwin</a><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.ase_bindings.html">deeperwin.ase_bindings</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.available_gpus.html">deeperwin.available_gpus</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.bfgs.html">deeperwin.bfgs</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.configuration.html">deeperwin.configuration</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.dispatch.html">deeperwin.dispatch</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.evaluation.html">deeperwin.evaluation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.features.html">deeperwin.features</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.hamiltonian.html">deeperwin.hamiltonian</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.kfac.html">deeperwin.kfac</a></li>
 <li class="toctree-l3 current"><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.html">deeperwin.kfac_ferminet_alpha</a><ul class="current">
 <li class="toctree-l4 current"><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.curvature_blocks.html">deeperwin.kfac_ferminet_alpha.curvature_blocks</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.distributions.html">deeperwin.kfac_ferminet_alpha.distributions</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.estimator.html">deeperwin.kfac_ferminet_alpha.estimator</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.example.html">deeperwin.kfac_ferminet_alpha.example</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.layers_and_loss_tags.html">deeperwin.kfac_ferminet_alpha.layers_and_loss_tags</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.loss_functions.html">deeperwin.kfac_ferminet_alpha.loss_functions</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.optimizer.html">deeperwin.kfac_ferminet_alpha.optimizer</a></li>
@@ -72,11 +75,10 @@
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.model.html">deeperwin.model</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.optimization.html">deeperwin.optimization</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.orbitals.html">deeperwin.orbitals</a></li>
-<li class="toctree-l3"><a class="reference internal" href="deeperwin.process_molecule.html">deeperwin.process_molecule</a></li>
-<li class="toctree-l3"><a class="reference internal" href="deeperwin.process_molecules_inter.html">deeperwin.process_molecules_inter</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.register_curvature.html">deeperwin.register_curvature</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.sweep_agent.html">deeperwin.sweep_agent</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.utils.html">deeperwin.utils</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.wandb_utils.html">deeperwin.wandb_utils</a></li>
 </ul>
 </li>
 </ul>
@@ -116,7 +118,7 @@
 <h1>deeperwin.kfac_ferminet_alpha.curvature_blocks.ScaleAndShiftDiagonal<a class="headerlink" href="#deeperwin-kfac-ferminet-alpha-curvature-blocks-scaleandshiftdiagonal" title="Permalink to this headline"></a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="deeperwin.kfac_ferminet_alpha.curvature_blocks.ScaleAndShiftDiagonal">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">deeperwin.kfac_ferminet_alpha.curvature_blocks.</span></span><span class="sig-name descname"><span class="pre">ScaleAndShiftDiagonal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/deeperwin/kfac_ferminet_alpha/curvature_blocks.html#ScaleAndShiftDiagonal"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.kfac_ferminet_alpha.curvature_blocks.ScaleAndShiftDiagonal" title="Permalink to this definition"></a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">deeperwin.kfac_ferminet_alpha.curvature_blocks.</span></span><span class="sig-name descname"><span class="pre">ScaleAndShiftDiagonal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/deeperwin/kfac_ferminet_alpha/curvature_blocks.html#ScaleAndShiftDiagonal"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.kfac_ferminet_alpha.curvature_blocks.ScaleAndShiftDiagonal" title="Permalink to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="deeperwin.kfac_ferminet_alpha.curvature_blocks.CurvatureBlock.html#deeperwin.kfac_ferminet_alpha.curvature_blocks.CurvatureBlock" title="deeperwin.kfac_ferminet_alpha.curvature_blocks.CurvatureBlock"><code class="xref py py-class docutils literal notranslate"><span class="pre">deeperwin.kfac_ferminet_alpha.curvature_blocks.CurvatureBlock</span></code></a></p>
 <p>A scale and shift block with a diagonal approximation to the curvature.</p>
 <dl class="py method">
@@ -171,7 +173,7 @@
 </table>
 <dl class="py method">
 <dt class="sig sig-object py" id="deeperwin.kfac_ferminet_alpha.curvature_blocks.ScaleAndShiftDiagonal.init">
-<span class="sig-name descname"><span class="pre">init</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rng</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">jax._src.numpy.lax_numpy.ndarray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/deeperwin/kfac_ferminet_alpha/curvature_blocks.html#ScaleAndShiftDiagonal.init"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.kfac_ferminet_alpha.curvature_blocks.ScaleAndShiftDiagonal.init" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">init</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rng</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">jax._src.numpy.lax_numpy.ndarray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/deeperwin/kfac_ferminet_alpha/curvature_blocks.html#ScaleAndShiftDiagonal.init"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.kfac_ferminet_alpha.curvature_blocks.ScaleAndShiftDiagonal.init" title="Permalink to this definition"></a></dt>
 <dd><p>This initializes/creates all of the arrays for the state of the block.</p>
 <p>Usually this would include the arrays used for storing the curvature
 approximation, as well as the arrays for storing any approximate

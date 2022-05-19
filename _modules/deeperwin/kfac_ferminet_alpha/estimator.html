@@ -116,6 +116,7 @@
                <span class="n">func_args</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span>
                <span class="n">l2_reg</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
                <span class="n">estimation_mode</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;fisher_gradients&quot;</span><span class="p">,</span>
+               <span class="n">inversion_mode</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;solve&quot;</span><span class="p">,</span>
                <span class="n">params_index</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
                <span class="n">layer_tag_to_block_cls</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TagMapping</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Create a FisherEstimator object.</span>
@@ -160,6 +161,7 @@
     <span class="bp">self</span><span class="o">.</span><span class="n">tagged_func</span> <span class="o">=</span> <span class="n">tagged_func</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">l2_reg</span> <span class="o">=</span> <span class="n">l2_reg</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">estimation_mode</span> <span class="o">=</span> <span class="n">estimation_mode</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">inversion_mode</span> <span class="o">=</span> <span class="n">inversion_mode</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">params_index</span> <span class="o">=</span> <span class="n">params_index</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">vjp</span> <span class="o">=</span> <span class="n">tracer</span><span class="o">.</span><span class="n">trace_estimator_vjp</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tagged_func</span><span class="p">)</span>
 
@@ -403,7 +405,8 @@
       <span class="bp">self</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
     <span class="k">for</span> <span class="n">block</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">blocks</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
       <span class="n">block</span><span class="o">.</span><span class="n">update_curvature_inverse_estimate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">diagonal_weight</span><span class="p">,</span>
-                                              <span class="n">pmap_axis_name</span><span class="p">)</span>
+                                              <span class="n">pmap_axis_name</span><span class="p">,</span>
+                                              <span class="bp">self</span><span class="o">.</span><span class="n">inversion_mode</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">state</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
       <span class="k">return</span> <span class="kc">None</span>
     <span class="k">else</span><span class="p">:</span>

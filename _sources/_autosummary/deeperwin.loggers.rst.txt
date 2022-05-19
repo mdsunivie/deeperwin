@@ -9,6 +9,14 @@ deeperwin.loggers
 
    
    
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+   
+      build_dpe_root_logger
+      prepare_checkpoint_directory
+   
    
 
    

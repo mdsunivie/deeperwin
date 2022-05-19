@@ -1,6 +1,0 @@
-deeperwin.process\_molecules\_inter.optimize\_inter
-===================================================
-
-.. currentmodule:: deeperwin.process_molecules_inter
-
-.. autofunction:: optimize_inter

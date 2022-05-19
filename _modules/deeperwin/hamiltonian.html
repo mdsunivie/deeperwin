@@ -78,6 +78,7 @@
 
 <span class="kn">import</span> <span class="nn">jax</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">functools</span>
 <span class="kn">from</span> <span class="nn">jax</span> <span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">jnp</span>
 
 <span class="kn">from</span> <span class="nn">deeperwin.configuration</span> <span class="kn">import</span> <span class="n">ClippingConfig</span><span class="p">,</span> <span class="n">ForceEvaluationConfig</span>
@@ -103,17 +104,30 @@
 
 
 <div class="viewcode-block" id="get_kinetic_energy"><a class="viewcode-back" href="../../_autosummary/deeperwin.hamiltonian.get_kinetic_energy.html#deeperwin.hamiltonian.get_kinetic_energy">[docs]</a><span class="k">def</span> <span class="nf">get_kinetic_energy</span><span class="p">(</span><span class="n">log_psi_squared</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">R</span><span class="p">,</span> <span class="n">Z</span><span class="p">,</span> <span class="n">trainable_params</span><span class="p">,</span> <span class="n">fixed_params</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;This code here is strongly inspired by the implementation of FermiNet (Copyright 2020 DeepMind Technologies Limited.)&quot;&quot;&quot;</span>
+
     <span class="n">n_coords</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span> <span class="o">*</span> <span class="n">r</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
     <span class="n">eye</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="n">n_coords</span><span class="p">)</span>
     <span class="n">grad_psi_func</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">r</span><span class="p">:</span> <span class="n">jax</span><span class="o">.</span><span class="n">grad</span><span class="p">(</span><span class="n">log_psi_squared</span><span class="p">,</span> <span class="n">argnums</span><span class="o">=</span><span class="mi">0</span><span class="p">)(</span>
         <span class="n">r</span><span class="o">.</span><span class="n">reshape</span><span class="p">([</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">]),</span> <span class="n">R</span><span class="p">,</span> <span class="n">Z</span><span class="p">,</span> <span class="n">trainable_params</span><span class="p">,</span> <span class="n">fixed_params</span>
     <span class="p">)</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
 
-    <span class="k">def</span> <span class="nf">_loop_body</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">laplacian</span><span class="p">):</span>
-        <span class="n">g_i</span><span class="p">,</span> <span class="n">G_ii</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">jvp</span><span class="p">(</span><span class="n">grad_psi_func</span><span class="p">,</span> <span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">flatten</span><span class="p">(),),</span> <span class="p">(</span><span class="n">eye</span><span class="p">[</span><span class="n">i</span><span class="p">],))</span>
-        <span class="k">return</span> <span class="n">laplacian</span> <span class="o">+</span> <span class="n">G_ii</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">g_i</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span>
+    <span class="n">grad_value</span><span class="p">,</span> <span class="n">jvp_func</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">linearize</span><span class="p">(</span><span class="n">grad_psi_func</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">flatten</span><span class="p">())</span>
+    <span class="k">def</span> <span class="nf">_loop_body</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">accumulator</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">accumulator</span> <span class="o">+</span> <span class="n">jvp_func</span><span class="p">(</span><span class="n">eye</span><span class="p">[</span><span class="n">i</span><span class="p">])[</span><span class="n">i</span><span class="p">]</span>
+    <span class="n">laplacian</span> <span class="o">=</span> <span class="mf">0.25</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">grad_value</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">jax</span><span class="o">.</span><span class="n">lax</span><span class="o">.</span><span class="n">fori_loop</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">n_coords</span><span class="p">,</span> <span class="n">_loop_body</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+    <span class="k">return</span> <span class="o">-</span><span class="mf">0.5</span> <span class="o">*</span> <span class="n">laplacian</span></div>
 
-    <span class="k">return</span> <span class="o">-</span><span class="mf">0.25</span> <span class="o">*</span> <span class="n">jax</span><span class="o">.</span><span class="n">lax</span><span class="o">.</span><span class="n">fori_loop</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">n_coords</span><span class="p">,</span> <span class="n">_loop_body</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span></div>
+    <span class="c1"># jvp_func = functools.partial(jax.jvp, grad_psi_func, (r.flatten(),))</span>
+    <span class="c1"># grad_value, hessian = jax.vmap(jvp_func, out_axes=(None, 0))((eye,))</span>
+    <span class="c1"># laplace = 0.25 * jnp.sum(grad_value**2) + 0.5 * jnp.sum(jnp.diagonal(hessian))</span>
+    <span class="c1"># return -0.5 * laplace</span>
+
+    <span class="c1"># def _loop_body(i, laplacian):</span>
+    <span class="c1">#     g_i, G_ii = jax.jvp(grad_psi_func, (r.flatten(),), (eye[i],))</span>
+    <span class="c1">#     return laplacian + G_ii[i] + 0.5 * g_i[i] ** 2</span>
+    <span class="c1">#</span>
+    <span class="c1"># return -0.25 * jax.lax.fori_loop(0, n_coords, _loop_body, 0.0)</span>
 
 
 <div class="viewcode-block" id="get_kinetic_energy_fwd_diff"><a class="viewcode-back" href="../../_autosummary/deeperwin.hamiltonian.get_kinetic_energy_fwd_diff.html#deeperwin.hamiltonian.get_kinetic_energy_fwd_diff">[docs]</a><span class="k">def</span> <span class="nf">get_kinetic_energy_fwd_diff</span><span class="p">(</span><span class="n">log_psi_squared</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">R</span><span class="p">,</span> <span class="n">Z</span><span class="p">,</span> <span class="n">trainable_params</span><span class="p">,</span> <span class="n">fixed_params</span><span class="p">):</span>
@@ -198,9 +212,9 @@
 
     <span class="n">diff_el_ion</span><span class="p">,</span> <span class="n">r_el_ion</span> <span class="o">=</span> <span class="n">get_el_ion_distance_matrix</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">R</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">use_polynomial</span><span class="p">:</span>
-        <span class="n">force_function</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_calculate_forces_polynomial_fit</span><span class="p">,</span> <span class="n">R_core</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">R_core</span><span class="p">,</span> <span class="n">poly_coeffs</span><span class="o">=</span><span class="n">poly_coeffs</span><span class="p">)</span>
+        <span class="n">force_function</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_calculate_forces_polynomial_fit</span><span class="p">,</span> <span class="n">R_core</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">R_core</span><span class="p">,</span> <span class="n">poly_coeffs</span><span class="o">=</span><span class="n">poly_coeffs</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">force_function</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_calculate_forces_directly</span><span class="p">,</span> <span class="n">R_cut</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">R_cut</span><span class="p">)</span>
+        <span class="n">force_function</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">_calculate_forces_directly</span><span class="p">,</span> <span class="n">R_cut</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">R_cut</span><span class="p">)</span>
     <span class="n">forces</span> <span class="o">=</span> <span class="n">force_function</span><span class="p">(</span><span class="n">diff_el_ion</span><span class="p">,</span> <span class="n">r_el_ion</span><span class="p">,</span> <span class="n">Z</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">use_antithetic_sampling</span><span class="p">:</span>

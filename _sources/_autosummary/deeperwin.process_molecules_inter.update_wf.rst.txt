@@ -1,6 +1,0 @@
-deeperwin.process\_molecules\_inter.update\_wf
-==============================================
-
-.. currentmodule:: deeperwin.process_molecules_inter
-
-.. autofunction:: update_wf

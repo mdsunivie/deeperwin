@@ -1,6 +1,0 @@
-deeperwin.model.get\_rbf\_features
-==================================
-
-.. currentmodule:: deeperwin.model
-
-.. autofunction:: get_rbf_features

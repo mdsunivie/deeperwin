@@ -22,7 +22,7 @@
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="deeperwin.hamiltonian.calculate_forces" href="deeperwin.hamiltonian.calculate_forces.html" />
-    <link rel="prev" title="deeperwin.evaluation.evaluate_wavefunction" href="deeperwin.evaluation.evaluate_wavefunction.html" /> 
+    <link rel="prev" title="deeperwin.features.get_degenerate_subspaces" href="deeperwin.features.get_degenerate_subspaces.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -47,10 +47,12 @@
 <li class="toctree-l1 current"><a class="reference internal" href="../api.html">Full documentation for developers</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="deeperwin.html">deeperwin</a><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.ase_bindings.html">deeperwin.ase_bindings</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.available_gpus.html">deeperwin.available_gpus</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.bfgs.html">deeperwin.bfgs</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.configuration.html">deeperwin.configuration</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.dispatch.html">deeperwin.dispatch</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.evaluation.html">deeperwin.evaluation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.features.html">deeperwin.features</a></li>
 <li class="toctree-l3 current"><a class="current reference internal" href="#">deeperwin.hamiltonian</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.hamiltonian.calculate_forces.html">deeperwin.hamiltonian.calculate_forces</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.hamiltonian.clip_energies.html">deeperwin.hamiltonian.clip_energies</a></li>
@@ -71,11 +73,10 @@
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.model.html">deeperwin.model</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.optimization.html">deeperwin.optimization</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.orbitals.html">deeperwin.orbitals</a></li>
-<li class="toctree-l3"><a class="reference internal" href="deeperwin.process_molecule.html">deeperwin.process_molecule</a></li>
-<li class="toctree-l3"><a class="reference internal" href="deeperwin.process_molecules_inter.html">deeperwin.process_molecules_inter</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.register_curvature.html">deeperwin.register_curvature</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.sweep_agent.html">deeperwin.sweep_agent</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.utils.html">deeperwin.utils</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.wandb_utils.html">deeperwin.wandb_utils</a></li>
 </ul>
 </li>
 </ul>
@@ -132,7 +133,7 @@
 <td><p></p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.hamiltonian.get_kinetic_energy.html#deeperwin.hamiltonian.get_kinetic_energy" title="deeperwin.hamiltonian.get_kinetic_energy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_kinetic_energy</span></code></a>(log_psi_squared, r, R, Z, ...)</p></td>
-<td><p></p></td>
+<td><p>This code here is strongly inspired by the implementation of FermiNet (Copyright 2020 DeepMind Technologies Limited.)</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="deeperwin.hamiltonian.get_kinetic_energy_fwd_diff.html#deeperwin.hamiltonian.get_kinetic_energy_fwd_diff" title="deeperwin.hamiltonian.get_kinetic_energy_fwd_diff"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_kinetic_energy_fwd_diff</span></code></a>(log_psi_squared, ...)</p></td>
 <td><p></p></td>
@@ -154,7 +155,7 @@
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="deeperwin.evaluation.evaluate_wavefunction.html" class="btn btn-neutral float-left" title="deeperwin.evaluation.evaluate_wavefunction" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="deeperwin.features.get_degenerate_subspaces.html" class="btn btn-neutral float-left" title="deeperwin.features.get_degenerate_subspaces" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
         <a href="deeperwin.hamiltonian.calculate_forces.html" class="btn btn-neutral float-right" title="deeperwin.hamiltonian.calculate_forces" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 

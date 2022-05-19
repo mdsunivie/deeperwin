@@ -16,21 +16,23 @@ deeperwin.model
    
       build_backflow_factor
       build_backflow_shift
-      build_dummy_embedding
+      build_embedding
       build_jastrow_factor
       build_log_psi_squared
-      build_log_psi_squared_baseline_model
-      build_simple_schnet
+      build_orbital_net
+      build_preprocessor
       calculate_shift_decay
       dense_layer
+      el_el_cusp
+      evaluate_sum_of_determinants
       ffwd_net
-      get_number_of_params
+      get_baseline_slater_matrices
+      get_embedding_dim
+      get_nr_of_input_features
       get_pairwise_features
-      get_rbf_features
       init_ffwd_net
-      init_log_psi_squared_fixed_params
-      register_repeated_dense
-      register_scale_and_shift
+      init_fixed_params_for_input_features
+      init_model_fixed_params
       scale
    
    
