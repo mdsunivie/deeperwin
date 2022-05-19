@@ -1,4 +1,6 @@
 # DeepErwin
+This is an older version of the code which fully supports the weight-sharing technique but not yet the 
+different neural network architectures (see therefore the master branch). 
 
 DeepErwin is python package that implements and optimizes wave function models for numerical solutions to the multi-electron Schrödinger equation.
 
