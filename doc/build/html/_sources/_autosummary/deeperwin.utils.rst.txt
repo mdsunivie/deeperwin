@@ -14,10 +14,12 @@ deeperwin.utils
    .. autosummary::
       :toctree:
    
+      adam_inverse
       adam_scaled
       build_inverse_schedule
       build_learning_rate_schedule
       calculate_clipping_state
+      calculate_metrics
       convert_to_jnp
       fit_morse_potential
       getCodeVersion
@@ -29,14 +31,19 @@ deeperwin.utils
       get_ion_pos_string
       get_module_params_nested
       get_number_of_params
+      load_all_runs
+      load_from_file
+      load_run
       make_opt_state_picklable
       merge_trainable_params
       morse_potential
       prepare_data_for_logging
       remove_module_params_nested
+      save_to_file
       save_xyz_file
-      set_adam_scaled_lr_scale
       set_module_params_nested
+      set_scaled_optimizer_lr
+      sgd_scaled
       split_trainable_params
       unpickle_opt_state
    

@@ -7,11 +7,12 @@ import logging
 
 import jax.numpy as jnp
 import pyscf
+import pyscf.ci
 import pyscf.mcscf
 import numpy as np
 from deeperwin.configuration import PhysicalConfig, CASSCFConfig
-from deeperwin.configuration import CuspCorrectionConfig
 from deeperwin.utils import get_el_ion_distance_matrix
+from scipy.optimize import curve_fit
 
 logger = logging.getLogger("dpe")
 
@@ -84,15 +85,12 @@ def _eval_cusp_atomic_orbital(dist, r_c, offset, sign, poly):
     psi = offset + sign*jnp.exp(p_r)
     return psi
 
-def evaluate_molecular_orbitals(el_ion_diff, el_ion_dist, atomic_orbitals, mo_coeff, cusp_params=None, cusp_type="mo"):
-    if cusp_type == "mo":
-        aos = eval_atomic_orbitals(el_ion_diff, el_ion_dist, atomic_orbitals, None)
-    else:
-        aos = eval_atomic_orbitals(el_ion_diff, el_ion_dist, atomic_orbitals, cusp_params)
+def evaluate_molecular_orbitals(el_ion_diff, el_ion_dist, atomic_orbitals, mo_coeff, ao_cusp_params=None, mo_cusp_params=None):
+    aos = eval_atomic_orbitals(el_ion_diff, el_ion_dist, atomic_orbitals, ao_cusp_params)
     mos = aos @ mo_coeff
 
-    if (cusp_params is not None) and (cusp_type == "mo"):
-        r_c, offset, sign, poly, coeff_1s = cusp_params
+    if mo_cusp_params is not None:
+        r_c, offset, sign, poly, coeff_1s = mo_cusp_params
         sto_mask = jnp.heaviside(r_c - el_ion_dist, 0.0)[..., jnp.newaxis]
         sto = _eval_cusp_molecular_orbital(el_ion_dist, r_c, offset, sign, poly) - jnp.sum(aos[..., np.newaxis, :, np.newaxis] * coeff_1s, axis=-2)
         sto = jnp.sum(sto*sto_mask, axis=-2)     # sum over all ions, masking only the once that are within r_c of an electron
@@ -159,7 +157,8 @@ def _get_atomic_orbital_basis_functions(molecule):
             alpha = gto_data[:, 0]
             weights = gto_data[:, 1:]
             for ind_contraction in range(weights.shape[1]):
-                for m in range(-l, l + 1):
+                n_orientations = [1, 3, 6][l]
+                for m in range(n_orientations): # 1,3,6, ... = number of orbitals per angular momentum
                     shape_string = ao_labels[ind_basis][3]  # string of the form 'xxy' or 'zz'
                     angular_momenta = np.array([shape_string.count(x) for x in ['x', 'y', 'z']], dtype=int)
                     normalization = _get_gto_normalization_factor(alpha, angular_momenta)
@@ -172,48 +171,279 @@ def _get_atomic_orbital_basis_functions(molecule):
         atomic_orbitals) == n_basis, "Could not properly construct basis functions. You probably tried to use a valence-only basis (e.g. cc-pVDZ) for an all-electron calculation."  # noqa
     return atomic_orbitals
 
-
-def get_baseline_solution(physical_config: PhysicalConfig, casscf_config: CASSCFConfig):
+def build_pyscf_molecule_from_physical_config(physical_config: PhysicalConfig, basis_set):
     R, Z = np.array(physical_config.R), np.array(physical_config.Z)
     charge = sum(Z) - physical_config.n_electrons
     spin = 2 * physical_config.n_up - physical_config.n_electrons
+    return build_pyscf_molecule(R, Z, charge, spin, basis_set)
 
-    molecule = build_pyscf_molecule(R, Z, charge, spin, casscf_config.basis_set)
+def get_hartree_fock_solution(physical_config: PhysicalConfig, basis_set):
+    molecule = build_pyscf_molecule_from_physical_config(physical_config, basis_set)
     atomic_orbitals = _get_atomic_orbital_basis_functions(molecule)
-
     hf = pyscf.scf.HF(molecule)
     hf.verbose = 0  # suppress output to console
     hf.kernel()
+    return atomic_orbitals, hf
 
-    casscf = pyscf.mcscf.UCASSCF(hf, physical_config.n_cas_orbitals, physical_config.n_cas_electrons)
-    casscf.kernel()
 
-    mo_coeff = list(casscf.mo_coeff)  # tuple of spin_up, spin_down
-    ind_orbitals = _get_orbital_indices(casscf)
-    ci_weights = casscf.ci.flatten()
+def get_baseline_solution(physical_config: PhysicalConfig, casscf_config: CASSCFConfig, n_dets: int):
+    n_el, n_up, R, Z = physical_config.get_basic_params()
+    n_dn = n_el - n_up
+    atomic_orbitals, hf = get_hartree_fock_solution(physical_config, casscf_config.basis_set)
 
-    logger.debug(f"Total nuber of CASSCF-determinants before truncation: {len(ci_weights)}")
+    if n_dets == 1 or casscf_config.only_hf:
+        # Only 1 determinant => no MRCI/CASSCF calculation required
+        mo_coeff = hf.mo_coeff
+        if len(mo_coeff) != 2:
+            mo_coeff = [mo_coeff, mo_coeff]
+        ci_weights = np.ones(1) if not casscf_config.only_hf else np.ones(32)
+        ind_orbitals = [np.arange(n_up)[None, :], np.arange(n_dn)[None, :]] if not casscf_config.only_hf else\
+            [np.tile(np.arange(n_up), n_dets).reshape((-1, n_up)), np.tile(np.arange(n_dn), n_dets).reshape((-1, n_dn))]
+        E_hf, E_casscf = hf.e_tot, np.nan
+    else:
+        # Run CASSCF to get excited determinants
+        casscf = pyscf.mcscf.UCASSCF(hf, physical_config.n_cas_orbitals, physical_config.n_cas_electrons)
+        casscf.kernel()
+        E_hf, E_casscf = hf.e_tot, casscf.e_tot
 
-    if casscf_config.n_determinants < len(ci_weights):
-        ind_largest = np.argsort(np.abs(ci_weights))[::-1][:casscf_config.n_determinants]
-        share_captured = np.sum(ci_weights[ind_largest]**2) / np.sum(ci_weights**2)
-        logger.debug(f"Share of CI-weights captured by {casscf_config.n_determinants} dets: {share_captured:.3%}")
-        ci_weights = ci_weights[ind_largest]
-        ci_weights = jnp.array(ci_weights / np.sum(ci_weights ** 2))
-        ind_orbitals = ind_orbitals[0][ind_largest], ind_orbitals[1][ind_largest]
+        mo_coeff = list(casscf.mo_coeff)  # tuple of spin_up, spin_down
+        ind_orbitals = _get_orbital_indices(casscf)
+        ci_weights = casscf.ci.flatten()
 
-    # delete unused molecular orbitals (i.e. orbitals that appear in none of the selected determinants)
-    # for spin in range(2):
-    #     n_mo_max = np.max(ind_orbitals[spin]) + 1
-    #     mo_coeff[spin] = mo_coeff[spin][:, :n_mo_max]
+        logger.debug(f"Total nuber of CASSCF-determinants before truncation: {len(ci_weights)}")
+
+        if n_dets < len(ci_weights):
+            ind_largest = np.argsort(np.abs(ci_weights))[::-1][:n_dets]
+            share_captured = np.sum(ci_weights[ind_largest]**2) / np.sum(ci_weights**2)
+            logger.debug(f"Share of CI-weights captured by {n_dets} dets: {share_captured:.3%}")
+            ci_weights = ci_weights[ind_largest]
+            ci_weights = jnp.array(ci_weights / np.sum(ci_weights ** 2))
+            ind_orbitals = ind_orbitals[0][ind_largest], ind_orbitals[1][ind_largest]
 
     # Calculate cusp-correction-parameters for molecular orbitals
     if casscf_config.cusps.cusp_type == "mo":
-        cusp_params = [calculate_molecular_orbital_cusp_params(atomic_orbitals, mo_coeff[i], R, Z, casscf_config.cusps.r_cusp_el_ion_scale) for i in range(2)]
+        ao_cusp_params = None
+        mo_cusp_params = [calculate_molecular_orbital_cusp_params(atomic_orbitals, mo_coeff[i], R, Z, casscf_config.cusps.r_cusp_el_ion_scale) for i in range(2)]
     else:
-        cusp_params = [_calculate_ao_cusp_params(*ao, physical_config.Z[ao[0]]) for ao in atomic_orbitals]
+        ao_cusp_params = [_calculate_ao_cusp_params(*ao, physical_config.Z[ao[0]]) for ao in atomic_orbitals]
+        mo_cusp_params = [None, None]
 
-    return (atomic_orbitals, cusp_params, mo_coeff, ind_orbitals, ci_weights), (hf.e_tot, casscf.e_tot)
+    return (atomic_orbitals, ao_cusp_params, mo_cusp_params, mo_coeff, ind_orbitals, ci_weights), (E_hf, E_casscf)
+
+def get_cisd_leading_determinants(physical_config: PhysicalConfig, n_dets, basis_set="6-31G"):
+    molecule = build_pyscf_molecule_from_physical_config(physical_config, basis_set)
+    n_up, n_dn = physical_config.n_up, physical_config.n_dn
+    hf = pyscf.scf.UHF(molecule)
+    hf.verbose = 0  # suppress output to console
+    hf.kernel()
+    n_mo = hf.mo_coeff.shape[1]
+    cisd = pyscf.ci.CISD(hf).run()
+    amplitudes = cisd.cisdvec_to_amplitudes(cisd.ci)
+
+    # Ensure that excitations are not double-counted by setting amplitudes of equivalent excitations to 0
+    for spin in range(2):
+        for row in range(amplitudes[2][spin].shape[0]):
+            amplitudes[2][spin][row, :row, :, :] = 0
+        for row in range(amplitudes[2][spin].shape[2]):
+            amplitudes[2][spin][:, :, row, :row] = 0
+
+    n_up_unocc = n_mo - n_up
+    n_dn_unocc = n_mo - n_dn
+    coeffs = np.concatenate([[amplitudes[0]]] + [amplitudes[n_exc][spin].flatten() for n_exc in [1,2] for spin in [0,1]])
+
+    # Form a list of tuples, containing: (spin of excitation, list of tuples containing the orbitals to be swapped)
+    orbital_indices = [(0, [])]
+    orbital_indices += [(0,[(a, b + n_up)]) for a, b in zip(*np.unravel_index(np.arange(n_up * n_up_unocc), [n_up, n_up_unocc]))]
+    orbital_indices += [(1, [(a, b + n_dn)]) for a, b in zip(*np.unravel_index(np.arange(n_dn * n_dn_unocc), [n_dn, n_dn_unocc]))]
+    orbital_indices += [(0, [(a, c + n_up), (b, d + n_up)]) for a, b, c, d in zip(*np.unravel_index(np.arange(n_up ** 2 * n_up_unocc ** 2),
+                                                                                                    [n_up, n_up, n_up_unocc, n_up_unocc]))]
+    orbital_indices += [(1, [(a, c + n_dn), (b, d + n_dn)]) for a, b, c, d in zip(*np.unravel_index(np.arange(n_dn ** 2 * n_dn_unocc ** 2),
+                                                                                                    [n_dn, n_dn, n_dn_unocc, n_dn_unocc]))]
+    ind_largest = np.argsort(np.abs(coeffs))[::-1][:n_dets]
+    coeffs_largest = coeffs[ind_largest]
+    orbital_indices_largest = [orbital_indices[i] for i in ind_largest]
+
+    mo_indices = [np.tile(np.arange(n), [n_dets, 1]) for n in (n_up, n_dn)]
+    for i, (spin, exchanges) in enumerate(orbital_indices_largest):
+        for e in exchanges:
+            mo_indices[spin][i, e[0]] = e[1]
+    return mo_indices, coeffs_largest, hf.mo_coeff
+
+
+def fit_orbital_envelopes_to_hartree_fock(physical_config: PhysicalConfig):
+    # Calculate hartree-fock solution to fit against
+    R_ions = np.array(physical_config.R)
+    n_ions = len(R_ions)
+    n_el_per_spin = [physical_config.n_up, physical_config.n_electrons - physical_config.n_up]
+    (atomic_orbitals, _, _, mo_coeff, _, _), _ = get_baseline_solution(physical_config,
+                                                                       CASSCFConfig(basis_set="STO-6G"),
+                                                                       n_dets=1)
+
+    # Generate atom-centered grid on which to evaluate orbitals for fitting
+    n_points_per_atom = 500
+    r_sampling = []
+    for R in R_ions:
+        r = np.exp(np.random.uniform(-2, 1, n_points_per_atom))
+        r_angle = np.random.normal(size=[n_points_per_atom, 3])
+        r = (r_angle / np.linalg.norm(r_angle, axis=-1, keepdims=True)) * r[:, None]
+        r_sampling.append(r + np.array(R))
+    r_sampling = np.concatenate(r_sampling, axis=0)
+
+    # Envelope function to use for fitting
+    def fit_func(d, *params):
+        def softplus(x):
+            return np.log1p(np.exp(-np.abs(x))) + np.maximum(x, 0)
+        c = np.array(params[:n_ions])
+        alpha = np.array(params[n_ions:])
+        return np.sum(c[None, :] * np.exp(-softplus(alpha[None, :] * d)), axis=-1)
+
+    diff = r_sampling[:, None, :] - R_ions[None, :, :]
+    dist = np.linalg.norm(diff, axis=-1)
+    p0 = np.ones(2 * n_ions)
+
+    c_values = [[],[]]
+    alpha_values = [[],[]]
+    for spin in range(2):
+        mo_evals = evaluate_molecular_orbitals(diff, dist, atomic_orbitals, mo_coeff[spin])
+        for ind_mo in range(n_el_per_spin[spin]):
+            mo_ref = np.abs(mo_evals[:, ind_mo])
+            p_opt, _ = curve_fit(fit_func, dist, mo_ref, p0)
+            c_values[spin].append(p_opt[:n_ions])
+            alpha_values[spin].append(p_opt[n_ions:])
+    c_values = [np.array(c).T for c in c_values]
+    alpha_values = [np.array(a).T for a in alpha_values]
+    return c_values, alpha_values
+
+
+def _get_effective_charge(Z: int, n: int):
+    """
+    Calculates the approximate effective charge for an electron, using Slater's Rule of shielding.
+
+    Args:
+        Z: Nuclear charge of an atom
+        n: Principal quantum number of the elctron for which the effective charge is being calculated
+
+    Returns:
+        Z_eff (float): effective charge
+    """
+    shielding = 0
+    for n_shell in range(1, n+1):
+        n_electrons_in_shell = 2 * n_shell ** 2
+        if n_shell == n:
+            n_el_in_lower_shells = sum([2*k**2 for k in range(1,n_shell)])
+            n_electrons_in_shell = min(Z - n_el_in_lower_shells, n_electrons_in_shell) - 1
+
+        if n_shell == n:
+            shielding += n_electrons_in_shell * 0.35
+        elif n_shell == (n-1):
+            shielding += n_electrons_in_shell * 0.85
+        else:
+            shielding += n_electrons_in_shell
+    return max(Z - shielding, 1)
+
+
+def _get_atomic_orbital_envelope_exponents(physical_config: PhysicalConfig, basis_set):
+    molecule = build_pyscf_molecule_from_physical_config(physical_config, basis_set)
+    atomic_orbitals = _get_atomic_orbital_basis_functions(molecule)
+
+    Z_ions = np.array(physical_config.Z)
+    n_ions = len(Z_ions)
+
+    n_ao = []
+    for ind_nuc in range(n_ions):
+        ao_nuc = [ao for ao in atomic_orbitals if ao[0] == ind_nuc]
+        nr_of_s_orbitals = len([ao for ao in ao_nuc if sum(ao[-1]) == 0])
+        nr_of_p_orbitals = len([ao for ao in ao_nuc if sum(ao[-1]) == 1])
+        nr_of_d_orbitals = len([ao for ao in ao_nuc if sum(ao[-1]) == 2])
+        assert (nr_of_s_orbitals + nr_of_p_orbitals + nr_of_d_orbitals) == len(ao_nuc), "Initialization currently does support d-orbitals"
+        n_ao.append(np.arange(1, nr_of_s_orbitals + 1))
+        n_ao.append(np.repeat(np.arange(2, nr_of_p_orbitals // 3 + 2), 3))
+        n_ao.append(np.repeat(np.arange(3, nr_of_d_orbitals // 6 + 3), 6))
+    n_ao = np.concatenate(n_ao)
+    Z_ao = np.array([Z_ions[ao[0]] for ao in atomic_orbitals])
+    Z_ao = np.array([_get_effective_charge(Z, n) for Z, n in zip(Z_ao, n_ao)])
+    alpha_ao = Z_ao / n_ao
+    alpha_ao = alpha_ao * 0.7  # rescale to better fit empirical values
+    return alpha_ao
+
+def get_envelope_exponents_from_atomic_orbitals(physical_config: PhysicalConfig, basis_set='6-31G', mo_coeff=None, ind_orbitals=None):
+    n_up, n_dn, n_ions = physical_config.n_up, physical_config.n_dn, physical_config.n_ions
+    if mo_coeff is None:
+        (atomic_orbitals, _, _, mo_coeff, _, _), _ = get_baseline_solution(physical_config, CASSCFConfig(basis_set=basis_set), n_dets=1)
+    else:
+        atomic_orbitals = _get_atomic_orbital_basis_functions(build_pyscf_molecule_from_physical_config(physical_config, basis_set))
+    if ind_orbitals is None:
+        ind_orbitals = [np.arange(n_up)[None, :], np.arange(n_dn)[None, :]] # 1 determinant; lowest mos occupied
+
+    alpha_ao = _get_atomic_orbital_envelope_exponents(physical_config, basis_set)
+    n_dets = len(ind_orbitals[0])
+
+    ind_nuc_ao = np.array([ao[0] for ao in atomic_orbitals], dtype=int)
+    c_values = [np.zeros([n_ions, n_dets, n_up]), np.zeros([n_ions, n_dets, n_dn])]
+    alpha_values = [np.zeros([n_ions, n_dets, n_up]), np.zeros([n_ions, n_dets, n_dn])]
+    for n_det in range(n_dets):
+        for spin in range(2):
+            mo_coeff_det = mo_coeff[spin][:, ind_orbitals[spin][n_det]]
+            mo_weights = mo_coeff_det ** 2 / np.sum(mo_coeff_det ** 2, axis=0, keepdims=True)
+            for ind_mo in range([n_up, n_dn][spin]):
+                for ind_nuc in range(n_ions):
+                    index_nuc = (ind_nuc_ao == ind_nuc)
+                    mo_weights_nuc = mo_weights[:, ind_mo][index_nuc]
+                    c_values[spin][ind_nuc, n_det, ind_mo] = np.sum(mo_weights_nuc) + 1e-3
+                    alpha_values[spin][ind_nuc, n_det, ind_mo] = (np.dot(mo_weights_nuc, alpha_ao[index_nuc]) + 1e-6) / (np.sum(mo_weights_nuc) + 1e-6)
+
+    for spin in range(2):
+        # undo softplus which will be applied in network
+        alpha_values[spin] = np.log(np.exp(alpha_values[spin] - 1))
+    c_up = jnp.reshape(c_values[0], [n_ions, -1])
+    c_dn = jnp.reshape(c_values[1], [n_ions, -1])
+    alpha_up = jnp.reshape(alpha_values[0], [n_ions, -1])
+    alpha_dn = jnp.reshape(alpha_values[1], [n_ions, -1])
+    return (c_up, c_dn), (alpha_up, alpha_dn)
+
+def get_envelope_exponents_hardcoded(physical_config: PhysicalConfig, n_dets):
+    n_up, n_dn, n_ions = physical_config.n_up, physical_config.n_dn, physical_config.n_ions
+
+    if physical_config.name == 'P':
+        alphas = [(5, [12, 2, 2, 2, 2, -1, -1.5, -1.5, -1.5]),
+                  (5, [12, 2.5, 2.5, 2.5, 2.5, -1, -1, -1, -1]),
+                  (8, [13, 2.5, 3, 3, 3, 0.5, 0, 0, 0]),
+                  (5, [13, 2.5, 2.5, 2.5, 2.5, 0, -0.5, -0.5, -0.5]),
+                  (4, [1.5, 1, 1, 1, 1, 1, 0.5, 0.5, 0.5]),
+                  (5, [2.5, 1, 1.5, 1.5, 1.5, 0, -0.5, -0.5, -0.5])
+                  ]
+    elif physical_config.name == 'Cl':
+        alphas = [(10, [14, 2.5, 3, 3, 3, 1, 0, 0, 0]),
+                  (10, [12, 2, 2, 2, 2, -0.5, -1, -1, -1]),
+                  (4, [13, 1.5, 1.5, 1.5, 1.5, -1, -1, -1, -1]),
+                  (4, [1.5, 1, 1, 1, 1, 1, 1, 1, 1]),
+                  (4, [2.5, 0, 1, 1, 1, 0, -1, -1, -1])
+                  ]
+    elif physical_config.name == 'O':
+        alphas = [(3, [5, 1.3, 0.9, 0.9, 0.9]),
+                  (1, [1, 1, 1, 1, 1])
+                  ]
+    total_weight = np.sum([a[0] for a in alphas])
+    alpha_up = []
+    alpha_dn = []
+    for weight, a in alphas:
+        n_repetitions = int(np.round(n_dets * weight / total_weight))
+        alpha_up.append(np.tile(np.array(a)[None, :n_up], n_repetitions))
+        alpha_dn.append(np.tile(np.array(a)[None, :n_dn], n_repetitions))
+    alpha_up = np.concatenate(alpha_up, axis=-1)
+    alpha_dn = np.concatenate(alpha_dn, axis=-1)
+    assert alpha_up.shape[1] == n_up * n_dets
+    assert alpha_dn.shape[1] == n_dn * n_dets
+
+    c_up = jnp.ones([n_ions, n_up * n_dets])
+    c_dn = jnp.ones([n_ions, n_dn * n_dets])
+    return dict(c_up=c_up, c_dn=c_dn, alpha_up=alpha_up, alpha_dn=alpha_dn)
+
+
+def get_envelope_exponents_cisd(physical_config, n_dets):
+    basis_set = "6-31G"
+    ind_orbitals, ci_coeffs, mo_coeff = get_cisd_leading_determinants(physical_config, n_dets, basis_set)
+    return get_envelope_exponents_from_atomic_orbitals(physical_config, basis_set, mo_coeff, ind_orbitals)
 
 
 def _int_to_spin_tuple(x):
@@ -221,6 +451,44 @@ def _int_to_spin_tuple(x):
         return (x,) * 2
     else:
         return x
+
+def split_results_into_spins(hf):
+    if len(hf.mo_occ.shape) == 2:
+        return hf.mo_coeff, hf.mo_energy, hf.mo_occ
+    else:
+        return [hf.mo_coeff, hf.mo_coeff], [hf.mo_energy, hf.mo_energy], [hf.mo_occ / 2, hf.mo_occ / 2]
+
+def get_orbital_type(atomic_orbital):
+    atom_ind, _, _, l = atomic_orbital
+    if sum(l) == 0:
+        orbital_type = "s"
+    elif sum(l) == 1:
+        if l[0]:
+            orbital_type = "px"
+        elif l[1]:
+            orbital_type = "py"
+        else:
+            orbital_type = "pz"
+    else:
+        orbital_type = "other"
+    return f"Nuc{atom_ind}: {orbital_type}"
+
+
+def get_p_orbital_indices_per_atom(atomic_orbitals):
+    current_atom = -1
+    p_orb_indices = []
+    for i,ao in enumerate(atomic_orbitals):
+        if ao[0] != current_atom:
+            current_atom = ao[0]
+            p_orb_indices.append([None, None, None])
+        l = tuple(ao[-1])
+        if l == (1, 0, 0):
+            p_orb_indices[-1][0] = i
+        elif l == (0, 1, 0):
+            p_orb_indices[-1][1] = i
+        elif l == (0, 0, 1):
+            p_orb_indices[-1][2] = i
+    return p_orb_indices
 
 
 def _get_orbitals_by_cas_type(casscf):
@@ -265,21 +533,6 @@ def _get_orbital_indices(casscf):
 ##########################################################################################
 ##################################### Cusp functions #####################################
 ##########################################################################################
-
-def build_el_el_cusp_correction(n_electrons, n_up, config: CuspCorrectionConfig):
-    factor = np.ones([n_electrons, n_electrons - 1]) * 0.5
-    factor[:n_up, :n_up-1] = 0.25
-    factor[n_up:, n_up:] = 0.25
-    A = config.r_cusp_el_el ** 2
-    B = config.r_cusp_el_el
-    def el_el_cusp(el_el_dist):
-        # No factor 0.5 here, e.g. when comparing to NatChem 2020, [doi.org/10.1038/s41557-020-0544-y], because:
-        # A) We double-count electron-pairs because we take the full distance matrix (and not only the upper triangle)
-        # B) We model log(psi^2)=2*log(|psi|) vs log(|psi|) int NatChem 2020, i.e. the cusp correction needs a factor 2
-        return -jnp.sum(factor * A/(el_el_dist+B), axis=[-2,-1])
-    return el_el_cusp
-
-
 def _get_local_energy_of_cusp_orbital(r_c, offset, sign, poly, Z, phi_others=0.0):
     r = np.linspace(1e-6, r_c, 100)[:, np.newaxis]
     p_0 = poly[0] + poly[1] * r + poly[2] * r ** 2 + poly[3] * r ** 3 + poly[4] * r ** 4
@@ -390,78 +643,78 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
     import jax
     from configuration import PhysicalConfig, CASSCFConfig, CuspCorrectionConfig
-    physical_config = PhysicalConfig(name='LiH', n_cas_electrons=3, n_cas_orbitals=3)
-    casscf_config_ao = CASSCFConfig(n_determinants=1, basis_set="6311G", cusps=CuspCorrectionConfig(cusp_type="ao"))
-    casscf_config_mo = CASSCFConfig(n_determinants=1, basis_set="6311G", cusps=CuspCorrectionConfig(cusp_type="mo"))
-
-
-    R = np.array(physical_config.R)
-    Z = np.array(physical_config.Z)
-
-    (atomic_orbitals, cusp_params_ao, mo_coeff, ind_orbitals, ci_weights), _ = get_baseline_solution(physical_config, casscf_config_ao)
-    (atomic_orbitals, cusp_params_mo, mo_coeff, ind_orbitals, ci_weights), _ = get_baseline_solution(physical_config, casscf_config_mo)
-
-
-    ind_mo = 0
-    assert ind_mo < mo_coeff[0].shape[-1]
-    def phi_single_electron(r, cusp_params, cusp_type):
-        r = jnp.expand_dims(r, axis=-2) # add pseudo-axis for multiple electrons
-        diff = r[..., np.newaxis,:] - R[np.newaxis,...]
-        dist = jnp.linalg.norm(diff, axis=-1)
-        if (cusp_params is not None) and (cusp_type == "mo"):
-            cusp_params = cusp_params[0]
-        return evaluate_molecular_orbitals(diff, dist, atomic_orbitals, mo_coeff[0], cusp_params, cusp_type)[...,0, ind_mo]
-
-
-    def build_kinetic_energy(phi):
-        def _ekin(r):
-            eye = jnp.eye(3)
-            grad_func = jax.grad(phi)
-    
-            def _loop_body(i, laplacian):
-                _, G_ii = jax.jvp(grad_func, (r,), (eye[i],))
-                return laplacian + G_ii[i]
-    
-            return -0.5 * jax.lax.fori_loop(0, 3, _loop_body, 0.0) / phi(r)
-        return jax.jit(jax.vmap(_ekin))
-
-    def calc_potential_energy(r):
-        _, dist = get_el_ion_distance_matrix(r, R)
-        E = -jnp.sum(Z/(dist+1e-10), axis=-1)
-        return E
-
-    N_samples = 1001
-    r = np.zeros([N_samples, 3])
-    r[:, 0] = np.linspace(-1, 4, N_samples)
-    phi_naive_func = lambda r: phi_single_electron(r, None, "ao")
-    phi_corr_func_ao = lambda r: phi_single_electron(r, cusp_params_ao, "ao")
-    phi_corr_func_mo = lambda r: phi_single_electron(r, cusp_params_mo, "mo")
-
-    Ekin_naive_func = build_kinetic_energy(phi_naive_func)
-    Ekin_corr_func_ao = build_kinetic_energy(phi_corr_func_ao)
-    Ekin_corr_func_mo = build_kinetic_energy(phi_corr_func_mo)
-    phi_naive = phi_naive_func(r)
-    phi_corr_ao = phi_corr_func_ao(r)
-    phi_corr_mo = phi_corr_func_mo(r)
-
-
-    Eloc_naive = Ekin_naive_func(r) + calc_potential_energy(r)
-    Eloc_corr_ao = Ekin_corr_func_ao(r) + calc_potential_energy(r)
-    Eloc_corr_mo = Ekin_corr_func_mo(r) + calc_potential_energy(r)
-
-    plt.close("all")
-    plt.subplot(2,1,1)
-    plt.plot(r[:, 0], phi_corr_ao, label="Cusp corrected AO")
-    plt.plot(r[:, 0], phi_corr_mo, label="Cusp corrected MO")
-    plt.plot(r[:, 0], phi_naive, '--', label="Naive")
-    plt.grid()
-    plt.legend()
-
-    plt.subplot(2,1,2)
-    plt.plot(r[:, 0], Eloc_corr_ao, label="Cusp corrected AO", alpha=0.5)
-    plt.plot(r[:, 0], Eloc_corr_mo, label="Cusp corrected MO", alpha=0.5)
-    plt.plot(r[:, 0], Eloc_naive, '--', label="Naive")
-    # plt.ylim([-60, 60])
-    plt.grid()
-    plt.legend()
+    # physical_config = PhysicalConfig(name='LiH', n_cas_electrons=3, n_cas_orbitals=3)
+    # casscf_config_ao = CASSCFConfig(n_determinants=1, basis_set="6311G", cusps=CuspCorrectionConfig(cusp_type="ao"))
+    # casscf_config_mo = CASSCFConfig(n_determinants=1, basis_set="6311G", cusps=CuspCorrectionConfig(cusp_type="mo"))
+    #
+    #
+    # R = np.array(physical_config.R)
+    # Z = np.array(physical_config.Z)
+    #
+    # (atomic_orbitals, cusp_params_ao, _, mo_coeff, ind_orbitals, ci_weights), _ = get_baseline_solution(physical_config, casscf_config_ao)
+    # (atomic_orbitals, _, cusp_params_mo, mo_coeff, ind_orbitals, ci_weights), _ = get_baseline_solution(physical_config, casscf_config_mo)
+    #
+    #
+    # ind_mo = 0
+    # assert ind_mo < mo_coeff[0].shape[-1]
+    # def phi_single_electron(r, cusp_params, cusp_type):
+    #     r = jnp.expand_dims(r, axis=-2) # add pseudo-axis for multiple electrons
+    #     diff = r[..., np.newaxis,:] - R[np.newaxis,...]
+    #     dist = jnp.linalg.norm(diff, axis=-1)
+    #     if (cusp_params is not None) and (cusp_type == "mo"):
+    #         cusp_params = cusp_params[0]
+    #     return evaluate_molecular_orbitals(diff, dist, atomic_orbitals, mo_coeff[0], cusp_params, cusp_type)[...,0, ind_mo]
+    #
+    #
+    # def build_kinetic_energy(phi):
+    #     def _ekin(r):
+    #         eye = jnp.eye(3)
+    #         grad_func = jax.grad(phi)
+    #
+    #         def _loop_body(i, laplacian):
+    #             _, G_ii = jax.jvp(grad_func, (r,), (eye[i],))
+    #             return laplacian + G_ii[i]
+    #
+    #         return -0.5 * jax.lax.fori_loop(0, 3, _loop_body, 0.0) / phi(r)
+    #     return jax.jit(jax.vmap(_ekin))
+    #
+    # def calc_potential_energy(r):
+    #     _, dist = get_el_ion_distance_matrix(r, R)
+    #     E = -jnp.sum(Z/(dist+1e-10), axis=-1)
+    #     return E
+    #
+    # N_samples = 1001
+    # r = np.zeros([N_samples, 3])
+    # r[:, 0] = np.linspace(-1, 4, N_samples)
+    # phi_naive_func = lambda r: phi_single_electron(r, None, "ao")
+    # phi_corr_func_ao = lambda r: phi_single_electron(r, cusp_params_ao, "ao")
+    # phi_corr_func_mo = lambda r: phi_single_electron(r, cusp_params_mo, "mo")
+    #
+    # Ekin_naive_func = build_kinetic_energy(phi_naive_func)
+    # Ekin_corr_func_ao = build_kinetic_energy(phi_corr_func_ao)
+    # Ekin_corr_func_mo = build_kinetic_energy(phi_corr_func_mo)
+    # phi_naive = phi_naive_func(r)
+    # phi_corr_ao = phi_corr_func_ao(r)
+    # phi_corr_mo = phi_corr_func_mo(r)
+    #
+    #
+    # Eloc_naive = Ekin_naive_func(r) + calc_potential_energy(r)
+    # Eloc_corr_ao = Ekin_corr_func_ao(r) + calc_potential_energy(r)
+    # Eloc_corr_mo = Ekin_corr_func_mo(r) + calc_potential_energy(r)
+    #
+    # plt.close("all")
+    # plt.subplot(2,1,1)
+    # plt.plot(r[:, 0], phi_corr_ao, label="Cusp corrected AO")
+    # plt.plot(r[:, 0], phi_corr_mo, label="Cusp corrected MO")
+    # plt.plot(r[:, 0], phi_naive, '--', label="Naive")
+    # plt.grid()
+    # plt.legend()
+    #
+    # plt.subplot(2,1,2)
+    # plt.plot(r[:, 0], Eloc_corr_ao, label="Cusp corrected AO", alpha=0.5)
+    # plt.plot(r[:, 0], Eloc_corr_mo, label="Cusp corrected MO", alpha=0.5)
+    # plt.plot(r[:, 0], Eloc_naive, '--', label="Naive")
+    # # plt.ylim([-60, 60])
+    # plt.grid()
+    # plt.legend()
 

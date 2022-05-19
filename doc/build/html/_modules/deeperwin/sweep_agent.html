@@ -93,7 +93,7 @@
     <span class="c1"># return index</span>
     <span class="k">return</span> <span class="mi">0</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">run_nrs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">else</span> <span class="nb">max</span><span class="p">(</span><span class="n">run_nrs</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span></div>
 
-<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+<div class="viewcode-block" id="run_sweep_agent"><a class="viewcode-back" href="../../_autosummary/deeperwin.sweep_agent.run_sweep_agent.html#deeperwin.sweep_agent.run_sweep_agent">[docs]</a><span class="k">def</span> <span class="nf">run_sweep_agent</span><span class="p">():</span>
     <span class="c1"># Init wandb and get current parameter set</span>
     <span class="n">run</span> <span class="o">=</span> <span class="n">wandb</span><span class="o">.</span><span class="n">init</span><span class="p">()</span>
 
@@ -110,7 +110,7 @@
     <span class="n">config</span> <span class="o">=</span> <span class="n">set_with_nested_key</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;logging.wandb.project&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
     <span class="n">config</span> <span class="o">=</span> <span class="n">set_with_nested_key</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;logging.basic.fname&quot;</span><span class="p">,</span> <span class="s2">&quot;erwin.log&quot;</span><span class="p">)</span>
     <span class="n">config</span> <span class="o">=</span> <span class="n">set_with_nested_key</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;experiment_name&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">parsed_config</span><span class="o">.</span><span class="n">experiment_name</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">run_nr</span><span class="si">:</span><span class="s2">03d</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="n">config</span> <span class="o">=</span> <span class="n">set_with_nested_key</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;computation.dispatch&quot;</span><span class="p">,</span> <span class="s2">&quot;local&quot;</span><span class="p">)</span>
+    <span class="n">config</span> <span class="o">=</span> <span class="n">set_with_nested_key</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;dispatch.system&quot;</span><span class="p">,</span> <span class="s2">&quot;local&quot;</span><span class="p">)</span>
 
     <span class="n">config_fname</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;config_run</span><span class="si">{</span><span class="n">run_nr</span><span class="si">:</span><span class="s2">03d</span><span class="si">}</span><span class="s2">.yml&quot;</span>
 
@@ -118,18 +118,15 @@
         <span class="n">yaml</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
 
     <span class="c1"># Run the main run in the sub-directory</span>
-    <span class="n">main_fname</span> <span class="o">=</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">joinpath</span><span class="p">(</span><span class="s2">&quot;main.py&quot;</span><span class="p">)</span>
+    <span class="n">main_fname</span> <span class="o">=</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">joinpath</span><span class="p">(</span><span class="s2">&quot;process_molecule.py&quot;</span><span class="p">)</span>
 
     <span class="c1"># &quot;Finish&quot; this run before starting the actual run.</span>
     <span class="c1"># Otherwise this pseudo-run overwrites the results of the actual run upon exiting this script</span>
     <span class="n">run</span><span class="o">.</span><span class="n">finish</span><span class="p">()</span>
-    <span class="n">subprocess</span><span class="o">.</span><span class="n">call</span><span class="p">([</span><span class="s2">&quot;python&quot;</span><span class="p">,</span> <span class="n">main_fname</span><span class="p">,</span> <span class="n">config_fname</span><span class="p">],</span> <span class="n">cwd</span><span class="o">=</span><span class="s2">&quot;.&quot;</span><span class="p">)</span>
+    <span class="n">subprocess</span><span class="o">.</span><span class="n">call</span><span class="p">([</span><span class="s2">&quot;python&quot;</span><span class="p">,</span> <span class="n">main_fname</span><span class="p">,</span> <span class="n">config_fname</span><span class="p">],</span> <span class="n">cwd</span><span class="o">=</span><span class="s2">&quot;.&quot;</span><span class="p">)</span></div>
 
-
-
-
-
-
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">run_sweep_agent</span><span class="p">()</span>
 
 </pre></div>
 

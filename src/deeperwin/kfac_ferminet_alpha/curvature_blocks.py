@@ -86,7 +86,8 @@ class CurvatureBlock(utils.Stateful, abc.ABC):
   def update_curvature_inverse_estimate(
       self,
       diagonal_weight: Union[float, jnp.ndarray],
-      pmap_axis_name: str
+      pmap_axis_name: str,
+      inversion_mode: str
   ) -> None:
     pass
 
@@ -132,7 +133,8 @@ class NaiveDiagonal(CurvatureBlock):
   def update_curvature_inverse_estimate(
       self,
       diagonal_weight: Union[float, jnp.ndarray],
-      pmap_axis_name: str
+      pmap_axis_name: str,
+      inversion_mode: str
   ) -> None:
     pass
 
@@ -192,7 +194,8 @@ class TwoKroneckerFactored(CurvatureBlock, abc.ABC):
   def update_curvature_inverse_estimate(
       self,
       diagonal_weight: Union[float, jnp.ndarray],
-      pmap_axis_name: str
+      pmap_axis_name: str,
+      inversion_mode: str
   ) -> None:
     self.inputs_factor.sync(pmap_axis_name)
     self.outputs_factor.sync(pmap_axis_name)
@@ -207,7 +210,8 @@ class TwoKroneckerFactored(CurvatureBlock, abc.ABC):
          factor_0=self.inputs_factor.value,
          factor_1=self.outputs_factor.value,
          damping=diagonal_weight / self.extra_scale,
-         pmap_axis_name=pmap_axis_name)
+         pmap_axis_name=pmap_axis_name,
+         inversion_mode=inversion_mode)
 
   def multiply_matpower(
       self,
@@ -356,7 +360,8 @@ class ScaleAndShiftDiagonal(CurvatureBlock):
   def update_curvature_inverse_estimate(
       self,
       diagonal_weight: Union[float, jnp.ndarray],
-      pmap_axis_name: str
+      pmap_axis_name: str,
+      inversion_mode: str
   ) -> None:
     pass
 
@@ -443,11 +448,13 @@ class ScaleAndShiftFull(CurvatureBlock):
   def update_curvature_inverse_estimate(
       self,
       diagonal_weight: Union[float, jnp.ndarray],
-      pmap_axis_name: str
+      pmap_axis_name: str,
+      inversion_mode: str
   ) -> None:
     self.factor.sync(pmap_axis_name)
     self.inverse_factor = utils.psd_inv_cholesky(self.factor.value,
-                                                 diagonal_weight)
+                                                 diagonal_weight,
+                                                 inversion_mode)
 
   def multiply_matpower(
       self,

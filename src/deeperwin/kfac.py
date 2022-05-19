@@ -17,26 +17,26 @@ def build_grad_loss_kfac(log_psi_func, clipping_config: ClippingConfig, use_fwd_
     @jax.custom_jvp
     def total_energy(params, state, r):
         R, Z, fixed_params, clipping = state
-        E_loc = get_local_energy(log_psi_func, r, R, Z, params, fixed_params, use_fwd_fwd_hessian)
+        E_loc_unclipped = get_local_energy(log_psi_func, r, R, Z, params, fixed_params, use_fwd_fwd_hessian)
         if clipping_config.unclipped_center:
-            center = jnp.nanmean(E_loc)
-            width = jnp.nanmean(jnp.abs(E_loc - center)) * 5.0
-            E_loc = clip_energies(E_loc, center, width, clipping_config)
+            center = jnp.nanmean(E_loc_unclipped)
+            width = jnp.nanmean(jnp.abs(E_loc_unclipped - center)) * 5.0
+            E_loc = clip_energies(E_loc_unclipped, center, width, clipping_config)
         else:
-            E_loc = clip_energies(E_loc, *clipping, clipping_config)
+            E_loc = clip_energies(E_loc_unclipped, *clipping, clipping_config)
         loss = jnp.nanmean(E_loc)
-        return loss, ((R, Z, fixed_params, clipping), E_loc)
+        return loss, ((R, Z, fixed_params, clipping), (E_loc, E_loc_unclipped))
 
     @total_energy.defjvp
     def total_energy_jvp(primals, tangents):
         params, (R, Z, fixed_params, clipping), r = primals
-        loss, ((_, _, _, _), E_loc) = total_energy(params, (R, Z, fixed_params, clipping), r)
+        loss, ((_, _, _, _), (E_loc, E_loc_unclipped)) = total_energy(params, (R, Z, fixed_params, clipping), r)
         diff = E_loc - loss
         func = lambda p, r: log_psi_func(r, R, Z, p, fixed_params)
         psi_primal, psi_tangent = jax.jvp(func, (primals[0], primals[-1]), (tangents[0], tangents[-1]))
         loss_functions.register_normal_predictive_distribution(psi_primal[:, None])  # Register loss for kfac optimizer
-        primals_out = loss, ((R, Z, fixed_params, clipping), E_loc)
-        tangents_out = jnp.dot(psi_tangent, diff), ((R, Z, fixed_params, clipping), E_loc)
+        primals_out = loss, ((R, Z, fixed_params, clipping), (E_loc, E_loc_unclipped))
+        tangents_out = jnp.dot(psi_tangent, diff), ((R, Z, fixed_params, clipping), (E_loc, E_loc_unclipped))
         return primals_out, tangents_out
 
     grad_loss_func = jax.value_and_grad(total_energy, argnums=0, has_aux=True)
@@ -46,6 +46,7 @@ def build_grad_loss_kfac(log_psi_func, clipping_config: ClippingConfig, use_fwd_
 
 def build_optimize_epoch_kfac_test(grad_loss_func, initial_params, opt_config: OptimizationConfig, r_batch, func_state,
                                    log_psi_squared, mcmc, n_walkers, n_batches):
+    log_psi_squared_jit = jax.jit(log_psi_squared)
     learning_rate_scheduler = build_inverse_schedule(opt_config.learning_rate, opt_config.optimizer.decay_time)
     optimizer = kfac_optim.Optimizer(
         grad_loss_func,
@@ -59,6 +60,7 @@ def build_optimize_epoch_kfac_test(grad_loss_func, initial_params, opt_config: O
         register_only_generic=opt_config.optimizer.register_generic,
         norm_constraint=opt_config.optimizer.norm_constraint,
         estimation_mode=opt_config.optimizer.estimation_mode,
+        inversion_mode=opt_config.optimizer.inversion_mode,
         min_damping=opt_config.optimizer.min_damping,
         multi_device=False,
         curvature_ema=1.0 - opt_config.optimizer.curvature_ema
@@ -70,19 +72,19 @@ def build_optimize_epoch_kfac_test(grad_loss_func, initial_params, opt_config: O
     kfac_opt_state = optimizer.init(initial_params, subkeys, r_batch, func_state)
 
     if opt_config.optimizer.internal_optimizer is not None:
-        opt_init, opt_update, get_params_adam = get_builtin_optimizer(opt_config.optimizer.internal_optimizer,
+        opt_init, opt_update, get_params_internal = get_builtin_optimizer(opt_config.optimizer.internal_optimizer,
                                                                       opt_config.schedule,
                                                                       opt_config.learning_rate)
-        adam_state = opt_init(initial_params)
-        opt_state = (adam_state, get_params_adam(adam_state), kfac_opt_state, opt_key)
+        internal_state = opt_init(initial_params)
+        opt_state = (internal_state, get_params_internal(internal_state), kfac_opt_state, opt_key)
 
         def _get_params(state):
-            return get_params_adam(state[0])
+            return get_params_internal(state[0])
 
         @jax.jit
-        def update_with_adam(epoch_nr, grads, adam_state):
-            adam_state = opt_update(epoch_nr, grads, adam_state)
-            return get_params_adam(adam_state), adam_state
+        def update_with_internal(epoch_nr, grads, internal_state):
+            internal_state = opt_update(epoch_nr, grads, internal_state)
+            return get_params_internal(internal_state), internal_state
 
     else:
         opt_state = (None, initial_params, kfac_opt_state, opt_key)
@@ -97,13 +99,13 @@ def build_optimize_epoch_kfac_test(grad_loss_func, initial_params, opt_config: O
         damping_scheduler = lambda x: opt_config.optimizer.damping
 
     def _optimize_epoch_with_kfac(epoch, mcmc_state, opt_state, clipping_params, fixed_params):
-        adam_state, params, kfac_opt_state, key = opt_state
+        internal_state, params, kfac_opt_state, key = opt_state
 
         func_state = (mcmc_state.R, mcmc_state.Z, fixed_params, clipping_params)
         mcmc_state = mcmc.run_inter_steps(log_psi_squared, (params, fixed_params), mcmc_state)
         r_batches = mcmc_state.r.reshape([n_batches, opt_config.batch_size, -1, 3])
 
-        if epoch == 0 and opt_config.optimizer.n_burn_in !=0:
+        if epoch == 0 and opt_config.optimizer.n_burn_in != 0:
             r_it = []
             for j in range(opt_config.optimizer.n_burn_in // n_batches + 1):
                 mcmc_state = mcmc.run_inter_steps(log_psi_squared, (params, fixed_params), mcmc_state)
@@ -115,9 +117,10 @@ def build_optimize_epoch_kfac_test(grad_loss_func, initial_params, opt_config: O
         momentum = opt_config.optimizer.momentum
 
         E_epoch = jnp.zeros(n_walkers)
+        E_epoch_unclipped = jnp.zeros(n_walkers)
         for i in range(n_batches):
             r_batch = [r_batches[i]]
-            if epoch==0 and i ==0 and opt_config.optimizer.n_burn_in !=0:
+            if epoch==0 and i ==0 and opt_config.optimizer.n_burn_in != 0:
                 r_it.append(r_batch[0])
                 r_batch = r_it
 
@@ -131,21 +134,23 @@ def build_optimize_epoch_kfac_test(grad_loss_func, initial_params, opt_config: O
                 momentum=momentum,
                 damping=damping)
 
-            E_batch = stats['aux']
+            E_batch, E_batch_unclipped = stats['aux']
             E_epoch = jax.lax.dynamic_update_slice(E_epoch, E_batch, (i * opt_config.batch_size,))
-            if opt_config.optimizer.internal_optimizer is not None:
-                grads, unravel_func = ravel_pytree(grads)
-                if jnp.sum(jnp.isnan(grads)) >0:
-                    LOGGER.warning(f"Nan gradients {jnp.sum(jnp.isnan(grads))} detected in KFAC!")
-                grads = jnp.nan_to_num(grads, nan=0.0)
-                grads = unravel_func(grads)
-                params, adam_state = update_with_adam(epoch, grads, adam_state)
+            E_epoch_unclipped = jax.lax.dynamic_update_slice(E_epoch_unclipped, E_batch_unclipped, (i * opt_config.batch_size,))
 
-        mcmc_state.log_psi_sqr = log_psi_squared(*mcmc_state.model_args, params, fixed_params)
+            # Checks for NaNs in gradients
+            # grads, unravel_func = ravel_pytree(grads)
+            # if jnp.sum(jnp.isnan(grads)) >0:
+            #     LOGGER.warning(f"Nan gradients {jnp.sum(jnp.isnan(grads))} detected in KFAC!")
+            # grads = jnp.nan_to_num(grads, nan=0.0)
+            # grads = unravel_func(grads)
+            params, internal_state = update_with_internal(epoch, grads, internal_state)
+
+        mcmc_state.log_psi_sqr = log_psi_squared_jit(*mcmc_state.model_args, params, fixed_params)
         clipping_params = calculate_clipping_state(E_epoch, opt_config.clipping)
 
-        opt_state = (adam_state, params, kfac_opt_state, key)
+        opt_state = (internal_state, params, kfac_opt_state, key)
 
-        return E_epoch, mcmc_state, opt_state, clipping_params
+        return E_epoch, E_epoch_unclipped, mcmc_state, opt_state, clipping_params
 
     return _optimize_epoch_with_kfac, _get_params, opt_state

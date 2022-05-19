@@ -21,7 +21,7 @@ def get_current_run_nr():
     # return index
     return 0 if len(run_nrs) == 0 else max(run_nrs) + 1
 
-if __name__ == '__main__':
+def run_sweep_agent():
     # Init wandb and get current parameter set
     run = wandb.init()
 
@@ -38,7 +38,7 @@ if __name__ == '__main__':
     config = set_with_nested_key(config, "logging.wandb.project", None)
     config = set_with_nested_key(config, "logging.basic.fname", "erwin.log")
     config = set_with_nested_key(config, "experiment_name", f"{parsed_config.experiment_name}_{run_nr:03d}")
-    config = set_with_nested_key(config, "computation.dispatch", "local")
+    config = set_with_nested_key(config, "dispatch.system", "local")
 
     config_fname = f"config_run{run_nr:03d}.yml"
 
@@ -46,16 +46,13 @@ if __name__ == '__main__':
         yaml.dump(config, f)
 
     # Run the main run in the sub-directory
-    main_fname = pathlib.Path(__file__).resolve().parent.joinpath("main.py")
+    main_fname = pathlib.Path(__file__).resolve().parent.joinpath("process_molecule.py")
 
     # "Finish" this run before starting the actual run.
     # Otherwise this pseudo-run overwrites the results of the actual run upon exiting this script
     run.finish()
     subprocess.call(["python", main_fname, config_fname], cwd=".")
 
-
-
-
-
-
+if __name__ == '__main__':
+    run_sweep_agent()
 

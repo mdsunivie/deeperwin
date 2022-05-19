@@ -2,14 +2,79 @@
 DeepErwin hyperparameter and configuration management.
 """
 
-from abc import ABC, abstractmethod
-from typing import Union, Literal, Optional, List
-
-import pydantic
+from typing import Union, Literal, Optional, List, Tuple
 import ruamel.yaml.comments
 from pydantic import BaseModel, validator, root_validator
-from pydantic.fields import ModelField
+import numpy as np
+import inspect
+import pathlib
 
+def _get_spin_from_hunds_rule(Z):
+    n_orbitals = [1, 1, 3, 1, 3, 1, 5, 3, 1, 5, 3, 1, 7, 5]  # 1s, 2s, 2p, 3s, 3p, 4s, 5d, ...
+    n_electrons = Z
+    n_up = 0
+    n_dn = 0
+    for n_in_orb in n_orbitals:
+        n_up += min(n_in_orb, n_electrons)
+        n_electrons -= min(n_in_orb, n_electrons)
+        n_dn += min(n_in_orb, n_electrons)
+        n_electrons -= min(n_in_orb, n_electrons)
+        if n_electrons == 0:
+            break
+    return n_up - n_dn
+
+def _generate_el_ion_mapping(R, Z, n_el, n_up):
+    """Generates a list of electrons each mapped to one of the ions.
+
+    Electrons are mapped, such that local spin is minimzed, by greedily looking for the most unbalanced position
+    and placing and opposite spin electron on this site. Local spin is calculated as a weighted sum of all other ions.
+    """
+    R = np.array(R)
+    n_ions = len(Z)
+    dist = np.linalg.norm(R[:, None, :]  - R[None, :, :], axis=-1)
+    weights = np.exp(-dist)
+    n_per_ion = np.zeros([n_ions, 2], int)
+    n_per_spin = [n_up, n_el - n_up]
+
+    for n in range(n_el):
+        # Calculate the spin of each ion (up - down) and calculate a weighted 'local' from these raw spins
+        local_spin = weights @ (n_per_ion[:,0] - n_per_ion[:,1])
+        spin_to_assign = np.concatenate([np.zeros(n_ions, dtype=int), np.ones(n_ions, dtype=int)])
+        ion_to_assign = np.concatenate([np.arange(n_ions, dtype=int), np.arange(n_ions, dtype=int)])
+        resulting_local_spins = []
+        for s,ind_ion in zip(spin_to_assign, ion_to_assign):
+            change_in_spin = np.zeros(n_ions)
+            change_in_spin[ind_ion] = 1 if s == 0 else -1
+            resulting_local_spins.append(local_spin + weights @ change_in_spin)
+
+        # Sort them to find the most unbalanced ions
+        ind_additon = np.argsort(np.max(np.abs(resulting_local_spins), axis=-1))
+        for i in ind_additon:
+            spin = spin_to_assign[i]
+            ind_ion = ion_to_assign[i]
+            if (sum(n_per_ion[ind_ion]) == Z[ind_ion]) or (n_per_spin[spin] == 0):
+                # Do not put more electrons of this spin if there are no more electrons left or the atom is full
+                continue
+            n_per_ion[ind_ion, spin] += 1
+            n_per_spin[spin] -= 1
+            break
+
+    # Convert to list of length electrons
+    mapping = []
+    for spin in range(2):
+        for ind_ion,n in enumerate(n_per_ion[:,spin]):
+            mapping = mapping + [ind_ion] * n
+    return mapping
+
+def update_config(config: 'ConfigModel', config_changes):
+    config_dict = config.dict()
+    # First loop: Build an updated dictionary
+    for key, value in config_changes.items():
+        set_with_nested_key(config_dict, key, value)
+
+    # Parse the config dict and validate that all parameters are valid
+    config = config.parse_obj(config_dict)
+    return config
 
 class ConfigModel(BaseModel):
     """Base class for all config models"""
@@ -54,6 +119,19 @@ class ConfigModel(BaseModel):
                 output_dict[label] = subconfig
         return output_dict
 
+    @classmethod
+    def from_flattened_dict(cls, config_dict, ignore_extra_settings=False):
+        if ignore_extra_settings:
+            class IgnoringConfig(cls):
+                class Config:
+                    extra = "ignore"
+            nested_dict = IgnoringConfig.from_flattened_dict(config_dict).dict()
+        else:
+            nested_dict = build_nested_dict(config_dict)
+
+        config = cls().parse_obj(nested_dict)
+        return config
+
     @root_validator(allow_reuse=True)
     def disable_unused_children(cls, values):
         for element in values.keys():
@@ -62,6 +140,7 @@ class ConfigModel(BaseModel):
                     values[element] = None
         return values
 
+    # TODO: Eliminate this method in favor of the simpler top-level update_config function
     @classmethod
     def update_config(cls, config_dict: dict, config_changes):
         # First loop: Build an updated dictionary
@@ -83,41 +162,98 @@ class ConfigModel(BaseModel):
         extra = "forbid"
 
 
-class NetworkConfig(ConfigModel, ABC):
-    net_width: Optional[int] = None
-    net_depth: Optional[int] = None
-
-    @staticmethod
-    @abstractmethod
-    def get_default_network_shape(key, width, depth):
-        pass
-
-    @validator("*", always=True)
-    def _set_embedding_widths(cls, n_hidden, values, field: ModelField):
-        if field.name.startswith("n_hidden") and (n_hidden is None):
-            return cls.get_default_network_shape(field.name.replace("n_hidden_", ""), values['net_width'],
-                                                 values['net_depth'])
-        return n_hidden
+class _EmbeddingConfig(ConfigModel):
+    pass
 
 
-class FermiNetConfig(NetworkConfig):
+class _ModelConfig(ConfigModel):
+    pass
+
+
+class InitializationConfig(ConfigModel):
+    bias_scale: float = 0.0
+
+    weight_scale: Literal["glorot", "glorot-input"] = "glorot"
+
+    weight_distribution: Literal["normal", "uniform"] = "uniform"
+
+
+class FermiNetConfig(_EmbeddingConfig):
     name: Literal["fermi"] = "fermi"
 
-    embedding_dim: int = 64
+    default: Literal["fermi"] = "fermi"
 
-    rbf = False
+    n_hidden_one_el: Union[List[int], int] = 256
+    """Number of hidden neurons per layer for the one electron stream in the FermiNet network"""
 
-    n_hidden_one_el: List[int] = [40, 40, 40, 40]
+    n_hidden_two_el: Union[List[int], int] = 32
+    """Number of hidden neurons per layer for the electron-electron stream in the FermiNet network"""
 
-    n_hidden_two_el: List[int] = [32, 32, 32]
+    n_hidden_el_ions: Union[List[int], int] = 32
+    """Number of hidden neurons per layer for the electron-ion stream in the FermiNet network"""
 
-    @staticmethod
-    def get_default_network_shape(key, width, depth):
-        pass
+    n_iterations: Optional[int] = 4
+    """Number iterations to combine features of different particle streams into the one electron stream"""
+
+    use_el_ion_stream: bool = True
+    """Whether to generate a second stream of interactions between electrons and ions"""
+
+    use_average_h_one: bool = True
+    """Whether to include the average embedding of all electrons as a feature into the 1-el-stream"""
+
+    initialization: InitializationConfig = InitializationConfig()
+    """How to initialize weights and biases"""
+
+    use_average_h_two: bool = True
+    """Use the average over the electron-electron stream output as additional feature for the one electron stream"""
+
+    use_h_one: bool = True
+    """Use the electron stream output as features for its own stream in the next iteration"""
+
+    use_h_two_same_diff: bool = False
+    """Split the electron-electron stream into same- and different spin channel. Effectively turning one stream into two
+    seperate streams"""
+
+    use_schnet_features: bool = False
+    """Use SchNet convolution features as input to the one electron stream"""
+
+    sum_schnet_features: bool = True
+    """Sum electron-electron and electron-ion SchNet convolution features together"""
+
+    emb_dim: int = 128
+    """Embedding dimension for the electron-electron and electron-ion SchNet convolution features"""
+
+    use_linear_out: bool = False
+    """Use linear layer for mapping particle features to same dimension"""
+
+    use_w_mapping: bool = False
+    """Apply neural network for inter-particle features to further process before computing SchNet convolution"""
+
+    @validator("n_iterations", always=True)
+    def _set_n_iterations(cls, n, values):
+        if n is None:
+            try:
+                n = len(values['n_hidden_one_el'])
+            except TypeError:
+                raise ValueError(f"n_hidden_one_el must be a list of net-widths if n_iterations is not specified")
+        return n
+
+    @root_validator
+    def _set_n_hidden(cls, values):
+        def _make_list(key, len):
+            if isinstance(values[key], int):
+                values[key] = [values[key]] * len
+        _make_list('n_hidden_one_el', values['n_iterations'])
+        _make_list('n_hidden_two_el', values['n_iterations']-1)
+        _make_list('n_hidden_el_ions', values['n_iterations'] - 1)
+        if len(values['n_hidden_one_el']) != (len(values['n_hidden_two_el']) + 1):
+            raise ValueError(f"Number of layers for 1-el-stream must be one more than nr of layers in 2-el-stream")
+        return values
 
 
+class SimpleSchnetConfig(_EmbeddingConfig):
+    default: Literal["default"] = "default"
 
-class SimpleSchnetConfig(NetworkConfig):
     name: Literal["simple_schnet"] = "simple_schnet"
     """Identifier for this model-part. Fixed."""
 
@@ -127,34 +263,106 @@ class SimpleSchnetConfig(NetworkConfig):
     n_iterations: int = 2
     """Number of embedding iterations for SchNet"""
 
-    net_width: Optional[int] = 40
-    """Number of hidden units per layers for w,h,g networks within SchNet."""
-
-    net_depth: Optional[int] = 2
-    """Depth of hidden layers for w-,h-, and g-networks within SchNet. Note that by default the g-network has only depth 1 instead of depth 2"""
-
-
-    n_hidden_w: Optional[List[int]] = None
+    n_hidden_w: List[int] = [40, 40]
     """Number of hidden neurons per layer of the w-Network within SchNet. The w-network takes pairwise features between particles as inputs and calculates the weight of each embedding dimension as output. If not specified the width/depth as specified in net_width/net_depth is used"""
 
+    deep_w = False
+    """Whether to process inter-particle features further or to use for every SchNet iteration the inter-particle distances"""
 
-    n_hidden_h: Optional[List[int]] = None
+    n_hidden_h: List[int] = [40, 40]
     """Number of hidden neurons per layer of the h-Network within SchNet. The h-network takes the embedding of the previous iteration as input and computes a new embedding per particle, which is then weighted using the w-networks. If not specified the width/depth as specified in net_width/net_depth is used"""
 
-
-    n_hidden_g: Optional[Union[List[int]]] = None
+    n_hidden_g: List[int] = [40]
     """Number of hidden neurons per layer of the g-Network within SchNet. The g-network applies a final non-linear transformation at the end of each SchNet round. If not specified the width as specified in net_width and depth = net_depth - 1 is used"""
+
+    use_linear_layer_w = True
 
     use_res_net: bool = False
     """Whether to use residuals for the networks"""
 
-    @staticmethod
-    def get_default_network_shape(key, width, depth):
-        return dict(w=[width] * depth, h=[width] * depth, g=[width] * (depth - 1))[key]
+    one_el_input: bool = False
+
+class SchnetConfig(_EmbeddingConfig):
+    name: Literal["schnet"] = "schnet"
+    """Identifier for this model-part. Fixed."""
+
+    embedding_dim: int = 64
+    """Dimensionality of embedding vectors, including intermediate network widths."""
+
+    #hidden_embedding_dim: int = 64
+
+    n_iterations: int = 2
+    """Number of embedding iterations for SchNet"""
+
+    n_hidden_w: List[int] = [40, 40]
+    """Number of hidden neurons per layer of the w-Network within SchNet. The w-network takes pairwise features between particles as inputs and calculates the weight of each embedding dimension as output. If not specified the width/depth as specified in net_width/net_depth is used"""
+
+    n_hidden_h: Optional[List[int]] = [40, 40]
+    """Number of hidden neurons per layer of the h-Network within SchNet. The h-network takes the embedding of the previous iteration as input and computes a new embedding per particle, which is then weighted using the w-networks. If not specified the width/depth as specified in net_width/net_depth is used"""
+
+    n_hidden_g: Optional[Union[List[int]]] = [40]
+    """Number of hidden neurons per layer of the g-Network within SchNet. The g-network applies a final non-linear transformation at the end of each SchNet round. If not specified the width as specified in net_width and depth = net_depth - 1 is used"""
+
+    use_linear_layer_w = False
+    """Use linear layer for mapping particle features to same dimension"""
+
+    use_res_net: bool = False
+    """Whether to use residuals for the networks"""
+
+    one_el_input: bool = False
+    """Whether to use the one electron output as input for the next SchNet iteration"""
+
+    use_concatenation: bool = False
+    """Whether to use concatenation of inter-particle features instead of summation of features"""
 
 
-class DummyEmbeddingConfig(ConfigModel):
-    name: Literal["dummy"] = "dummy"
+class SimpleSchnetConfigDPE1(SimpleSchnetConfig):
+    """DO NOT INTRODUCE NEW FIELDS HERE. This class is only used to provide alternative defaults"""
+    default: Literal["dpe1"] = "dpe1"
+    embedding_dim = 64
+    n_iterations = 2
+    n_hidden_h: List[int] = [40, 40]
+    n_hidden_w: List[int] = [40, 40]
+    n_hidden_g: List[int] = [40]
+    deep_w = False
+    use_linear_layer_w = True
+    use_res_net = False
+    one_el_input = False
+
+
+class SimpleSchnetConfigDPE2(SimpleSchnetConfig):
+    """DO NOT INTRODUCE NEW FIELDS HERE. This class is only used to provide alternative defaults"""
+    default: Literal["dpe2"] = "dpe2"
+    embedding_dim = 128
+    n_iterations = 2
+    n_hidden_h: List[int] = [40, 80]
+    n_hidden_w: List[int] = [40, 80]
+    n_hidden_g: List[int] = [128]
+    deep_w = True
+
+    use_linear_layer_w = False
+    use_res_net = False
+    one_el_input = False
+
+
+class EmbeddingConfigDPE4(FermiNetConfig):
+    """DO NOT INTRODUCE NEW FIELDS HERE. This class is only used to provide alternative defaults"""
+    default: Literal["dpe4"] = "dpe4"
+    n_iterations: int = 4
+    n_hidden_one_el: Union[List[int], int] = 128
+    n_hidden_two_el: Union[List[int], int] = 32
+    n_hidden_el_ions: Union[List[int], int] = 32
+    use_h_two_same_diff = False
+    emb_dim = 32
+    use_schnet_features = True
+    sum_schnet_features = False
+    use_average_h_one = True
+    use_average_h_two = False
+    use_h_one = True
+    use_linear_out = False
+
+
+EmbeddingConfigType = Union[tuple(v for v in globals().values() if inspect.isclass(v) and issubclass(v, _EmbeddingConfig) and (v != _EmbeddingConfig))[::-1]]
 
 
 class CuspCorrectionConfig(ConfigModel):
@@ -165,9 +373,6 @@ class CuspCorrectionConfig(ConfigModel):
     'mo' computes a cusp correction for each molecular orbital (i.e. each solution of the HF-calculation).
     For atoms both cusp_types should be equivalent, but for molecules the simpler 'ao' cusps can in principle not correctly model the cusps that arise from an atomic wavefunction having a finite contribution at a different nucleus.   
     """
-
-    r_cusp_el_el: float = 1.0
-    """Length-scale for the electron-electron cusp correction"""
 
     r_cusp_el_ion_scale: float = 1.0
     """Scaling parameter for the electron-ion cusp corrections. No cusp correction is applied outside a radius :code:`r_cusp_el_ion_scale / Z`"""
@@ -180,42 +385,68 @@ class CASSCFConfig(ConfigModel):
     basis_set: str = "6-311G"
     """Basis set to use for the Hartree-Fock / CASSCF calculation. See the documentation of pySCF for all available basis-sets."""
 
-    n_determinants: int = 20
-    """Number of determinants of the CASSCF calculation to keep"""
-
     cusps: CuspCorrectionConfig = CuspCorrectionConfig()
     """Settings for the correction of wavefunction cusps when particles come close to each other"""
 
+    only_hf: bool = False
+    """Only as HF orbitals as baseline method"""
 
-class DeepErwinModelConfig(NetworkConfig):
-    """Configuration for the primary wavefunction model, which maps electron coordinate to psi"""
+class MolecularOrbitalFeaturesConfig(ConfigModel):
+    use: bool = True
 
-    net_width: Optional[int] = 40
-    """Width of hidden layers for backflow- and jastrow-networks"""
+    n_occ: int = 5
+    """Number of occupied orbitals to take into account for each spin"""
 
-    net_depth: Optional[int] = 2
-    """Depth of hidden layers for backflow- and jastrow-networks"""
+    n_unocc: int = 5
+    """Number of unoccupied orbitals to take into account for each spin"""
 
-    n_hidden_bf_factor: Optional[List[int]] = None
-    """List of ints, specifying the number of hidden units per layer in the backflow-factor-network. If not provided, the width and depth set by *net_width* and *net_depth* are used."""
+    basis_set: str = "6-311G"
+    """Basis set for HF-calculation determining the input-features"""
 
-    n_hidden_bf_shift: Optional[List[int]] = None
-    """List of ints, specifying the number of hidden units per layer in the backflow-shift-network. If not provided, the width and depth set by *net_width* and *net_depth* are used."""
+    normalize_orbitals: bool = False
 
-    n_hidden_jastrow: Optional[List[int]] = None
-    """List of ints, specifying the number of hidden units per layer in the jastrow-network. If not provided, the width and depth set by *net_width* and *net_depth* are used."""
 
-    use_bf_factor: bool = True
-    """Enable the backflow-factor, i.e. multiply the CASSCF orbitals with the output of a neural network"""
+class InputFeatureConfig(ConfigModel):
+    defaults: Literal["default"] = "default"
 
-    use_bf_shift: bool = True
-    """Enable the backflow-shift, i.e. shift all electron coordinates by a neural network before calculating the CASSCF orbitals"""
+    use_rbf_features: bool = True
+    """Whether to build distance features using gaussian functions of the distances"""
 
-    use_jastrow: bool = True
-    """Enable the jastrow-factor, i.e. multiple the total wavefunction by the output of a global neural network"""
+    n_rbf_features: int = 32
+    """Number of radial basis functions to use as pairwise fature vector"""
 
-    output_shift: Literal[1, 3] = 1
-    """Dimensionality of the output for the backflow-shift network. Can either be scalar or 3-dimensional. Note that only a scalar output ensures rotational equivariance."""
+    use_sigma_paulinet: bool = True
+    """How to calculate the width or the radial-basis-function features: True = Implementation according to PauliNet, False = Implementation according to original DeepErwin"""
+
+    use_distance_features: bool = True
+    """Whether to include the absolute value of the distance (and powers of this distance) as input feature"""
+
+    use_el_ion_differences: bool = True
+    """Whether to include electron-ion differences as input features"""
+
+    use_el_el_differences: bool = True
+    """Whether to include electron-electron differences as input features"""
+
+    use_el_el_spin: bool = False
+    """Whether to include additional information about the spin configurations of the elctrons"""
+
+    use_local_coordinates: bool = False
+    """Whether to construct local coordinate systems by diagonalizing the density matrix, leading to equivariant difference featres"""
+
+    mo_features: Optional[MolecularOrbitalFeaturesConfig] = None
+    """Use evaluation of molecular orbitals as input features to encode coordinates"""
+
+    n_one_el_features: int = 0
+    """Generate one-electron features as a sum of el-ion features"""
+
+    concatenate_el_ion_features: bool = True
+    """Whether to use concatenated electron-ion features as initialization for h_one; breaks equivariance"""
+
+    n_hidden_one_el_features: List[int] = [32]
+    """Number of hidden nodes for generation of one-electron-features from el-ion-features"""
+
+    eps_dist_feat: float = 1e-2
+    """Epsilon to be used when calculating pairwise features with negative exponent n < 0. Feature vector is calculated as :math:`\\frac{1}{dist^{-n} + eps}`"""
 
     distance_feature_powers: List[int] = [-1]
     """To calculate the embeddings, pairwise distances between particles are converted into input feature vectors and then fed into the embedding network. 
@@ -223,59 +454,211 @@ class DeepErwinModelConfig(NetworkConfig):
     Note, that using powers of -1 or +1 can lead to cusps in the input features, which may or may not be desirable.
     """
 
-    envelope_type: Literal["casscf", "isotropic_exp"] = "casscf"
-    """Which baseline orbitals to use before applying the backflow-factor
-      - casscf: Use molecular orbitals from pySCF calculation
-      - istoropic_exp: Use a weighted sum of decaying exponentials on each nucleus"""
+    slater_exponential_factors: bool = False
 
-    sigma_pauli: bool = True
-    """How to calculate the width or the radial-basis-function features: True = Implementation according to PauliNet, False = Implementation according to original DeepErwin"""
+
+class InputFeatureConfigDPE1(InputFeatureConfig):
+    """DO NOT INTRODUCE NEW FIELDS HERE. This class is only used to provide alternative defaults"""
+    defaults: Literal["dpe1"] = "dpe1"
+    use_rbf_features = True
+    n_rbf_features = 32
+    use_sigma_paulinet = True
+    use_distance_features = True
+    distance_feature_powers: List[int] = [-1]
+    eps_dist_feat = 1e-2
+    use_el_ion_differences = False
+    use_el_el_differences = False
+    mo_features: Optional[MolecularOrbitalFeaturesConfig] = None
+    n_one_el_features = 0
+    concatenate_el_ion_features = False
+
+class InputFeatureConfigFermiNet(InputFeatureConfig):
+    """DO NOT INTRODUCE NEW FIELDS HERE. This class is only used to provide alternative defaults"""
+    defaults: Literal["ferminet"] = "ferminet"
+    use_rbf_features = False
+    use_distance_features = True
+    distance_feature_powers: List[int] = [1]
+    use_el_ion_differences = True
+    use_el_el_differences = True
+    mo_features: Optional[MolecularOrbitalFeaturesConfig] = None
+    n_one_el_features = 0
+    concatenate_el_ion_features = True
+
+class InputFeatureConfigDPE2(InputFeatureConfig):
+    """DO NOT INTRODUCE NEW FIELDS HERE. This class is only used to provide alternative defaults"""
+    defaults: Literal["dpe2"] = "dpe2"
+    use_rbf_features = False
+    use_distance_features = True
+    distance_feature_powers: List[int] = [1]
+    use_el_ion_differences = True
+    use_el_el_differences = True
+    mo_features: Optional[MolecularOrbitalFeaturesConfig] = None
+    n_one_el_features = 0
+    concatenate_el_ion_features = True
+
+InputFeatureConfigType = Union[tuple(v for v in globals().values() if inspect.isclass(v) and issubclass(v, InputFeatureConfig))[::-1]]
+
+
+class EnvelopeOrbitalsConfig(ConfigModel):
+    envelope_type: Literal["isotropic_exp"] = "isotropic_exp"
+    """Which enveolope to use for the backflow-add term"""
+
+    n_hidden_env_factor: List[int] = []
+    """List of ints, specifying the number of hidden units per layer in the backflow-add-network. If not provided, the width and depth set by *net_width* and *net_depth* are used."""
+
+    use_bf_add_bias: bool = False
+    """Enable / disable bias terms for the final layer of the backflow-add network"""
+
+    initialization: Literal["constant", "hf_fit", "analytical", "hardcoded", "analytical_random", "cisd"] = "constant"
+    """Use a least-squares fit to initialized the scale- and decay-parameters for the envelopes instead of constant intialization"""
+
+    initialization_off_diag: Literal["constant", "copy"] = "constant"
+    """In the case of use_full_det: How to initialize off-diagonal orbitals"""
+
+
+class BaselineOrbitalsConfig(ConfigModel):
+    baseline: CASSCFConfig = CASSCFConfig()
+    """Config-options for the underlying baseline calculation, typically a Complete-Active-Space Self-Consistent-Field (CASSCF) Calculation"""
+
+    use_trainable_scales: bool = True
+    """Scale the network outputs by a trainable float. Clever initialization of this scale can speed-up training, but in principle also introduces redundant parameters."""
+
+    use_bf_shift: bool = True
+    """Enable the backflow-shift, i.e. shift all electron coordinates by a neural network before calculating the CASSCF orbitals"""
 
     use_trainable_shift_decay_radius: bool = True
     """Backflow-shift decays to 0 close the the nuclei to ensure correct cusp conditions. This flag specifies whether the radius in which the shift decays is a trainable parameter or fixed."""
 
-    n_rbf_features: int = 32
-    """Number of radial basis functions to use as pairwise fature vector"""
-
-    eps_dist_feat: float = 1e-2
-    """Epsilon to be used when calculating pairwise features with negative exponent n < 0. Feature vector is calculated as :math:`\\frac{1}{dist^{-n} + eps}`"""
-
-    n_pairwise_features: Optional[int] = None
-    """Total number of pairwise features to be used as input to the embedding network. Calculated automatically as :code:`n_rbf_features + len(distance_feature_powers)`"""
-
-    embedding: Union[SimpleSchnetConfig, DummyEmbeddingConfig, FermiNetConfig] = SimpleSchnetConfig()
-    """Config-options for the electron-embedding"""
-
-    baseline: CASSCFConfig = CASSCFConfig()
-    """Config-options for the underlying baseline calculation, typically a Complete-Active-Space Self-Consistent-Field (CASSCF) Calculation"""
-
     register_scale = False
     """Whether to register the parameterst that scale the output of the backflow networks as parameters for KFAC optimization"""
 
-    @staticmethod
-    def get_default_network_shape(key, width, depth):
-        return dict(bf_factor=[width] + [width // 2] * depth, bf_shift=[width] * depth, jastrow=[width] * depth)[key]
+    n_hidden_bf_factor: List[int] = [40, 20, 20]
+    """List of ints, specifying the number of hidden units per layer in the backflow-factor-network. If not provided, the width and depth set by *net_width* and *net_depth* are used."""
 
-    @validator("n_pairwise_features", always=True)
-    def total_number_of_pairwise_features(cls, n, values):
-        n_required = values['n_rbf_features'] + len(values['distance_feature_powers'])
-        n = n_required if n is None else n
-        if n != n_required:
-            raise pydantic.ValidationError(
-                f"Number of total pairwise features {n} is inconsistent with n_rbf_features={values['n_rbf_features']} and distance_feature_powers={values['distance_feature_powers']}")
-        return n
+    n_hidden_bf_shift: List[int] = [40, 40]
+    """List of ints, specifying the number of hidden units per layer in the backflow-shift-network. If not provided, the width and depth set by *net_width* and *net_depth* are used."""
+
+    use_bf_factor: bool = True
+    """Enable the backflow-factor, i.e. multiply the CASSCF orbitals with the output of a neural network"""
+
+    use_bf_factor_bias: bool = True
+    """Enable / disable bias terms for the final layer of the backflow-factor network"""
+
+    bf_factor_constant_bias: float = 1.0
+    """Bias to apply to the output of the backflow factor, i.e. phi = phi_HF x (backflow + bias). If bias is set to 1.0, NN-output of zero, yields to original HF-orbitals"""
+
+    output_shift: Literal[1, 3] = 1
+    """Dimensionality of the output for the backflow-shift network. Can either be scalar or 3-dimensional. Note that only a scalar output ensures rotational equivariance."""
+
+
+class OrbitalsConfig(ConfigModel):
+    baseline_orbitals: Optional[BaselineOrbitalsConfig] = None
+    """Orbitals containing a baked-in baselin model (e.g. Hartree-Fock or CASSCF) which gets modified by 2 neural networks: backflow shifts and backflow factors"""
+
+    envelope_orbitals: Optional[EnvelopeOrbitalsConfig] = EnvelopeOrbitalsConfig()
+    """Obritals containing only a simple, parametrized envelope, multiplied by a neural network"""
+
+    n_determinants: int = 16
+    """Number of determinants in the wavefunction model"""
+
+    use_full_det: bool = False
+    """Whether to use full n_el x n_el determinants, or whether to assume a block diagonal structure, 
+    represented by det(n_up x n_up)*det(n_dn x n_dn)"""
+
+
+class DeepErwinModelConfig(_ModelConfig):
+    """Configuration for the primary wavefunction model, which maps electron coordinate to psi"""
+
+    default: Literal["default"] = "default"
+    """Model specification"""
+
+    features: InputFeatureConfigType = InputFeatureConfig()
+    """Config-options for mapping raw inputs (r,R,Z) to some symmetrized input features"""
+
+    embedding: Optional[EmbeddingConfigType] = SimpleSchnetConfig()
+    """Config-options for mapping symmetrized input features to high-dimensional embeddings of electrons"""
+
+    orbitals: OrbitalsConfig = OrbitalsConfig()
+    """Config-options for computing orbitals from embedding vectors of electrons"""
+
+    initialization: InitializationConfig = InitializationConfig()
+    """How to initialize weights and biases"""
+
+    use_jastrow: bool = True
+    """Enable the jastrow-factor, i.e. multiple the total wavefunction by the output of a global neural network"""
+
+    n_hidden_jastrow: List[int] = [40, 40]
+    """List of ints, specifying the number of hidden units per layer in the jastrow-network. If not provided, the width and depth set by *net_width* and *net_depth* are used."""
+
+    differentiate_spins_jastrow = False
+
+    use_el_el_cusp_correction: bool = True
+    """Explicit, additive el-el-cusp correction"""
+
+
+class DeepErwinModelConfigDPE1(DeepErwinModelConfig):
+    """DO NOT INTRODUCE NEW FIELDS HERE. This class is only used to provide alternative defaults"""
+    default: Literal["dpe1"] = "dpe1"
+    features: InputFeatureConfigType = InputFeatureConfigDPE1()
+    embedding: EmbeddingConfigType = SimpleSchnetConfigDPE1()
+    orbitals: OrbitalsConfig = OrbitalsConfig(baseline_orbitals=BaselineOrbitalsConfig(), envelope_orbitals=None)
+    use_jastrow = True
+    use_el_el_cusp_correction = True
+
+class DeepErwinModelConfigDPE2(DeepErwinModelConfig):
+    """DO NOT INTRODUCE NEW FIELDS HERE. This class is only used to provide alternative defaults"""
+    default: Literal["dpe2"] = "dpe2"
+    features: InputFeatureConfigType = InputFeatureConfigDPE2()
+    embedding: EmbeddingConfigType = SimpleSchnetConfigDPE2()
+    orbitals: OrbitalsConfig = OrbitalsConfig(baseline_orbitals=None, envelope_orbitals=EnvelopeOrbitalsConfig())
+    use_jastrow = False
+    use_el_el_cusp_correction = False
+
+class DeepErwinModelConfigDPE4(DeepErwinModelConfig):
+    """DO NOT INTRODUCE NEW FIELDS HERE. This class is only used to provide alternative defaults"""
+    default: Literal["dpe4"] = "dpe4"
+    features: InputFeatureConfigType = InputFeatureConfigFermiNet()
+    embedding: EmbeddingConfigType = EmbeddingConfigDPE4()
+    orbitals: OrbitalsConfig = OrbitalsConfig(baseline_orbitals=None, envelope_orbitals=EnvelopeOrbitalsConfig())
+    use_jastrow: bool = False
+    use_el_el_cusp_correction: bool = False
+
+
+class DeepErwinModelConfigFermiNet(DeepErwinModelConfig):
+    """DO NOT INTRODUCE NEW FIELDS HERE. This class is only used to provide alternative defaults"""
+    default: Literal["ferminet"] = "ferminet"
+    features: InputFeatureConfigType = InputFeatureConfigFermiNet()
+    embedding: EmbeddingConfigType = FermiNetConfig()
+    orbitals: OrbitalsConfig = OrbitalsConfig(baseline_orbitals=None, envelope_orbitals=EnvelopeOrbitalsConfig())
+    use_jastrow = False
+    use_el_el_cusp_correction = False
+
+ModelConfigType = Union[tuple(v for v in globals().values() if inspect.isclass(v) and issubclass(v, _ModelConfig) and (v != _ModelConfig))[::-1]]
 
 
 class MCMCSimpleProposalConfig(ConfigModel):
-    name: Literal["normal", "cauchy"] = "normal"
-
+    name: Literal["normal", "cauchy", "normal_one_el"] = "normal"
 
 class MCMCLangevinProposalConfig(ConfigModel):
     name: Literal["langevin"] = "langevin"
+
     langevin_scale: float = 1.0
+
     r_min: float = 0.2
+
     r_max: float = 2.0
 
+
+class LocalStepsizeProposalConfig(ConfigModel):
+    """Config for a local stepsize proposal rule for MCMC. Stepsize depends on distance to closest nuclei"""
+
+    name: Literal["local", "local_one_el"] = "local"
+
+    r_min: float = 0.1
+    """Minimal stepsize for electron move"""
+
+    r_max: float = 1
+    """Max stepsize for electron move"""
 
 class MCMCConfig(ConfigModel):
     """Config for Markov-Chain-Monte-Carlo integration"""
@@ -286,7 +669,7 @@ class MCMCConfig(ConfigModel):
     n_walkers_eval: Optional[int] = None
     """Number of walkers for evaluation"""
 
-    n_inter_steps: int = 10
+    n_inter_steps: int = 20
     """Number of MCMC steps between epochs"""
 
     n_burn_in_opt: int = 2000
@@ -301,6 +684,9 @@ class MCMCConfig(ConfigModel):
     min_stepsize_scale: float = 1e-2
     """Minimum stepsize. For spatially adaptive stepsize-schemes this only defines a factor which may be modified by the adaptive scheme"""
 
+    stepsize_update_interval = 100
+    """Number of steps after which the step-size is adjusted"""
+
     max_stepsize_scale: float = 1.0
     """Maximum stepsize. For spatially adaptive stepsize-schemes this only defines a factor which may be modified by the adaptive scheme"""
 
@@ -310,8 +696,10 @@ class MCMCConfig(ConfigModel):
     max_age_eval: int = 20
     """Maximum number of MCMC steps for which a walker can reject updates during evaluation. After having rejected an update max_age times, the walkers is forced to accepet, to avoid getting stuck"""
 
-    proposal: Union[MCMCLangevinProposalConfig, MCMCSimpleProposalConfig] = MCMCSimpleProposalConfig()
+    proposal: Union[LocalStepsizeProposalConfig, MCMCLangevinProposalConfig, MCMCSimpleProposalConfig] = MCMCSimpleProposalConfig()
     """Type of proposal function to use for MCMC steps"""
+
+    debug_mcmc_stepsize: bool = False
 
     @validator("n_walkers_eval", always=True)
     def populate_n_walkers_eval(cls, n, values):
@@ -332,7 +720,7 @@ class FixedLRSchedule(ConfigModel):
 
 class InverseLRScheduleConfig(ConfigModel):
     name: Literal["inverse"] = "inverse"
-    decay_time: float = 1000.0
+    decay_time: float = 6000.0
 
 
 class StandardOptimizerConfig(ConfigModel):
@@ -342,6 +730,12 @@ class StandardOptimizerConfig(ConfigModel):
 
 class AdamOptimizerConfig(StandardOptimizerConfig):
     name: Literal["adam"] = "adam"
+    b1: float = 0.9
+    b2: float = 0.999
+    eps: float = 1e-8
+
+class AdamInverseOptimizerConfig(StandardOptimizerConfig):
+    name: Literal["adam_inverse"] = "adam_inverse"
     b1: float = 0.9
     b2: float = 0.999
     eps: float = 1e-8
@@ -358,6 +752,16 @@ class AdamScaledOptimizerConfig(StandardOptimizerConfig):
     scale_lr = 0.1
     """Factor which to apply to the learning rates of specified modules"""
 
+class SGDScaledOptimizerConfig(StandardOptimizerConfig):
+    name: Literal["sgd_scaled"] = "sgd_scaled"
+    order: Literal[1] = 1
+
+    scaled_modules: Optional[List[str]] = None
+    """List of parameters for which the learning rate is being scaled. If None and using shared optimization, the modules according to the shared list are used"""
+
+    scale_lr = 0.1
+    """Factor which to apply to the learning rates of specified modules"""
+
 
 class KFACOptimizerConfig(ConfigModel):
     name: Literal["kfac"] = "kfac"
@@ -367,21 +771,22 @@ class KFACOptimizerConfig(ConfigModel):
     """Degree of optimizer. Fixed"""
 
     momentum: float = 0.0
-    norm_constraint: float = 0.001
-    damping: float = 0.0005
-    damping_scheduler: bool = True
-    estimation_mode: str = 'fisher_gradients'
+    norm_constraint: float = 3e-3
+    damping: float = 6e-4
+    damping_scheduler: bool = False
+    estimation_mode: Literal['fisher_gradients', 'fisher_exact'] = 'fisher_exact'
+    inversion_mode: Literal['solve', 'pinv'] = 'solve'
     register_generic: bool = True
     update_inverse_period: int = 1
     """Period of how often the fisher matrix is being updated (in batches). e.g. update_inverse_period==1 means that it is updated after every gradient step."""
 
     n_burn_in: int = 0
-    decay_time: int = 6000
+    decay_time: Optional[int] = None
     decay_time_damping: int = 6000
     min_damping: float = 1e-4
     curvature_ema: float = 0.05
-    internal_optimizer: Union[AdamOptimizerConfig, StandardOptimizerConfig, AdamScaledOptimizerConfig] = AdamOptimizerConfig()
-    """Internal optimizer to use for applying the preconditioned gradients calculated by KFAC. Use SGD for 'pure' KFAC (not recommended)."""
+    internal_optimizer: Union[AdamOptimizerConfig, AdamInverseOptimizerConfig, StandardOptimizerConfig, AdamScaledOptimizerConfig, SGDScaledOptimizerConfig] = StandardOptimizerConfig(name='sgd')
+    """Internal optimizer to use for applying the preconditioned gradients calculated by KFAC. Use SGD for 'pure' KFAC."""
 
 class BFGSOptimizerConfig(ConfigModel):
     name: Literal["slbfgs"] = "slbfgs"
@@ -411,7 +816,7 @@ class BFGSOptimizerConfig(ConfigModel):
 
 
 class IntermediateEvaluationConfig(ConfigModel):
-    n_epochs: int = 500
+    n_epochs: int = 5000
     """How many evaluation epochs to use for intermediate evaluation."""
 
     opt_epochs: List[int] = []
@@ -419,27 +824,34 @@ class IntermediateEvaluationConfig(ConfigModel):
 
 class SharedOptimizationConfig(ConfigModel):
     use: bool = True
+
     shared_modules: Optional[List[Literal["embed", "jastrow", "bf_fac_general", "bf_shift", "bf_fac_orbital"]]] = None
+    """What modules/ parts of the neural network should be shared during weight-sharing"""
+
     scheduling_method: Union[Literal["round_robin", "stddev"]] = "round_robin"
+    """Method to vary between geometries during weight-sharing"""
+
     max_age: int = 50
+    """Maximal number of epochs a geometry can be not considered during weight-sharing. Preventing a few geometries from requiring all parameter updates for stddev scheduling"""
 
 class OptimizationConfig(ConfigModel):
     optimizer: Union[
-        AdamOptimizerConfig, StandardOptimizerConfig, KFACOptimizerConfig, BFGSOptimizerConfig, AdamScaledOptimizerConfig] = AdamOptimizerConfig()
+        AdamOptimizerConfig, StandardOptimizerConfig, KFACOptimizerConfig, BFGSOptimizerConfig, AdamScaledOptimizerConfig, AdamInverseOptimizerConfig] = KFACOptimizerConfig()
     """Which optimizer to use and its corresponding sub-options"""
 
     schedule: Union[InverseLRScheduleConfig, FixedLRSchedule] = InverseLRScheduleConfig()
     """Schedule for the learning rate decay"""
 
-    learning_rate: float = 1.5e-3
+    learning_rate: float = 5e-5
     """Initial learning rate at epoch 0. Actual learning rate during optimization may be modified through the LR-scheduler"""
-    n_epochs: int = 10_000
+
+    n_epochs: int = 60_000
     """Number of epochs for wavefunction optimization"""
 
     n_epochs_prev: int = 0  # if run is restart, this can be used to store number of previous epochs
     """Nr of epochs that this wavefunction has already been optimized. This can be used to store number of previous epochs after a restart"""
 
-    batch_size: int = 512
+    batch_size: int = 2048
     """Nr of walkers to process in a single backprop step. Reduce this number in case of insufficient GPU-memory"""
 
     use_batch_reweighting: bool = False
@@ -474,27 +886,77 @@ class OptimizationConfig(ConfigModel):
                     internal_optimizer.scaled_modules = shared_modules
         return values
 
-class RestartConfig(ConfigModel):
-    path: str
-    reuse_params: bool = True
-    reuse_mcmc_state: bool = True
-    reuse_opt_state: bool = True
-    reuse_clipping_state: bool = True
-    recursive: bool = True
-    checkpoints: bool = True
+    @root_validator
+    def harmonize_decay_times(cls, values):
+        if values['optimizer'].name != 'kfac':
+            return values
 
-class ReuseConfig(ConfigModel):
+        internal_decay_time = values['optimizer'].decay_time
+        external_decay_time = values['schedule'].decay_time
+
+        if internal_decay_time is None:
+            values['optimizer'].decay_time = external_decay_time
+        return values
+
+
+class RestartConfig(ConfigModel):
+    mode: Literal["restart"] = "restart"
+
     path: str
     """Path to a previous calculation directory, containing a results.bz2 file"""
 
-    reuse_trainable_params: bool = True
-    """Whether to re-use the trainable weights of the neural networks. Use *module_to_reuse* to specify only specific parts of the model to be re-used."""
+    reuse_config: bool = True
+    """Whether to re-use the configuration of the original run or whether to start from a new default config"""
 
-    reuse_mcmc_state: bool = False
+    reuse_opt_state: bool = True
+    """Reuse state of the optimizer, e.g. momentum, hessian estimates"""
+
+    reuse_mcmc_state: bool = True
     """Whether to re-use the position of MCMC walkers. This may only make sense when calculating a wavefunction for the same (or very similar) geometry"""
+
+    randomize_mcmc_rng: bool = False
+    """Whether to change the state of the random-number-generator of the MCMC state. Does not move walkers, but will change their future random walk"""
+
+    reuse_clipping_state: bool = True
+    """Whehter to re-use the clipping state for optimization to clip local energy. This may only make sense when calculating a wavefunction for the same (or very similar) geometry"""
+
+    reuse_trainable_params: bool = True
+    """Whether to re-use the trainable weights of the neural networks. Use *reuse_modules* to specify only specific parts of the model to be re-used."""
+
+    reuse_fixed_params: bool = True
+    """Whether to re-use fixed (i.e. non-trainable) params"""
 
     reuse_modules: Optional[List[str]] = None
     """Model-specific list of strings, detailing which submodules should be re-used vs. re-initialized randomly. Names of modules to re-used is the same as the list of modules for weight-sharing-constraints."""
+
+    continue_n_epochs: bool = True
+    """Whether to increment n_epochs_prev in the config, to keep track of total epochs trained"""
+
+    skip_burn_in: bool = True
+    """Whether to skip burn-in steps for MCMC walkers"""
+
+    skip_pretraining: bool = True
+    """Whether to skip supervised pretraining of the wavefunction using HartreeFock"""
+
+    ignore_extra_settings: bool = False
+    """Whether to ignore extra config flags that are no longer compatible with the current config"""
+
+class ReuseConfig(RestartConfig):
+    """Do not introduce new fields here"""
+    mode: Literal["reuse"] = "reuse"
+
+    reuse_config: bool = False
+    reuse_opt_state: bool = False
+    reuse_mcmc_state: bool = False
+    reuse_clipping_state: bool = False
+    reuse_trainable_params: bool = True
+    reuse_fixed_params: bool = False
+    reuse_modules: Optional[List[str]] = None
+    continue_n_epochs: bool = False
+    skip_burn_in: bool = False
+    skip_pretraining: bool = False
+    ignore_extra_settings: bool = False
+
 
 class ForceEvaluationConfig(ConfigModel):
     use: bool = True
@@ -506,9 +968,10 @@ class ForceEvaluationConfig(ConfigModel):
 
 
 class EvaluationConfig(ConfigModel):
-    n_epochs: int = 2000
+    n_epochs: int = 10_000
     calculate_energies: bool = True
     forces: Optional[ForceEvaluationConfig] = None
+    log_mcmc_info: bool = False
 
 
 class PhysicalConfigChange(ConfigModel):
@@ -518,6 +981,9 @@ class PhysicalConfigChange(ConfigModel):
 
 
 class PhysicalConfig(ConfigModel):
+    def get_basic_params(self):
+        return self.n_electrons, self.n_up, np.array(self.R), np.array(self.Z)
+
     name: Optional[str] = None
     """Name of the molecule to be calculated. If other physical parameters are not specified, this name will be used as a lookup-key to find default values."""
 
@@ -533,6 +999,14 @@ class PhysicalConfig(ConfigModel):
     n_up: Optional[int] = None
     """Number of spin-up electrons"""
 
+    @property
+    def n_dn(self):
+        return self.n_electrons - self.n_up
+
+    @property
+    def n_ions(self):
+        return len(self.Z)
+
     el_ion_mapping: Optional[List[int]] = None
     """Initial position of electrons. len(el_ion_mapping) == n_electrons. For each electron the list-entry specifies the index of the nucleus where the electron should be initialized.
     Note that the n_up first entries in this list correpsond to spin-up electrons and the remaining entries correspond to spin-down electrons"""
@@ -546,6 +1020,9 @@ class PhysicalConfig(ConfigModel):
     E_ref: Optional[float] = None
     """Known ground-truth energy as reference for output. This value is not used in the actual calculation, but only to benchmark the achieved results."""
 
+    E_ref_source: Optional[str] = None
+    """Source of included reference energy"""
+
     comment: Optional[str] = None
     """Optional comment to keep track of molecules, geometries or experiments"""
     
@@ -554,87 +1031,9 @@ class PhysicalConfig(ConfigModel):
 
     _PERIODIC_TABLE = {k: i + 1 for i, k in enumerate(
         ['H', 'He', 'Li', 'Be', 'B', 'C', 'N', 'O', 'F', 'Ne', 'Na', 'Mg', 'Al', 'Si', 'P', 'S',
-         'Cl', 'Ar'])}
-    _DEFAULT_GEOMETRIES = dict(H2=[[0.0, 0.0, 0.0], [1.4, 0.0, 0.0]],
-                               N2=[[0.0, 0.0, 0.0], [2.06800, 0.0, 0.0]],
-                               LiH=[[0.0, 0.0, 0.0], [3.015, 0.0, 0.0]],
-                               Li2=[[0.0, 0.0, 0.0], [5.051048595, 0.0, 0.0]],
-                               HChain10=[[1.8 * i, 0.0, 0.0] for i in range(10)],
-                               HChain6=[[1.8 * i, 0.0, 0.0] for i in range(6)],
-                               H4plus=[[0.0, -0.561033, 0.0], [-0.418394, 0.280517, 0.0], [0.418394, 0.280517, 0.0], [0.0, -1.952293, 0.0]],
-                               Ethene=[[1.26517164, 0, 0], [-1.26517164, 0, 0], [2.328293764, 1.7554138407, 0],
-                                       [2.328293764, -1.7554138407, 0],
-                                       [-2.328293764, 1.7554138407, 0], [-2.328293764, -1.7554138407, 0]],
-                               EtheneBarrier=[[1.26517164, 0, 0], [-1.26517164, 0, 0], [2.328293764, 0, 1.7554138407],
-                                              [2.328293764, 0, -1.7554138407],
-                                              [-2.328293764, 1.7554138407, 0], [-2.328293764, -1.7554138407, 0]],
-                               Cyclobutadiene=[[0.0000000e+00, 0.0000000e+00, 0.0000000e+00],
-                                               [2.9555318e+00, 0.0000000e+00, 0],
-                                               [2.9555318e+00, 2.5586891e+00, 0],
-                                               [0.0000000e+00, 2.5586891e+00, 0],
-                                               [-1.4402903e+00, -1.4433100e+00, 0],
-                                               [4.3958220e+00, -1.4433100e+00, 0],
-                                               [4.3958220e+00, 4.0019994e+00, 0],
-                                               [-1.4402903e+00, 4.0019994e+00, 0]],
-                               Cyclobutadiene_TS=[[0.0000000e+00, 0.0000000e+00, 0],
-                                                  [2.7419927e+00, 0.0000000e+00, 0],
-                                                  [2.7419927e+00, 2.7419927e+00, 0],
-                                                  [0.0000000e+00, 2.7419927e+00, 0],
-                                                  [-1.4404647e+00, -1.4404647e+00, 0],
-                                                  [4.1824574e+00, -1.4404647e+00, 0],
-                                                  [4.1824574e+00, 4.1824574e+00, 0],
-                                                  [-1.4404647e+00, 4.1824574e+00, 0]],
-                               Methane=[[0, 0, 0],
-                                        [+1.18599212, +1.18599212, +1.18599212],
-                                        [+1.18599212, -1.18599212, -1.18599212],
-                                        [-1.18599212, +1.18599212, -1.18599212],
-                                        [-1.18599212, -1.18599212, +1.18599212]]
-                               )
-    _DEFAULT_CHARGES = dict(H2=[1, 1],
-                            N2=[7, 7],
-                            LiH=[3, 1],
-                            Li2=[3,3],
-                            HChain10=[1] * 10,
-                            HChain6=[1] * 6,
-                            H4plus=[1] * 4,
-                            Ethene=[6, 6, 1, 1, 1, 1],
-                            EtheneBarrier=[6, 6, 1, 1, 1, 1],
-                            Cyclobutadiene=[6, 6, 6, 6, 1, 1, 1, 1],
-                            Cyclobutadiene_TS=[6, 6, 6, 6, 1, 1, 1, 1],
-                            Methane=[6,1,1,1,1])
-    _DEFAULT_SPIN = dict(H=1, He=0, Li=1, Be=0, B=1, C=2, N=3, O=2, F=1, Ne=0, Na=1, Mg=0, Al=1, Si=2, P=3, S=2, Cl=1,
-                         Ar=0, Ethene=0, Cyclobutadiene=0, Cyclobutadiene_TS=0, HChain6=0, HChain10=0, Li2=0, Methane=0)
-    _DEFAULT_EL_ION_MAPPINGS = dict(H2=[0, 1],
-                                    N2=[0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1],
-                                    LiH=[0, 1, 0, 0],
-                                    Li2=[0,0,1,0,1,1],
-                                    HChain6=[0, 2, 4, 1, 3, 5],
-                                    HChain10=[0, 2, 4, 6, 8, 1, 3, 5, 7, 9],
-                                    H4plus=[0, 3, 1],
-                                    Ethene=[0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 2, 4, 3, 5],
-                                    Cyclobutadiene=[0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 6, 0, 0, 0, 1, 1, 1, 2, 2, 2,
-                                                    3, 3, 3, 5, 7],
-                                    Cyclobutadiene_TS=[0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 6, 0, 0, 0, 1, 1, 1, 2, 2, 2,
-                                                    3, 3, 3, 5, 7],
-                                    Methane=[0,0,0,1,2,0,0,0,3,4]
-                                    )
-    _DEFAULT_CAS_N_ACTIVE_ORBITALS = dict(He=2, Li=9, Be=8, LiH=10, Li2=16, B=12, C=12, N=12, O=12, F=12,
-                                          Ne=12, H2=4, Be2=16, B2=16, C2=16, N2=16,
-                                          H2p=1, H3plus=9, H4plus=12, H4Rect=12, HChain6=12, HChain10=10,
-                                          Ethene=10, Cyclobutadiene=10, Cyclobutadiene_TS=10, Methane=10)
+         'Cl', 'Ar', 'K', 'Ca', 'Sc', 'Ti', 'V', 'Cr', 'Mn', 'Fe', 'Co', 'Ni', 'Cu', 'Zn', 'Ga', 'Ge', 'As', 'Se', 'Br', 'Kr'])}
 
-    _DEFAULT_CAS_N_ACTIVE_ELECTRONS = dict(He=2, Li=3, Be=2, LiH=2, Li2=6, B=3, C=4, N=5, O=6, F=7, Ne=8, H2=2, Be2=4,
-                                           B2=6, C2=8, N2=6, H2p=1, H3plus=2, H4plus=3, H4Rect=4, HChain6=6,
-                                           HChain10=10, Ethene=10, Cyclobutadiene=10, Cyclobutadiene_TS=10, Methane=10)
-
-    _REFERENCE_ENERGIES = {'He': -2.90372, 'Li': -7.478067, 'Be': -14.66733, 'B': -24.65371, 'C': -37.84471,
-                           'N': -54.58882,
-                           'O': -75.06655, 'F': -99.7329, 'Ne': -128.9366, 'H2': -1.17448, 'LiH': -8.070548,
-                           'N2': -109.5423, 'Li2': -14.9954, 'CO': -113.3255, 'Be2': -29.338, 'B2': -49.4141,
-                           'C2': -75.9265, 'O2': -150.3274, 'F2': -199.5304, 'H4Rect': -2.0155,
-                           'H3plus': -1.3438355180000001, 'H4plus': -1.8527330000000002, 'HChain6': -3.40583160,
-                           'HChain10': -5.6655, 'Ethene': -78.57744597, 'Cyclobutadiene': -154.671, 'Cyclobutadiene_TS': -154.655,
-                           'Methane': -40.488989}
+    _DEFAULT_MOLECULES = ruamel.yaml.YAML().load(pathlib.Path(__file__).parent.joinpath('molecules.yaml'))
 
     @validator("R", always=True)
     def populate_R(cls, v, values):
@@ -642,7 +1041,7 @@ class PhysicalConfig(ConfigModel):
             if values['name'] in cls._PERIODIC_TABLE:
                 return [[0.0, 0.0, 0.0]]
             else:
-                return cls._DEFAULT_GEOMETRIES[values['name']]
+                return cls._DEFAULT_MOLECULES[values['name']]['R']
         else:
             return v
 
@@ -652,20 +1051,31 @@ class PhysicalConfig(ConfigModel):
             if values['name'] in cls._PERIODIC_TABLE:
                 Z = [cls._PERIODIC_TABLE[values['name']]]
             else:
-                Z = cls._DEFAULT_CHARGES[values['name']]
+                Z = cls._DEFAULT_MOLECULES[values['name']]['Z']
         if len(Z) != len(values['R']):
-            raise pydantic.ValidationError(
+            raise ValueError(
                 f"List of nuclear charges Z has length {len(Z)}, but list of ion positions R has length {len(values['R'])}")
         return Z
 
     @validator("n_electrons", always=True)
     def populate_n_electrons(cls, v, values):
-        return int(sum(values['Z'])) if v is None else v
+        if v is None:
+            if values['name'] in cls._DEFAULT_MOLECULES:
+                charge = cls._DEFAULT_MOLECULES[values['name']].get('charge', 0)
+            else:
+                charge = 0
+            n_electrons = int(sum(values['Z']) - charge)
+            return n_electrons
+        else:
+            return v
 
     @validator("n_up", always=True)
     def populate_n_up(cls, v, values):
         if v is None:
-            spin = cls._DEFAULT_SPIN.get(values['name']) or 0
+            if values['name'] in cls._PERIODIC_TABLE:
+                spin = _get_spin_from_hunds_rule(values['Z'][0])
+            else:
+                spin = cls._DEFAULT_MOLECULES[values['name']].get('spin') or 0
             return (values['n_electrons'] + spin + 1) // 2  # if there is an extra electrons, assign them to up
         else:
             return v
@@ -673,34 +1083,43 @@ class PhysicalConfig(ConfigModel):
     @validator("el_ion_mapping", always=True)
     def populate_el_ion_mapping(cls, v, values):
         if v is None:
-            if values['name'] in cls._PERIODIC_TABLE:
-                v = [0] * values['n_electrons']
+            if ('name' in cls._DEFAULT_MOLECULES) and ('el_ion_mapping' in cls._DEFAULT_MOLECULES[values['name']]):
+                v = cls._DEFAULT_MOLECULES[values['name']]['el_ion_mapping']
             else:
-                v = cls._DEFAULT_EL_ION_MAPPINGS[values['name']]
+                v = _generate_el_ion_mapping(values['R'], values['Z'], values['n_electrons'], values['n_up'])
         if len(v) != values['n_electrons']:
-            raise pydantic.ValidationError(
+            raise ValueError(
                 f"An initial ion-mapping must be supplied for all electrons. len(el_ion_mapping)={len(v)}, n_electrons={values['n_electrons']}")
         return v
 
     @validator("n_cas_electrons", always=True)
     def populate_n_cas_electrons(cls, v, values):
         if v is None:
-            return cls._DEFAULT_CAS_N_ACTIVE_ELECTRONS[values['name']]
-        else:
-            return v
+            if values['name'] in cls._DEFAULT_MOLECULES:
+                v = cls._DEFAULT_MOLECULES[values['name']].get('cas_n_active_electrons')
+        return v
 
     @validator("n_cas_orbitals", always=True)
     def populate_n_cas_orbitals(cls, v, values):
         if v is None:
-            return cls._DEFAULT_CAS_N_ACTIVE_ORBITALS[values['name']]
-        else:
-            return v
+            if values['name'] in cls._DEFAULT_MOLECULES:
+                v = cls._DEFAULT_MOLECULES[values['name']].get('cas_n_active_orbitals')
+        return v
 
     @validator("E_ref", always=True)
     def populate_E_ref(cls, v, values):
         name = values['name']
         if (v is None) and (name is not None):
-            return cls._REFERENCE_ENERGIES.get(name)
+            if name in cls._DEFAULT_MOLECULES:
+                return cls._DEFAULT_MOLECULES[name].get('E_ref')
+        return v
+
+    @validator("E_ref_source", always=True)
+    def populate_E_ref_source(cls, v, values):
+        name = values['name']
+        if (v is None) and (name is not None):
+            if name in cls._DEFAULT_MOLECULES:
+                return cls._DEFAULT_MOLECULES[name].get('E_ref_source')
         return v
 
     def set_from_changes(self):
@@ -719,15 +1138,18 @@ class LoggerBaseConfig(ConfigModel):
 
 
 class WandBConfig(LoggerBaseConfig):
-    project: str = "default"
+    project: Optional[str] = "default"
     entity: Optional[str] = None
+    id: Optional[str] = None
+    use_id: bool = False
+    blacklist: List[str] = []
 
 
 class BasicLoggerConfig(LoggerBaseConfig):
     log_to_stdout: bool = True
     log_level: Union[int, Literal["CRITICAL", "FATAL", "ERROR", "WARN", "WARNING", "INFO", "DEBUG"]] = "DEBUG"
     n_skip_epochs: int = 9
-    fname: str = "log.out"
+    fname: Optional[str] = "log.out"
 
 
 class PickleLoggerConfig(LoggerBaseConfig):
@@ -738,7 +1160,7 @@ class LoggingConfig(ConfigModel):
     tags: List[str] = []
     """List of tags to help mark/identify runs"""
 
-    log_opt_state: bool = False
+    log_opt_state: bool = True
     """Flag whether to log the full state of the optimizer. Note that this can produce very large output-files, in particular when logging the hessian of 2nd-order-optimizers"""
 
     basic: Optional[BasicLoggerConfig] = BasicLoggerConfig()
@@ -759,17 +1181,48 @@ class DispatchConfig(ConfigModel):
         "default", "vsc3plus_0064", "devel_0128", "gpu_a40dual", "gpu_gtx1080amd", "gpu_gtx1080multi", "gpu_gtx1080single", "gpu_v100", "gpu_k20m", "gpu_rtx2080ti", "jupyter", "normal_binf", "vsc3plus_0256", "mem_0096", "devel_0096", "jupyter", "mem_0096", "mem_0384", "mem_0768"] = "default"
     """SLURM queue to use for job submission on compute clusters. Not relevant for local execution"""
 
-    time: str = "1day"
+    time: str = "3day"
     """Maximum job run-time to use for job submission on compute clusters. Not relevant for local execution"""
 
     conda_env: str = "jax"
     """Conda environment to select in SLURM-job-script. Not relevant for local execution"""
 
+    split_opt: Optional[List[int]] = None
+
+    eval_epochs: Optional[int] = None
 
 class ComputationConfig(ConfigModel):
     use_gpu: bool = True
+    """deprecated"""
+    require_gpu: bool = True
     disable_jit: bool = False
     float_precision: Literal["float32", "float64"] = "float32"
+    disable_tensor_cores: bool = True
+    use_profiler: bool = False
+
+
+class PreTrainingConfig(ConfigModel):
+    use: bool = True
+
+    n_epochs: int = 1000
+    """Number of pre-training steps to fit DL-wavefunction to a baseline calculation as e.g. Hartree Fock"""
+
+    optimizer: Union[StandardOptimizerConfig, AdamScaledOptimizerConfig, AdamOptimizerConfig] = AdamOptimizerConfig()
+    """Optimizer used for pre-training only. Setting will not affect standard optimization"""
+
+    learning_rate: float = 3e-4
+    """Learning rate used for pre-training only. Setting will not affect standard optimization"""
+
+    use_only_leading_determinant: bool = True
+    """Whether to use only Hartree Fock determinant for pre-training or for each DL-wavefunction determinant a different CAS determinant"""
+
+    schedule: Union[FixedLRSchedule, InverseLRScheduleConfig] = FixedLRSchedule()
+    """Learning rate scheduler used for pre-training only. Setting will not affect standard optimization"""
+
+    baseline: CASSCFConfig = CASSCFConfig()
+    """Physical baseline settings for pre-training"""
+
+    checkpoints: List[int] = []
 
 
 class Configuration(ConfigModel):
@@ -781,13 +1234,16 @@ class Configuration(ConfigModel):
     mcmc: MCMCConfig = MCMCConfig()
     """The Markov-Chain-Monte-Carlo integration"""
 
+    pre_training: Optional[PreTrainingConfig] = PreTrainingConfig()
+    """Supervised pre-training of the orbitals to fit the baseline orbitals."""
+
     optimization: OptimizationConfig = OptimizationConfig()
     """The wavefunction optimization"""
 
     evaluation: EvaluationConfig = EvaluationConfig()
     """The evaluation of the wavefunction (after optimization)"""
 
-    model: Union[DeepErwinModelConfig] = DeepErwinModelConfig()
+    model: ModelConfigType = DeepErwinModelConfig()
     """The actual wavefunction model mapping electron coordinates to psi"""
 
     logging: LoggingConfig = LoggingConfig()
@@ -799,10 +1255,10 @@ class Configuration(ConfigModel):
     dispatch: DispatchConfig = DispatchConfig()
     """Options regarding where the code is being run, i.e. locally vs asynchronysly on a compute-cluster"""
 
-    restart: Optional[RestartConfig] = None
-    """Restarting from a previous calculation or checkpoint, fully restoring and continuing an interrupted run."""
+    # restart: Optional[RestartConfig] = None
+    # """Restarting from a previous calculation or checkpoint, fully restoring and continuing an interrupted run."""
 
-    reuse: Optional[ReuseConfig] = None
+    reuse: Optional[Union[RestartConfig, ReuseConfig]] = None
     """Reuse information from a previosu runt to smartly initialize weights or MCMC walkers."""
 
     comment: Optional[str] = None
@@ -856,8 +1312,13 @@ def has_attribute_nested_key(config: Configuration, key):
     return True
 
 def set_with_nested_key(config_dict, key, value):
-    if "." not in key:
+    if not type(value) == dict and "." not in key:
         config_dict[key] = value
+    elif type(value) == dict:
+        if key not in config_dict or config_dict[key] is None:
+            config_dict[key] = {}
+        for key_child, value_child in value.items():
+            set_with_nested_key(config_dict[key], key_child, value_child)
     else:
         tokens = key.split('.')
         parent_key = tokens[0]
@@ -866,7 +1327,6 @@ def set_with_nested_key(config_dict, key, value):
             config_dict[parent_key] = {}
         set_with_nested_key(config_dict[parent_key], child_key, value)
     return config_dict
-
 
 def build_nested_dict(flattened_dict):
     root_dict = {}
@@ -884,8 +1344,12 @@ def build_nested_dict(flattened_dict):
 
 
 if __name__ == '__main__':
-    c = Configuration(physical=PhysicalConfig(name='Methane'),
-                      optimization=OptimizationConfig(shared_optimization=SharedOptimizationConfig(shared_modules=['jastrow']),
-                                                      optimizer=KFACOptimizerConfig(
-                                                          internal_optimizer=AdamScaledOptimizerConfig()
-                                                      )))
+    # import pathlib
+    # c = Configuration.parse_obj(dict(physical=dict(name='LiH'), model=dict(default="dpe4")))
+    # p = pathlib.Path(__file__).parent.joinpath("../../sample_configs/config_schema.json").resolve()
+    # print("Updating: ", p)
+    # with open(p, 'w') as f:
+    #     f.write(c.schema_json())
+
+    c = Configuration.parse_obj(dict(reuse=dict(mode='reuse', reuse_config=False, path="")))
+    print(c.reuse)

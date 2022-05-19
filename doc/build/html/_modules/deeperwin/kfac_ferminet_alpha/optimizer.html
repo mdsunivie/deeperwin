@@ -127,6 +127,7 @@
       <span class="n">norm_constraint</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
       <span class="n">num_burnin_steps</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
       <span class="n">estimation_mode</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;fisher_gradients&quot;</span><span class="p">,</span>
+      <span class="n">inversion_mode</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;solve&quot;</span><span class="p">,</span>
       <span class="n">curvature_ema</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.95</span><span class="p">,</span>
       <span class="n">inverse_update_period</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
       <span class="n">register_only_generic</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
@@ -260,6 +261,7 @@
     <span class="bp">self</span><span class="o">.</span><span class="n">norm_constraint</span> <span class="o">=</span> <span class="n">norm_constraint</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">num_burnin_steps</span> <span class="o">=</span> <span class="n">num_burnin_steps</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">estimation_mode</span> <span class="o">=</span> <span class="n">estimation_mode</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">inversion_mode</span> <span class="o">=</span> <span class="n">inversion_mode</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">curvature_ema</span> <span class="o">=</span> <span class="n">curvature_ema</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">inverse_update_period</span> <span class="o">=</span> <span class="n">inverse_update_period</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">register_only_generic</span> <span class="o">=</span> <span class="n">register_only_generic</span>
@@ -321,6 +323,7 @@
         <span class="n">func_args</span><span class="p">,</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">l2_reg</span><span class="p">,</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">estimation_mode</span><span class="p">,</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">inversion_mode</span><span class="p">,</span>
         <span class="n">layer_tag_to_block_cls</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">layer_tag_to_block_cls</span><span class="p">)</span>
     <span class="c1"># Arguments: params, opt_state, rng, batch, func_state</span>
     <span class="n">donate_argnums</span> <span class="o">=</span> <span class="p">[]</span>
@@ -564,7 +567,7 @@
     <span class="bp">self</span><span class="o">.</span><span class="n">step_counter</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">step_counter</span> <span class="o">+</span> <span class="mi">1</span>
 
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">value_func_has_state</span><span class="p">:</span>
-      <span class="k">return</span> <span class="n">params</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pop_state</span><span class="p">(),</span> <span class="n">new_func_state</span><span class="p">,</span> <span class="n">stats</span><span class="p">,</span> <span class="n">vectors</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="c1">#TODO: Return also grads?!</span>
+      <span class="k">return</span> <span class="n">params</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pop_state</span><span class="p">(),</span> <span class="n">new_func_state</span><span class="p">,</span> <span class="n">stats</span><span class="p">,</span> <span class="n">vectors</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
     <span class="k">else</span><span class="p">:</span>
       <span class="k">assert</span> <span class="n">new_func_state</span> <span class="ow">is</span> <span class="kc">None</span>
       <span class="k">return</span> <span class="n">params</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pop_state</span><span class="p">(),</span> <span class="n">stats</span></div>

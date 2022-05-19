@@ -18,6 +18,7 @@ deeperwin.optimization
       build_optimize_epoch_first_order
       build_optimizer
       optimize_wavefunction
+      pretrain_orbitals
    
    
 

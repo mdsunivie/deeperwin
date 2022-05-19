@@ -24,10 +24,11 @@ from deeperwin.dispatch import idx_to_job_name, setup_job_dir, prepare_checkpoin
 from deeperwin.evaluation import evaluate_wavefunction, build_evaluation_step
 from deeperwin.kfac import build_grad_loss_kfac
 from deeperwin.loggers import LoggerCollection, build_dpe_root_logger
-from deeperwin.mcmc import MCMCState, MetropolisHastingsMonteCarlo, resize_nr_of_walkers, calculate_metrics
+from deeperwin.mcmc import MCMCState, MetropolisHastingsMonteCarlo, resize_nr_of_walkers
 from deeperwin.model import build_log_psi_squared
 from deeperwin.optimization import build_grad_loss, build_optimizer
-from deeperwin.utils import getCodeVersion, prepare_data_for_logging, get_number_of_params, merge_trainable_params, split_trainable_params
+from deeperwin.utils import getCodeVersion, prepare_data_for_logging, get_number_of_params, merge_trainable_params, split_trainable_params, \
+    calculate_metrics
 
 logger = logging.getLogger("dpe")
 
@@ -57,7 +58,7 @@ def init_wfs(config: Configuration):
         wf.physical = p
 
         # init parameters
-        _, new_log_psi_squared, new_trainable_params, wf.fixed_params = build_log_psi_squared(config.model, p)
+        new_log_psi_squared, new_trainable_params, wf.fixed_params = build_log_psi_squared(config.model, p)
         new_shared_params, wf.unique_trainable_params = split_trainable_params(new_trainable_params,
                                                                                config.optimization.shared_optimization.shared_modules)
         # in case of first WF, set shared_params and log_psi_squared for all WFs
@@ -165,7 +166,7 @@ def optimize_shared(opt_config: OptimizationConfig, wfs, shared_params, optimize
         # optimize wf[index] for one eppoch
         opt_state = update_opt_state(opt_state, opt_get_params, opt_set_params, wf.unique_trainable_params,
                                      shared_modules)
-        E_epoch, wf.mcmc_state, opt_state, wf.clipping_params = optimize_epoch(n_epoch, wf.mcmc_state,
+        E_epoch, E_epoch_unclipped, wf.mcmc_state, opt_state, wf.clipping_params = optimize_epoch(n_epoch, wf.mcmc_state,
                                                                                opt_state,
                                                                                wf.clipping_params,
                                                                                wf.fixed_params)
@@ -182,7 +183,9 @@ def optimize_shared(opt_config: OptimizationConfig, wfs, shared_params, optimize
 
         # log metrics
         if wf.loggers is not None:
-            metrics = calculate_metrics(n_epoch, E_epoch, wf.mcmc_state, t_end - t_start, "opt", wf.n_opt_epochs)
+            E_ref = wf.fixed_params['baseline_energies']['E_ref']
+            # Will not work right now: must include energy history in logging
+            metrics = calculate_metrics(n_epoch, E_epoch, E_epoch_unclipped, wf.mcmc_state, None, t_end - t_start, "opt", wf.n_opt_epochs, E_ref)
             wf.loggers.log_metrics(*metrics)
 
         # check for checkpoints. if any, all wfs have the same checkpoints.

@@ -2,74 +2,19 @@
 Dispatch management for different machines (clusters, local, ...)
 """
 
-import bz2
 import copy
 import logging
 import os
-import pickle
 import re
 import shutil
 import subprocess
 from pathlib import Path
-
-import pandas as pd
 from ruamel import yaml
-
 from deeperwin.configuration import Configuration
-
-
-def load_from_file(fname):
-    with bz2.open(fname, 'rb') as f:
-        return pickle.load(f)
-
-
-def save_to_file(fname, **data):
-    with bz2.open(fname, 'wb') as f:
-        pickle.dump(data, f)
-
-
-def load_all_runs(root_dir, max_history_length=50):
-    full_data = []
-    for fname in Path(root_dir).rglob("results.bz2"):
-        raw_data = load_from_file(fname)
-        data = dict(raw_data['config'])
-        for k, v in raw_data['metrics'].items():
-            if isinstance(v, list) and (max_history_length is not None) and (len(v) > max_history_length):
-                continue
-            data[k] = v
-        data['dirname'] = fname.parent.name
-        full_data.append(data)
-    return pd.DataFrame(full_data)
-
-
-def prepare_checkpoints(run_path, chkpt_epochs, config: Configuration):
-    checkpoints = {}
-    for epoch in chkpt_epochs:
-        chkpt_name = f"chkpt{epoch:06d}"
-        chkpt_dir = os.path.join(run_path, chkpt_name)
-        if os.path.exists(chkpt_dir):
-            logging.warning(f"Directory {chkpt_dir} already exists. Results might be overwritten.")
-        else:
-            os.mkdir(chkpt_dir)
-        config_chkpt = copy.deepcopy(config)
-        config_chkpt.optimization.n_epochs = epoch
-        config_chkpt.evaluation.n_epochs = 0
-        config_chkpt.experiment_name = f"{config_chkpt.experiment_name}_{chkpt_name}"
-        config_chkpt.save(os.path.join(chkpt_dir, "full_config.yml"))
-        checkpoints[epoch] = chkpt_dir
-    return checkpoints
 
 
 def is_checkpoint(path):
     return 'chkpt' in os.path.split(path)[1].lower()
-
-
-def load_run(path):
-    if not contains_run(path):
-        raise FileNotFoundError(f"Could not load run from path, due to missing files or wrong path: {path}")
-    results = load_from_file(os.path.join(path, "results.bz2"))
-    parsed_config = Configuration.load(os.path.join(path, "full_config.yml"))
-    return results, parsed_config
 
 
 def contains_run(path):
@@ -94,8 +39,8 @@ def idx_to_job_name(idx):
     return f"{idx:04d}"
 
 
-def dump_config_dict(directory, config_dict):
-    with open(Path(directory).joinpath('config.yml'), 'w') as f:
+def dump_config_dict(directory, config_dict, config_name = 'config.yml'):
+    with open(Path(directory).joinpath(config_name), 'w') as f:
         yaml.YAML().dump(Configuration._to_prettified_yaml(config_dict), f)
 
 
@@ -125,6 +70,8 @@ def shorten_parameter_name(name):
 def build_experiment_name(parameters, include_param_shorthand, basename=""):
     s = [basename] if len(basename) > 0 else []
     for name, value in parameters:
+        if name == 'experiment_name' or name == 'reuse.path':
+            continue
         if include_param_shorthand:
             s.append(f"{shorten_parameter_name(name)}-{value}")
         else:
@@ -174,12 +121,19 @@ def append_nfs_to_fullpaths(command):
     return ret
 
 
+def _map_dgx_path(path):
+    path = Path(path).resolve()
+    if str(path).startswith("/home"):
+        return "/nfs" + str(path)
+    else:
+        return path
+
 def dispatch_to_dgx(command, run_dir, config: Configuration):
     command = append_nfs_to_fullpaths(command)
     time_in_minutes = duration_string_to_minutes(config.dispatch.time)
-    src_dir = "/nfs"+str(Path(__file__).resolve().parent.parent)
+    src_dir = _map_dgx_path(Path(__file__).resolve().parent.parent)
     jobfile_content = get_jobfile_content_dgx(' '.join(command), config.experiment_name,
-                                              "/nfs" + str(os.path.abspath(run_dir)),
+                                              _map_dgx_path(os.path.abspath(run_dir)),
                                               time_in_minutes, config.dispatch.conda_env,
                                               src_dir)
 
@@ -231,6 +185,7 @@ module purge
 module load cuda/11.2.2
 source /opt/sw/x86_64/glibc-2.17/ivybridge-ep/anaconda3/5.3.0/etc/profile.d/conda.sh
 conda activate {conda_env}
+export WANDB_DIR="${{HOME}}/tmp"
 {command}"""
 
 
@@ -249,6 +204,8 @@ conda activate {conda_env}
 export PYTHONPATH="{src_dir}"
 export WANDB_API_KEY=$(grep -Po "(?<=password ).*" /nfs$HOME/.netrc)
 export CUDA_VISIBLE_DEVICES="0"
+export WANDB_DIR="/nfs${{HOME}}/tmp"
+export XLA_FLAGS=--xla_gpu_force_compilation_parallelism=1
 {command}"""
 
 

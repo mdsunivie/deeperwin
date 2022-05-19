@@ -28,9 +28,11 @@ deeperwin.mcmc.MCMCState
 
    .. autosummary::
    
+      ~MCMCState.acc_rate
       ~MCMCState.log_psi_sqr
       ~MCMCState.model_args
       ~MCMCState.rng_state
+      ~MCMCState.step_nr
       ~MCMCState.stepsize
       ~MCMCState.walker_age
       ~MCMCState.r

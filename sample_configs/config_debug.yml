@@ -1,0 +1,51 @@
+experiment_name: init
+
+model:
+  default: dpe4
+  embedding:
+    default: dpe4
+    use_w_mapping: true
+    use_h_two_same_diff: true
+    n_hidden_one_el: 20
+    n_hidden_two_el: 10
+    n_iterations: 2
+  orbitals:
+    n_determinants: 32
+    use_full_det: True
+    envelope_orbitals:
+      initialization: analytical
+      initialization_off_diag: constant
+
+optimization:
+  optimizer:
+    name: kfac
+    inversion_mode: pinv
+  n_epochs: 5
+  batch_size: 50
+  checkpoints: [0]
+
+mcmc:
+  n_walkers_opt: 50
+  n_burn_in_opt: 5
+  n_burn_in_eval: 5
+
+pre_training:
+  baseline:
+    basis_set: STO-6G
+  use_only_leading_determinant: true
+  n_epochs: 3
+
+physical:
+  name: Fe
+  n_electrons: 10
+  n_up: 5
+
+evaluation:
+  n_epochs: 10
+#
+#logging:
+#  wandb:
+#    project: debug
+
+computation:
+  disable_jit: True

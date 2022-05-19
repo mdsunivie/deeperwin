@@ -1,0 +1,14 @@
+experiment_name: reuse
+
+reuse:
+  path: chkpt000005
+
+optimization:
+  checkpoints: [25]
+
+logging:
+  basic:
+    n_skip_epochs: 0
+
+computation:
+  disable_jit: True

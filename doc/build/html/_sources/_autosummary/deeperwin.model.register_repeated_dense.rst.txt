@@ -1,6 +1,0 @@
-deeperwin.model.register\_repeated\_dense
-=========================================
-
-.. currentmodule:: deeperwin.model
-
-.. autofunction:: register_repeated_dense

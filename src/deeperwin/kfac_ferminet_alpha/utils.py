@@ -123,12 +123,17 @@ def inner_product(obj1: T, obj2: T) -> jnp.ndarray:
   elements_product = jax.tree_multimap(lambda x, y: jnp.sum(x * y), obj1, obj2)
   return sum(jax.tree_flatten(elements_product)[0])
 
-def psd_inv_cholesky(matrix: jnp.ndarray, damping: jnp.ndarray) -> jnp.ndarray:
+def psd_inv_cholesky(matrix: jnp.ndarray, damping: jnp.ndarray, inversion_mode: str) -> jnp.ndarray:
   assert matrix.ndim == 2
   identity = jnp.eye(matrix.shape[0])
   matrix = matrix + damping * identity
 
-  return jnp.linalg.pinv(matrix) #linalg.solve(matrix, identity, sym_pos=True)
+  if inversion_mode == 'solve':
+    return linalg.solve(matrix, identity, sym_pos=True)
+  elif inversion_mode == 'pinv':
+    return jnp.linalg.pinv(matrix)
+  else:
+    raise ValueError(f"Unknown mode for fisher inversion: {inversion_mode}")
 
 
 def solve_maybe_small(a: jnp.ndarray, b: jnp.ndarray) -> jnp.ndarray:
@@ -154,6 +159,7 @@ def pi_adjusted_inverse(
     factor_1: jnp.ndarray,
     damping: jnp.ndarray,
     pmap_axis_name: str,
+    inversion_mode: str
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
   """Performs inversion with pi-adjusted damping."""
   # Compute the norms of each factor
@@ -179,23 +185,23 @@ def pi_adjusted_inverse(
     if factor0.size == 1:
       factor1_normed = factor1 / norm1
       damping1 = d / norm1
-      factor1_inv = psd_inv_cholesky(factor1_normed, damping1)
+      factor1_inv = psd_inv_cholesky(factor1_normed, damping1, inversion_mode)
       return jnp.full((1, 1), s), factor1_inv
     if factor1.size == 1:
       factor0_normed = factor0 / norm0
       damping0 = d / norm0
-      factor0_inv = psd_inv_cholesky(factor0_normed, damping0)
+      factor0_inv = psd_inv_cholesky(factor0_normed, damping0, inversion_mode)
       return factor0_inv, jnp.full((1, 1), s)
 
     # Invert first factor
     factor0_normed = factor0 / norm0
     damping0 = jnp.sqrt(d * factor1.shape[0] / (s * factor0.shape[0]))
-    factor0_inv = psd_inv_cholesky(factor0_normed, damping0) / jnp.sqrt(s)
+    factor0_inv = psd_inv_cholesky(factor0_normed, damping0, inversion_mode) / jnp.sqrt(s)
 
     # Invert second factor
     factor1_normed = factor1 / norm1
     damping1 = jnp.sqrt(d * factor0.shape[0] / (s * factor1.shape[0]))
-    factor1_inv = psd_inv_cholesky(factor1_normed, damping1) / jnp.sqrt(s)
+    factor1_inv = psd_inv_cholesky(factor1_normed, damping1, inversion_mode) / jnp.sqrt(s)
     return factor0_inv, factor1_inv
 
   def zero_inverse(
@@ -236,6 +242,7 @@ def check_structure_shapes_and_dtype(obj1: T, obj2: T) -> None:
   """Verifies that the two objects have the same pytree structure."""
   assert jax.tree_structure(obj1) == jax.tree_structure(obj2)
   for v1, v2 in zip(jax.tree_flatten(obj1)[0], jax.tree_flatten(obj2)[0]):
+    #print(v1.shape, v2.shape)
     assert v1.shape == v2.shape
     assert v1.dtype == v2.dtype
 

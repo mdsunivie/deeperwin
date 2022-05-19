@@ -1,6 +1,0 @@
-deeperwin.dispatch.load\_from\_file
-===================================
-
-.. currentmodule:: deeperwin.dispatch
-
-.. autofunction:: load_from_file

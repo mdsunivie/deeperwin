@@ -44,6 +44,7 @@ class CurvatureEstimator(utils.Stateful):
                func_args: Sequence[Any],
                l2_reg: Union[float, jnp.ndarray],
                estimation_mode: str = "fisher_gradients",
+               inversion_mode: str = "solve",
                params_index: int = 0,
                layer_tag_to_block_cls: Optional[TagMapping] = None):
     """Create a FisherEstimator object.
@@ -88,6 +89,7 @@ class CurvatureEstimator(utils.Stateful):
     self.tagged_func = tagged_func
     self.l2_reg = l2_reg
     self.estimation_mode = estimation_mode
+    self.inversion_mode = inversion_mode
     self.params_index = params_index
     self.vjp = tracer.trace_estimator_vjp(self.tagged_func)
 
@@ -331,7 +333,8 @@ class CurvatureEstimator(utils.Stateful):
       self.set_state(state)
     for block in self.blocks.values():
       block.update_curvature_inverse_estimate(self.diagonal_weight,
-                                              pmap_axis_name)
+                                              pmap_axis_name,
+                                              self.inversion_mode)
     if state is None:
       return None
     else:

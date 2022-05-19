@@ -55,6 +55,7 @@ class Optimizer(utils.Stateful):
       norm_constraint: Optional[Union[float, jnp.ndarray]] = None,
       num_burnin_steps: int = 10,
       estimation_mode: str = "fisher_gradients",
+      inversion_mode: str = "solve",
       curvature_ema: Union[float, jnp.ndarray] = 0.95,
       inverse_update_period: int = 5,
       register_only_generic: bool = False,
@@ -188,6 +189,7 @@ class Optimizer(utils.Stateful):
     self.norm_constraint = norm_constraint
     self.num_burnin_steps = num_burnin_steps
     self.estimation_mode = estimation_mode
+    self.inversion_mode = inversion_mode
     self.curvature_ema = curvature_ema
     self.inverse_update_period = inverse_update_period
     self.register_only_generic = register_only_generic
@@ -249,6 +251,7 @@ class Optimizer(utils.Stateful):
         func_args,
         self.l2_reg,
         self.estimation_mode,
+        self.inversion_mode,
         layer_tag_to_block_cls=self.layer_tag_to_block_cls)
     # Arguments: params, opt_state, rng, batch, func_state
     donate_argnums = []
@@ -492,7 +495,7 @@ class Optimizer(utils.Stateful):
     self.step_counter = self.step_counter + 1
 
     if self.value_func_has_state:
-      return params, self.pop_state(), new_func_state, stats, vectors[0] #TODO: Return also grads?!
+      return params, self.pop_state(), new_func_state, stats, vectors[0]
     else:
       assert new_func_state is None
       return params, self.pop_state(), stats

@@ -1,6 +1,0 @@
-deeperwin.dispatch.load\_all\_runs
-==================================
-
-.. currentmodule:: deeperwin.dispatch
-
-.. autofunction:: load_all_runs

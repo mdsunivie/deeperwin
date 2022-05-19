@@ -34,6 +34,7 @@
    deeperwin.configuration
    deeperwin.dispatch
    deeperwin.evaluation
+   deeperwin.features
    deeperwin.hamiltonian
    deeperwin.kfac
    deeperwin.kfac_ferminet_alpha

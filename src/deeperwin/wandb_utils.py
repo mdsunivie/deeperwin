@@ -1,11 +1,9 @@
 import wandb
 import pandas as pd
-import pickle
-import gzip
 import numpy as np
 from collections import namedtuple
 
-EnsembleEnergies = namedtuple("EnsembleEnergies", "n_epochs, n_samples, error_mean, error_std, error_25p, error_75p, error_05p, error_95p")
+EnsembleEnergies = namedtuple("EnsembleEnergies", "n_epochs, n_samples, error_mean, error_std, error_25p, error_75p, error_05p, error_95p, errors")
 
 def remove_data_at_epoch(data: EnsembleEnergies, n_epoch):
     if n_epoch in data.n_epochs:
@@ -48,7 +46,7 @@ def get_all_eval_energies(wandb_id, print_progress=False, n_max=-1):
 
 def get_ensable_averge_energy_error(df, exclude_unrealistic_deviations=False):
     epochs = sorted([int(c.split('_')[-1]) for c in list(df) if c.startswith('E_mean_eval_')])
-    data = EnsembleEnergies([], [], [], [], [], [], [], [])
+    data = EnsembleEnergies([], [], [], [], [], [], [], [], [])
 
     for n_epoch in epochs:
         c = f'E_mean_eval_{n_epoch:05d}'
@@ -66,6 +64,7 @@ def get_ensable_averge_energy_error(df, exclude_unrealistic_deviations=False):
             data.error_25p.append(np.nan)
             data.error_95p.append(np.nan)
             data.error_75p.append(np.nan)
+            data.errors.append([])
         else:
             data.error_mean.append(np.mean(error_eval))
             data.error_std.append(np.std(error_eval))
@@ -73,6 +72,7 @@ def get_ensable_averge_energy_error(df, exclude_unrealistic_deviations=False):
             data.error_25p.append(np.percentile(error_eval, 25))
             data.error_95p.append(np.percentile(error_eval, 95))
             data.error_75p.append(np.percentile(error_eval, 75))
+            data.errors.append(np.array(error_eval))
     return data
 
 

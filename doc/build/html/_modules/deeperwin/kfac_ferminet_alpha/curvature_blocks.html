@@ -158,7 +158,8 @@
   <span class="k">def</span> <span class="nf">update_curvature_inverse_estimate</span><span class="p">(</span>
       <span class="bp">self</span><span class="p">,</span>
       <span class="n">diagonal_weight</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
-      <span class="n">pmap_axis_name</span><span class="p">:</span> <span class="nb">str</span>
+      <span class="n">pmap_axis_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+      <span class="n">inversion_mode</span><span class="p">:</span> <span class="nb">str</span>
   <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
     <span class="k">pass</span>
 
@@ -204,7 +205,8 @@
   <span class="k">def</span> <span class="nf">update_curvature_inverse_estimate</span><span class="p">(</span>
       <span class="bp">self</span><span class="p">,</span>
       <span class="n">diagonal_weight</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
-      <span class="n">pmap_axis_name</span><span class="p">:</span> <span class="nb">str</span>
+      <span class="n">pmap_axis_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+      <span class="n">inversion_mode</span><span class="p">:</span> <span class="nb">str</span>
   <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
     <span class="k">pass</span>
 
@@ -264,7 +266,8 @@
   <span class="k">def</span> <span class="nf">update_curvature_inverse_estimate</span><span class="p">(</span>
       <span class="bp">self</span><span class="p">,</span>
       <span class="n">diagonal_weight</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
-      <span class="n">pmap_axis_name</span><span class="p">:</span> <span class="nb">str</span>
+      <span class="n">pmap_axis_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+      <span class="n">inversion_mode</span><span class="p">:</span> <span class="nb">str</span>
   <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">inputs_factor</span><span class="o">.</span><span class="n">sync</span><span class="p">(</span><span class="n">pmap_axis_name</span><span class="p">)</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">outputs_factor</span><span class="o">.</span><span class="n">sync</span><span class="p">(</span><span class="n">pmap_axis_name</span><span class="p">)</span>
@@ -279,7 +282,8 @@
          <span class="n">factor_0</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">inputs_factor</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
          <span class="n">factor_1</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">outputs_factor</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
          <span class="n">damping</span><span class="o">=</span><span class="n">diagonal_weight</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">extra_scale</span><span class="p">,</span>
-         <span class="n">pmap_axis_name</span><span class="o">=</span><span class="n">pmap_axis_name</span><span class="p">)</span>
+         <span class="n">pmap_axis_name</span><span class="o">=</span><span class="n">pmap_axis_name</span><span class="p">,</span>
+         <span class="n">inversion_mode</span><span class="o">=</span><span class="n">inversion_mode</span><span class="p">)</span>
 
   <span class="k">def</span> <span class="nf">multiply_matpower</span><span class="p">(</span>
       <span class="bp">self</span><span class="p">,</span>
@@ -428,7 +432,8 @@
   <span class="k">def</span> <span class="nf">update_curvature_inverse_estimate</span><span class="p">(</span>
       <span class="bp">self</span><span class="p">,</span>
       <span class="n">diagonal_weight</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
-      <span class="n">pmap_axis_name</span><span class="p">:</span> <span class="nb">str</span>
+      <span class="n">pmap_axis_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+      <span class="n">inversion_mode</span><span class="p">:</span> <span class="nb">str</span>
   <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
     <span class="k">pass</span>
 
@@ -515,11 +520,13 @@
   <span class="k">def</span> <span class="nf">update_curvature_inverse_estimate</span><span class="p">(</span>
       <span class="bp">self</span><span class="p">,</span>
       <span class="n">diagonal_weight</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
-      <span class="n">pmap_axis_name</span><span class="p">:</span> <span class="nb">str</span>
+      <span class="n">pmap_axis_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+      <span class="n">inversion_mode</span><span class="p">:</span> <span class="nb">str</span>
   <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">factor</span><span class="o">.</span><span class="n">sync</span><span class="p">(</span><span class="n">pmap_axis_name</span><span class="p">)</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">inverse_factor</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">psd_inv_cholesky</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">factor</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
-                                                 <span class="n">diagonal_weight</span><span class="p">)</span>
+                                                 <span class="n">diagonal_weight</span><span class="p">,</span>
+                                                 <span class="n">inversion_mode</span><span class="p">)</span>
 
   <span class="k">def</span> <span class="nf">multiply_matpower</span><span class="p">(</span>
       <span class="bp">self</span><span class="p">,</span>

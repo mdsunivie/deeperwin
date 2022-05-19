@@ -5,7 +5,7 @@ Logging of metrics and weights to local disk and web services.
 import logging
 import os.path
 import sys
-import threading
+import copy
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Literal
 
@@ -13,8 +13,9 @@ import numpy as np
 import wandb
 
 from deeperwin.configuration import LoggingConfig, BasicLoggerConfig, LoggerBaseConfig, PickleLoggerConfig, \
-    WandBConfig
-from deeperwin.dispatch import save_to_file
+    WandBConfig, Configuration
+from deeperwin.utils import save_to_file
+
 
 def build_dpe_root_logger(config: BasicLoggerConfig):
     # Step 1: Set up root logger, logging everything to console
@@ -25,7 +26,7 @@ def build_dpe_root_logger(config: BasicLoggerConfig):
         handler.setLevel(logging.DEBUG)
         handler.setFormatter(formatter)
         handlers.append(handler)
-    if config and config.fname is not None:
+    if config and config.fname:
         handler = logging.FileHandler(config.fname, mode='w')
         handler.setLevel(logging.DEBUG)
         handler.setFormatter(formatter)
@@ -59,7 +60,7 @@ class DataLogger(ABC):
         d[key] = value
         self.log_params(d)
 
-    def log_metric(self, key, value, epoch=None, metric_type: Literal["", "opt", "eval"] = "", force_log=False):
+    def log_metric(self, key, value, epoch=None, metric_type: Literal["", "opt", "eval", "pre"] = "", force_log=False):
         d = {}
         d[key] = value
         self.log_metrics(d, epoch, metric_type, force_log)
@@ -72,10 +73,10 @@ class DataLogger(ABC):
         pass
 
     @abstractmethod
-    def log_metrics(self, metrics: Dict[str, Any], epoch=None, metric_type: Literal["", "opt", "eval"] = "", force_log=False):
+    def log_metrics(self, metrics: Dict[str, Any], epoch=None, metric_type: Literal["", "opt", "eval", "pre"] = "", force_log=False):
         pass
 
-    def log_checkpoint(self, chkpt_dir):
+    def log_checkpoint(self, chkpt_dir, n_epoch, pretraining=False):
         pass
 
     def on_run_end(self):
@@ -108,9 +109,9 @@ class LoggerCollection(DataLogger):
             loggers.append(WandBLogger(config.wandb, name, save_path, prefix))
         return loggers
 
-    def log_checkpoint(self, chkpt_dir):
+    def log_checkpoint(self, chkpt_dir, n_epoch, pretraining=False):
         for l in self.loggers:
-            l.log_checkpoint(chkpt_dir)
+            l.log_checkpoint(chkpt_dir, n_epoch, pretraining=pretraining)
 
     def on_run_begin(self):
         for l in self.loggers:
@@ -118,14 +119,13 @@ class LoggerCollection(DataLogger):
 
     def on_run_end(self):
         for l in self.loggers:
-            print(l) #TODO: Remove
             l.on_run_end()
 
     def log_params(self, params: Dict[str, Any]):
         for l in self.loggers:
             l.log_params(params)
 
-    def log_metrics(self, metrics: Dict[str, Any], epoch=None, metric_type: Literal["", "opt", "eval"] = "", force_log=False):
+    def log_metrics(self, metrics: Dict[str, Any], epoch=None, metric_type: Literal["", "opt", "eval", "pre"] = "", force_log=False):
         for l in self.loggers:
             l.log_metrics(metrics, epoch, metric_type, force_log)
 
@@ -141,11 +141,14 @@ class LoggerCollection(DataLogger):
 class WandBLogger(DataLogger):
     def __init__(self, config: WandBConfig, name, save_path='.', prefix=''):
         super().__init__(config, name, save_path)
-        self.prefix = (prefix + "_") if len(prefix) > 0 else ""
+        self.prefix = (prefix + "_") if prefix else ""
+        self.blacklist = tuple(config.blacklist)
 
     @staticmethod
     def _convert_metric_datatype(x):
-        if isinstance(x, (float, int)):
+        if x is None:
+            return x
+        elif isinstance(x, (float, int)):
             return x
         elif hasattr(x, 'shape'):
             n_elements = int(np.prod(x.shape))
@@ -159,7 +162,12 @@ class WandBLogger(DataLogger):
 
     def on_run_begin(self):
         if wandb.run is None:
-            wandb.init(dir=self.save_path, project=self.logger_config.project, name=self.name, entity=self.logger_config.entity, tags=[])
+            if self.logger_config.id is not None and self.logger_config.use_id:
+                wandb.init(dir=self.save_path, project=self.logger_config.project, name=self.name,
+                           entity=self.logger_config.entity, tags=[], resume='must', id=self.logger_config.id,
+                           allow_val_change=True)
+            else:
+                wandb.init(dir=self.save_path, project=self.logger_config.project, name=self.name, entity=self.logger_config.entity, tags=[])
 
 
     def on_run_end(self):
@@ -167,7 +175,7 @@ class WandBLogger(DataLogger):
             wandb.run.finish()
 
     def log_params(self, params):
-        wandb.run.config.update(params)
+        wandb.run.config.update(params, allow_val_change=True if self.logger_config.id is not None else False)
 
     def log_tags(self, tags: List[str]):
         wandb.run.tags = wandb.run.tags + tuple(tags)
@@ -175,23 +183,22 @@ class WandBLogger(DataLogger):
     def _log_metrics_async(self, metrics: Dict[str, Any]):
         wandb.run.log(metrics)
 
-    def log_metrics(self, metrics, epoch=None, metric_type: Literal["", "opt", "eval"] = "", force_log=False):
+    def log_metrics(self, metrics, epoch=None, metric_type: str = "", force_log=False):
         if (not force_log) and self._should_skip_epoch(epoch):
             return
-        metrics_prefix = {}
+        metrics_prefixed = {}
         for k, v in metrics.items():
-            metrics_prefix[self.prefix + k] = v
-        for key in metrics_prefix:
-            metrics_prefix[key] = self._convert_metric_datatype(metrics_prefix[key])
+            if not k.endswith(self.blacklist):
+                metrics_prefixed[self.prefix + k] = v
+        for key in metrics_prefixed:
+            metrics_prefixed[key] = self._convert_metric_datatype(metrics_prefixed[key])
         if epoch is None:
-            for k, v in metrics_prefix.items():
+            for k, v in metrics_prefixed.items():
                 wandb.run.summary[k] = v
         else:
-            if metric_type == "opt":
-                metrics_prefix['opt_epoch'] = epoch
-            elif metric_type == 'eval':
-                metrics_prefix['eval_epoch'] = epoch
-            wandb.run.log(metrics_prefix)
+            epoch_key = f'{metric_type}_epoch' if metric_type else 'epoch'
+            metrics_prefixed[epoch_key] = epoch
+            wandb.run.log(metrics_prefixed)
 
 
 class BasicLogger(DataLogger):
@@ -199,7 +206,7 @@ class BasicLogger(DataLogger):
     Logger using python built-ing logging module.
     """
 
-    def __init__(self, config: BasicLoggerConfig, name, save_path=".", prefix=""):
+    def __init__(self, config: BasicLoggerConfig, name="dpe", save_path=".", prefix=""):
         super().__init__(config, name, save_path)
         formatter = logging.Formatter("%(asctime)s %(name)-12s %(levelname)-8s %(message)s")
         fh = logging.FileHandler(os.path.join(save_path, config.fname), mode='w')
@@ -209,7 +216,7 @@ class BasicLogger(DataLogger):
         self.logger = logging.getLogger(logger_name)
         self.logger.handlers.append(fh)
 
-    def log_metrics(self, metrics: Dict[str, Any], epoch=None, metric_type: Literal["", "opt", "eval"] = "", force_log=False):
+    def log_metrics(self, metrics: Dict[str, Any], epoch=None, metric_type: Literal["", "opt", "eval", "pre"] = "", force_log=False):
         if (not force_log) and self._should_skip_epoch(epoch):
             return
         msg = "; ".join(f"{key}={value}" for key, value in metrics.items())
@@ -221,6 +228,14 @@ class BasicLogger(DataLogger):
         msg = "; ".join(f"{key}={value}" for key, value in params.items())
         self.logger.info(msg)
 
+def prepare_checkpoint_directory(epoch, run_path=".", pretraining_checkpoint=False):
+    chkpt_name = f"chkpt{epoch:06d}" if not pretraining_checkpoint else f"pretrain_chkpt{epoch:06d}"
+    chkpt_dir = os.path.join(run_path, chkpt_name)
+    if os.path.exists(chkpt_dir):
+        logging.warning(f"Directory {chkpt_dir} already exists. Results might be overwritten.")
+    else:
+        os.mkdir(chkpt_dir)
+    return chkpt_dir
 
 class PickleLogger(DataLogger):
     """
@@ -229,12 +244,12 @@ class PickleLogger(DataLogger):
 
     def __init__(self, config: PickleLoggerConfig, name, save_path=".", log_opt_state=True):
         super().__init__(config, name, save_path)
-        self.metrics = dict(opt_epochs=[], eval_epochs=[])
+        self.metrics = dict(opt_epochs=[], eval_epochs=[], pre_epochs=[])
         self.config = dict()
         self.weights = dict()
         self.log_opt_state = log_opt_state
 
-    def log_metrics(self, metrics: Dict[str, Any], epoch=None, metric_type: Literal["", "opt", "eval"] = "", force_log=False):
+    def log_metrics(self, metrics: Dict[str, Any], epoch=None, metric_type: Literal["", "opt", "eval", "pre"] = "", force_log=False):
         if (not force_log) and self._should_skip_epoch(epoch):
             return
         for key, value in metrics.items():
@@ -244,9 +259,13 @@ class PickleLogger(DataLogger):
                 self.metrics[key] = value
             else:
                 self.metrics[key].append(value)
-            n_epoch_key = "opt_epochs" if metric_type == "opt" else "eval_epochs"
-            if (len(self.metrics[n_epoch_key]) == 0) or (self.metrics[n_epoch_key][-1] != epoch):
-                self.metrics[n_epoch_key].append(epoch)
+            if (epoch is not None) and metric_type:
+                n_epoch_key = f"{metric_type}_epochs"
+
+                if n_epoch_key not in self.metrics:
+                    self.metrics[n_epoch_key] = []
+                if (len(self.metrics[n_epoch_key]) == 0) or (self.metrics[n_epoch_key][-1] != epoch):
+                    self.metrics[n_epoch_key].append(epoch)
 
     def log_params(self, params: Dict[str, Any]):
         self.config.update(params)
@@ -262,8 +281,19 @@ class PickleLogger(DataLogger):
         if ('opt' in self.weights) and (not self.log_opt_state):
             del self.weights['opt']
 
-    def log_checkpoint(self, chkpt_dir):
-        data = dict(metrics=self.metrics, config=self.config, weights=self.weights)
+    def log_checkpoint(self, chkpt_dir, n_epoch=None, pretraining=False):
+        config_dict = copy.deepcopy(self.config)
+        if n_epoch is not None:
+            chkpt_name = f"chkpt{n_epoch:06d}"
+            for k in ['code_version', 'n_params', 'tags']:
+                config_dict.pop(k, None)
+            config_chkpt = Configuration.from_flattened_dict(config_dict)
+            config_chkpt.optimization.n_epochs = n_epoch if not pretraining else 0
+            config_chkpt.evaluation.n_epochs = 0
+            config_chkpt.experiment_name = f"{config_chkpt.experiment_name}_{chkpt_name}"
+            config_chkpt.save(os.path.join(chkpt_dir, "full_config.yml"))
+            config_dict = config_chkpt.get_as_flattened_dict()
+        data = dict(metrics=self.metrics, config=config_dict, weights=self.weights)
         save_to_file(os.path.join(chkpt_dir, self.logger_config.fname), **data)
 
     def on_run_end(self):

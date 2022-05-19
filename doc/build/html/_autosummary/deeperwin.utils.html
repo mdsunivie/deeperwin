@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17: http://docutils.sourceforge.net/" />
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>deeperwin.utils &mdash; deeperwin 1.0.0 documentation</title>
@@ -22,8 +22,8 @@
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="deeperwin.utils.adam_scaled" href="deeperwin.utils.adam_scaled.html" />
-    <link rel="prev" title="deeperwin.sweep_agent.get_current_run_nr" href="deeperwin.sweep_agent.get_current_run_nr.html" /> 
+    <link rel="next" title="deeperwin.utils.adam_inverse" href="deeperwin.utils.adam_inverse.html" />
+    <link rel="prev" title="deeperwin.sweep_agent.run_sweep_agent" href="deeperwin.sweep_agent.run_sweep_agent.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -53,6 +53,7 @@
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.configuration.html">deeperwin.configuration</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.dispatch.html">deeperwin.dispatch</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.evaluation.html">deeperwin.evaluation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.features.html">deeperwin.features</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.hamiltonian.html">deeperwin.hamiltonian</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.kfac.html">deeperwin.kfac</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.html">deeperwin.kfac_ferminet_alpha</a></li>
@@ -62,15 +63,15 @@
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.model.html">deeperwin.model</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.optimization.html">deeperwin.optimization</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.orbitals.html">deeperwin.orbitals</a></li>
-<li class="toctree-l3"><a class="reference internal" href="deeperwin.process_molecule.html">deeperwin.process_molecule</a></li>
-<li class="toctree-l3"><a class="reference internal" href="deeperwin.process_molecules_shared.html">deeperwin.process_molecules_shared</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.register_curvature.html">deeperwin.register_curvature</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.sweep_agent.html">deeperwin.sweep_agent</a></li>
 <li class="toctree-l3 current"><a class="current reference internal" href="#">deeperwin.utils</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.adam_inverse.html">deeperwin.utils.adam_inverse</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.adam_scaled.html">deeperwin.utils.adam_scaled</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.build_inverse_schedule.html">deeperwin.utils.build_inverse_schedule</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.build_learning_rate_schedule.html">deeperwin.utils.build_learning_rate_schedule</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.calculate_clipping_state.html">deeperwin.utils.calculate_clipping_state</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.calculate_metrics.html">deeperwin.utils.calculate_metrics</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.convert_to_jnp.html">deeperwin.utils.convert_to_jnp</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.fit_morse_potential.html">deeperwin.utils.fit_morse_potential</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.getCodeVersion.html">deeperwin.utils.getCodeVersion</a></li>
@@ -82,14 +83,19 @@
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.get_ion_pos_string.html">deeperwin.utils.get_ion_pos_string</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.get_module_params_nested.html">deeperwin.utils.get_module_params_nested</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.get_number_of_params.html">deeperwin.utils.get_number_of_params</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.load_all_runs.html">deeperwin.utils.load_all_runs</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.load_from_file.html">deeperwin.utils.load_from_file</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.load_run.html">deeperwin.utils.load_run</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.make_opt_state_picklable.html">deeperwin.utils.make_opt_state_picklable</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.merge_trainable_params.html">deeperwin.utils.merge_trainable_params</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.morse_potential.html">deeperwin.utils.morse_potential</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.prepare_data_for_logging.html">deeperwin.utils.prepare_data_for_logging</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.remove_module_params_nested.html">deeperwin.utils.remove_module_params_nested</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.save_to_file.html">deeperwin.utils.save_to_file</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.save_xyz_file.html">deeperwin.utils.save_xyz_file</a></li>
-<li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.set_adam_scaled_lr_scale.html">deeperwin.utils.set_adam_scaled_lr_scale</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.set_module_params_nested.html">deeperwin.utils.set_module_params_nested</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.set_scaled_optimizer_lr.html">deeperwin.utils.set_scaled_optimizer_lr</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.sgd_scaled.html">deeperwin.utils.sgd_scaled</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.split_trainable_params.html">deeperwin.utils.split_trainable_params</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.unpickle_opt_state.html">deeperwin.utils.unpickle_opt_state</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.PickleableOptState.html">deeperwin.utils.PickleableOptState</a></li>
@@ -139,16 +145,22 @@
 <col style="width: 90%" />
 </colgroup>
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.utils.adam_scaled.html#deeperwin.utils.adam_scaled" title="deeperwin.utils.adam_scaled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">adam_scaled</span></code></a>(step_size[, b1, b2, eps])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.utils.adam_inverse.html#deeperwin.utils.adam_inverse" title="deeperwin.utils.adam_inverse"><code class="xref py py-obj docutils literal notranslate"><span class="pre">adam_inverse</span></code></a>(step_size[, b1, b2, eps])</p></td>
 <td><p>Construct optimizer triple for Adam.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.utils.build_inverse_schedule.html#deeperwin.utils.build_inverse_schedule" title="deeperwin.utils.build_inverse_schedule"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_inverse_schedule</span></code></a>(lr_init, lr_decay_time)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.utils.adam_scaled.html#deeperwin.utils.adam_scaled" title="deeperwin.utils.adam_scaled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">adam_scaled</span></code></a>(step_size[, b1, b2, eps])</p></td>
+<td><p>Construct optimizer triple for Adam.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.utils.build_inverse_schedule.html#deeperwin.utils.build_inverse_schedule" title="deeperwin.utils.build_inverse_schedule"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_inverse_schedule</span></code></a>(lr_init, lr_decay_time)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.utils.build_learning_rate_schedule.html#deeperwin.utils.build_learning_rate_schedule" title="deeperwin.utils.build_learning_rate_schedule"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_learning_rate_schedule</span></code></a>(base_lr, ...)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.utils.build_learning_rate_schedule.html#deeperwin.utils.build_learning_rate_schedule" title="deeperwin.utils.build_learning_rate_schedule"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_learning_rate_schedule</span></code></a>(base_lr, ...)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.utils.calculate_clipping_state.html#deeperwin.utils.calculate_clipping_state" title="deeperwin.utils.calculate_clipping_state"><code class="xref py py-obj docutils literal notranslate"><span class="pre">calculate_clipping_state</span></code></a>(E, config)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.utils.calculate_clipping_state.html#deeperwin.utils.calculate_clipping_state" title="deeperwin.utils.calculate_clipping_state"><code class="xref py py-obj docutils literal notranslate"><span class="pre">calculate_clipping_state</span></code></a>(E, config)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.utils.calculate_metrics.html#deeperwin.utils.calculate_metrics" title="deeperwin.utils.calculate_metrics"><code class="xref py py-obj docutils literal notranslate"><span class="pre">calculate_metrics</span></code></a>(epoch_nr, E_epoch, ...[, ...])</p></td>
 <td><p></p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.utils.convert_to_jnp.html#deeperwin.utils.convert_to_jnp" title="deeperwin.utils.convert_to_jnp"><code class="xref py py-obj docutils literal notranslate"><span class="pre">convert_to_jnp</span></code></a>(inp)</p></td>
@@ -194,34 +206,49 @@
 <tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.utils.get_number_of_params.html#deeperwin.utils.get_number_of_params" title="deeperwin.utils.get_number_of_params"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_number_of_params</span></code></a>(nested_params)</p></td>
 <td><p>Returns the number of parameters in a nested structure.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.utils.make_opt_state_picklable.html#deeperwin.utils.make_opt_state_picklable" title="deeperwin.utils.make_opt_state_picklable"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_opt_state_picklable</span></code></a>(opt_state)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.utils.load_all_runs.html#deeperwin.utils.load_all_runs" title="deeperwin.utils.load_all_runs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_all_runs</span></code></a>(root_dir[, max_history_length])</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.utils.merge_trainable_params.html#deeperwin.utils.merge_trainable_params" title="deeperwin.utils.merge_trainable_params"><code class="xref py py-obj docutils literal notranslate"><span class="pre">merge_trainable_params</span></code></a>(shared_params, ...)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.utils.load_from_file.html#deeperwin.utils.load_from_file" title="deeperwin.utils.load_from_file"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_from_file</span></code></a>(fname)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.utils.morse_potential.html#deeperwin.utils.morse_potential" title="deeperwin.utils.morse_potential"><code class="xref py py-obj docutils literal notranslate"><span class="pre">morse_potential</span></code></a>(r, E, a, Rb, E0)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.utils.load_run.html#deeperwin.utils.load_run" title="deeperwin.utils.load_run"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_run</span></code></a>(path[, load_config, ...])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.utils.make_opt_state_picklable.html#deeperwin.utils.make_opt_state_picklable" title="deeperwin.utils.make_opt_state_picklable"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_opt_state_picklable</span></code></a>(opt_state)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.utils.merge_trainable_params.html#deeperwin.utils.merge_trainable_params" title="deeperwin.utils.merge_trainable_params"><code class="xref py py-obj docutils literal notranslate"><span class="pre">merge_trainable_params</span></code></a>(shared_params, ...)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.utils.morse_potential.html#deeperwin.utils.morse_potential" title="deeperwin.utils.morse_potential"><code class="xref py py-obj docutils literal notranslate"><span class="pre">morse_potential</span></code></a>(r, E, a, Rb, E0)</p></td>
 <td><p>Returns the Morse potential <span class="math notranslate nohighlight">\(E_0 + E (exp{-2x} - 2exp{-x})\)</span> where <span class="math notranslate nohighlight">\(x = a (r-R_b)\)</span></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.utils.prepare_data_for_logging.html#deeperwin.utils.prepare_data_for_logging" title="deeperwin.utils.prepare_data_for_logging"><code class="xref py py-obj docutils literal notranslate"><span class="pre">prepare_data_for_logging</span></code></a>(trainable_params, ...)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.utils.prepare_data_for_logging.html#deeperwin.utils.prepare_data_for_logging" title="deeperwin.utils.prepare_data_for_logging"><code class="xref py py-obj docutils literal notranslate"><span class="pre">prepare_data_for_logging</span></code></a>(trainable_params, ...)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.utils.remove_module_params_nested.html#deeperwin.utils.remove_module_params_nested" title="deeperwin.utils.remove_module_params_nested"><code class="xref py py-obj docutils literal notranslate"><span class="pre">remove_module_params_nested</span></code></a>(params, module_key)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.utils.remove_module_params_nested.html#deeperwin.utils.remove_module_params_nested" title="deeperwin.utils.remove_module_params_nested"><code class="xref py py-obj docutils literal notranslate"><span class="pre">remove_module_params_nested</span></code></a>(params, module_key)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.utils.save_to_file.html#deeperwin.utils.save_to_file" title="deeperwin.utils.save_to_file"><code class="xref py py-obj docutils literal notranslate"><span class="pre">save_to_file</span></code></a>(fname, **data)</p></td>
 <td><p></p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.utils.save_xyz_file.html#deeperwin.utils.save_xyz_file" title="deeperwin.utils.save_xyz_file"><code class="xref py py-obj docutils literal notranslate"><span class="pre">save_xyz_file</span></code></a>(fname, R, Z[, comment])</p></td>
 <td><p>Units for R are expected to be Bohr and will be translated to Angstrom in output</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.utils.set_adam_scaled_lr_scale.html#deeperwin.utils.set_adam_scaled_lr_scale" title="deeperwin.utils.set_adam_scaled_lr_scale"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_adam_scaled_lr_scale</span></code></a>(opt_config, ...)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.utils.set_module_params_nested.html#deeperwin.utils.set_module_params_nested" title="deeperwin.utils.set_module_params_nested"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_module_params_nested</span></code></a>(params, ...[, ...])</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.utils.set_module_params_nested.html#deeperwin.utils.set_module_params_nested" title="deeperwin.utils.set_module_params_nested"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_module_params_nested</span></code></a>(params, ...[, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.utils.set_scaled_optimizer_lr.html#deeperwin.utils.set_scaled_optimizer_lr" title="deeperwin.utils.set_scaled_optimizer_lr"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_scaled_optimizer_lr</span></code></a>(opt_config, ...)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.utils.split_trainable_params.html#deeperwin.utils.split_trainable_params" title="deeperwin.utils.split_trainable_params"><code class="xref py py-obj docutils literal notranslate"><span class="pre">split_trainable_params</span></code></a>(...)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.utils.sgd_scaled.html#deeperwin.utils.sgd_scaled" title="deeperwin.utils.sgd_scaled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sgd_scaled</span></code></a>(step_size)</p></td>
+<td><p>Construct optimizer triple for stochastic gradient descent with differently scaled gradients for reuse option.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.utils.split_trainable_params.html#deeperwin.utils.split_trainable_params" title="deeperwin.utils.split_trainable_params"><code class="xref py py-obj docutils literal notranslate"><span class="pre">split_trainable_params</span></code></a>(...)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.utils.unpickle_opt_state.html#deeperwin.utils.unpickle_opt_state" title="deeperwin.utils.unpickle_opt_state"><code class="xref py py-obj docutils literal notranslate"><span class="pre">unpickle_opt_state</span></code></a>(pickled_opt_state)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.utils.unpickle_opt_state.html#deeperwin.utils.unpickle_opt_state" title="deeperwin.utils.unpickle_opt_state"><code class="xref py py-obj docutils literal notranslate"><span class="pre">unpickle_opt_state</span></code></a>(pickled_opt_state)</p></td>
 <td><p></p></td>
 </tr>
 </tbody>
@@ -244,8 +271,8 @@
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="deeperwin.sweep_agent.get_current_run_nr.html" class="btn btn-neutral float-left" title="deeperwin.sweep_agent.get_current_run_nr" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="deeperwin.utils.adam_scaled.html" class="btn btn-neutral float-right" title="deeperwin.utils.adam_scaled" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="deeperwin.sweep_agent.run_sweep_agent.html" class="btn btn-neutral float-left" title="deeperwin.sweep_agent.run_sweep_agent" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="deeperwin.utils.adam_inverse.html" class="btn btn-neutral float-right" title="deeperwin.utils.adam_inverse" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

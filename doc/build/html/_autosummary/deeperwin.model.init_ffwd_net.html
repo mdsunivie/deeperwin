@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17: http://docutils.sourceforge.net/" />
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>deeperwin.model.init_ffwd_net &mdash; deeperwin 1.0.0 documentation</title>
@@ -21,8 +21,8 @@
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="deeperwin.model.init_log_psi_squared_fixed_params" href="deeperwin.model.init_log_psi_squared_fixed_params.html" />
-    <link rel="prev" title="deeperwin.model.get_rbf_features" href="deeperwin.model.get_rbf_features.html" /> 
+    <link rel="next" title="deeperwin.model.init_fixed_params_for_input_features" href="deeperwin.model.init_fixed_params_for_input_features.html" />
+    <link rel="prev" title="deeperwin.model.get_pairwise_features" href="deeperwin.model.get_pairwise_features.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -52,6 +52,7 @@
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.configuration.html">deeperwin.configuration</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.dispatch.html">deeperwin.dispatch</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.evaluation.html">deeperwin.evaluation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.features.html">deeperwin.features</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.hamiltonian.html">deeperwin.hamiltonian</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.kfac.html">deeperwin.kfac</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.html">deeperwin.kfac_ferminet_alpha</a></li>
@@ -61,28 +62,28 @@
 <li class="toctree-l3 current"><a class="reference internal" href="deeperwin.model.html">deeperwin.model</a><ul class="current">
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.model.build_backflow_factor.html">deeperwin.model.build_backflow_factor</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.model.build_backflow_shift.html">deeperwin.model.build_backflow_shift</a></li>
-<li class="toctree-l4"><a class="reference internal" href="deeperwin.model.build_dummy_embedding.html">deeperwin.model.build_dummy_embedding</a></li>
-<li class="toctree-l4"><a class="reference internal" href="deeperwin.model.build_ferminet_embedding.html">deeperwin.model.build_ferminet_embedding</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.model.build_embedding.html">deeperwin.model.build_embedding</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.model.build_jastrow_factor.html">deeperwin.model.build_jastrow_factor</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.model.build_log_psi_squared.html">deeperwin.model.build_log_psi_squared</a></li>
-<li class="toctree-l4"><a class="reference internal" href="deeperwin.model.build_log_psi_squared_baseline_model.html">deeperwin.model.build_log_psi_squared_baseline_model</a></li>
-<li class="toctree-l4"><a class="reference internal" href="deeperwin.model.build_simple_schnet.html">deeperwin.model.build_simple_schnet</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.model.build_orbital_net.html">deeperwin.model.build_orbital_net</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.model.build_preprocessor.html">deeperwin.model.build_preprocessor</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.model.calculate_shift_decay.html">deeperwin.model.calculate_shift_decay</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.model.dense_layer.html">deeperwin.model.dense_layer</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.model.el_el_cusp.html">deeperwin.model.el_el_cusp</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.model.evaluate_sum_of_determinants.html">deeperwin.model.evaluate_sum_of_determinants</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.model.ffwd_net.html">deeperwin.model.ffwd_net</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.model.get_baseline_slater_matrices.html">deeperwin.model.get_baseline_slater_matrices</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.model.get_embedding_dim.html">deeperwin.model.get_embedding_dim</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.model.get_nr_of_input_features.html">deeperwin.model.get_nr_of_input_features</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.model.get_pairwise_features.html">deeperwin.model.get_pairwise_features</a></li>
-<li class="toctree-l4"><a class="reference internal" href="deeperwin.model.get_rbf_features.html">deeperwin.model.get_rbf_features</a></li>
 <li class="toctree-l4 current"><a class="current reference internal" href="#">deeperwin.model.init_ffwd_net</a></li>
-<li class="toctree-l4"><a class="reference internal" href="deeperwin.model.init_log_psi_squared_fixed_params.html">deeperwin.model.init_log_psi_squared_fixed_params</a></li>
-<li class="toctree-l4"><a class="reference internal" href="deeperwin.model.register_repeated_dense.html">deeperwin.model.register_repeated_dense</a></li>
-<li class="toctree-l4"><a class="reference internal" href="deeperwin.model.register_scale_and_shift.html">deeperwin.model.register_scale_and_shift</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.model.init_fixed_params_for_input_features.html">deeperwin.model.init_fixed_params_for_input_features</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.model.init_model_fixed_params.html">deeperwin.model.init_model_fixed_params</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.model.scale.html">deeperwin.model.scale</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.optimization.html">deeperwin.optimization</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.orbitals.html">deeperwin.orbitals</a></li>
-<li class="toctree-l3"><a class="reference internal" href="deeperwin.process_molecule.html">deeperwin.process_molecule</a></li>
-<li class="toctree-l3"><a class="reference internal" href="deeperwin.process_molecules_shared.html">deeperwin.process_molecules_shared</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.register_curvature.html">deeperwin.register_curvature</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.sweep_agent.html">deeperwin.sweep_agent</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.utils.html">deeperwin.utils</a></li>
@@ -125,7 +126,7 @@
 <h1>deeperwin.model.init_ffwd_net<a class="headerlink" href="#deeperwin-model-init-ffwd-net" title="Permalink to this headline"></a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="deeperwin.model.init_ffwd_net">
-<span class="sig-prename descclassname"><span class="pre">deeperwin.model.</span></span><span class="sig-name descname"><span class="pre">init_ffwd_net</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_neurons</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">input_dim</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_parallel</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/deeperwin/model.html#init_ffwd_net"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.model.init_ffwd_net" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">deeperwin.model.</span></span><span class="sig-name descname"><span class="pre">init_ffwd_net</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_neurons</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">input_dim</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">has_output_bias</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">init_config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../configuration.html#deeperwin.configuration.InitializationConfig" title="deeperwin.configuration.InitializationConfig"><span class="pre">deeperwin.configuration.InitializationConfig</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/deeperwin/model.html#init_ffwd_net"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.model.init_ffwd_net" title="Permalink to this definition"></a></dt>
 <dd><p>Initializes the parameters for a fully-connected feed-forward neural network.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -150,8 +151,8 @@
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="deeperwin.model.get_rbf_features.html" class="btn btn-neutral float-left" title="deeperwin.model.get_rbf_features" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="deeperwin.model.init_log_psi_squared_fixed_params.html" class="btn btn-neutral float-right" title="deeperwin.model.init_log_psi_squared_fixed_params" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="deeperwin.model.get_pairwise_features.html" class="btn btn-neutral float-left" title="deeperwin.model.get_pairwise_features" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="deeperwin.model.init_fixed_params_for_input_features.html" class="btn btn-neutral float-right" title="deeperwin.model.init_fixed_params_for_input_features" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

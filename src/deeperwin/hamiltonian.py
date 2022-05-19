@@ -32,17 +32,30 @@ def get_ion_ion_potential_energy(R, Z):
 
 
 def get_kinetic_energy(log_psi_squared, r, R, Z, trainable_params, fixed_params):
+    """This code here is strongly inspired by the implementation of FermiNet (Copyright 2020 DeepMind Technologies Limited.)"""
+
     n_coords = r.shape[-2] * r.shape[-1]
     eye = jnp.eye(n_coords)
     grad_psi_func = lambda r: jax.grad(log_psi_squared, argnums=0)(
         r.reshape([-1, 3]), R, Z, trainable_params, fixed_params
     ).flatten()
 
-    def _loop_body(i, laplacian):
-        g_i, G_ii = jax.jvp(grad_psi_func, (r.flatten(),), (eye[i],))
-        return laplacian + G_ii[i] + 0.5 * g_i[i] ** 2
+    grad_value, jvp_func = jax.linearize(grad_psi_func, r.flatten())
+    def _loop_body(i, accumulator):
+        return accumulator + jvp_func(eye[i])[i]
+    laplacian = 0.25 * jnp.sum(grad_value**2) + 0.5 * jax.lax.fori_loop(0, n_coords, _loop_body, 0.0)
+    return -0.5 * laplacian
 
-    return -0.25 * jax.lax.fori_loop(0, n_coords, _loop_body, 0.0)
+    # jvp_func = functools.partial(jax.jvp, grad_psi_func, (r.flatten(),))
+    # grad_value, hessian = jax.vmap(jvp_func, out_axes=(None, 0))((eye,))
+    # laplace = 0.25 * jnp.sum(grad_value**2) + 0.5 * jnp.sum(jnp.diagonal(hessian))
+    # return -0.5 * laplace
+
+    # def _loop_body(i, laplacian):
+    #     g_i, G_ii = jax.jvp(grad_psi_func, (r.flatten(),), (eye[i],))
+    #     return laplacian + G_ii[i] + 0.5 * g_i[i] ** 2
+    #
+    # return -0.25 * jax.lax.fori_loop(0, n_coords, _loop_body, 0.0)
 
 
 def get_kinetic_energy_fwd_diff(log_psi_squared, r, R, Z, trainable_params, fixed_params):

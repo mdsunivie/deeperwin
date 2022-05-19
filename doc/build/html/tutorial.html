@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17: http://docutils.sourceforge.net/" />
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>DeepErwin Tutorial &mdash; deeperwin 1.0.0 documentation</title>
@@ -98,7 +98,7 @@
 </div>
 <p>Note that you need to have <strong>python &gt;= 3.8</strong> and we recommend to install the source in a separate conda- or virtual-environment.</p>
 <p>To enable GPU-support, use a pre-built jaxlib version with CUDA-support:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip install jax <span class="nv">jaxlib</span><span class="o">==</span><span class="m">0</span>.1.69+cuda101 -f https://storage.googleapis.com/jax-releases/jax_releases.html
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip install jax <span class="nv">jaxlib</span><span class="o">==</span><span class="m">0</span>.3.0+cuda11.cudnn82 -f https://storage.googleapis.com/jax-releases/jax_releases.html
 </pre></div>
 </div>
 </section>
@@ -247,6 +247,8 @@ Alternatively you can see the full configuration tree when looking at the <em>fu
 </section>
 <section id="optimization-using-weight-sharing">
 <h2>Optimization using weight-sharing<a class="headerlink" href="#optimization-using-weight-sharing" title="Permalink to this headline"></a></h2>
+<p>ATTENTION: The weight-sharing technique is currenlty not supported on the master branch. A fully functioning codebase for weight-sharing
+can be found under the “weight_sharing” branch.</p>
 <p>When calculating wavefunctions for multiple related wavefunctions (e.g. for different geometries of the samemolecule), the naive approach would be to conduct independent wavefuntion optimiziations for each run.
 To do this you can set <em>changes</em> to the physical-configuration, to launch multiple independent experiments with the same configuration, but different physical systems.</p>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">physical</span><span class="p">:</span><span class="w"></span>
@@ -275,7 +277,6 @@ To disable weight-sharing, simply set :code:<a href="#id1"><span class="problema
 <span class="nt">optimization</span><span class="p">:</span><span class="w"></span>
 <span class="w">    </span><span class="nt">shared_optimization</span><span class="p">:</span><span class="w"></span>
 <span class="w">        </span><span class="nt">use</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">True</span><span class="w"></span>
-<span class="w">        </span><span class="nt">shared_modules</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;embed&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;jastrow&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;bf_fac_general&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;bf_shift&quot;</span><span class="p p-Indicator">]</span><span class="w"></span>
 </pre></div>
 </div>
 </section>

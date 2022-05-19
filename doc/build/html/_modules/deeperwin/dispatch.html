@@ -74,74 +74,19 @@
 <span class="sd">Dispatch management for different machines (clusters, local, ...)</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
-<span class="kn">import</span> <span class="nn">bz2</span>
 <span class="kn">import</span> <span class="nn">copy</span>
 <span class="kn">import</span> <span class="nn">logging</span>
 <span class="kn">import</span> <span class="nn">os</span>
-<span class="kn">import</span> <span class="nn">pickle</span>
 <span class="kn">import</span> <span class="nn">re</span>
 <span class="kn">import</span> <span class="nn">shutil</span>
 <span class="kn">import</span> <span class="nn">subprocess</span>
 <span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
-
-<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
 <span class="kn">from</span> <span class="nn">ruamel</span> <span class="kn">import</span> <span class="n">yaml</span>
-
 <span class="kn">from</span> <span class="nn">deeperwin.configuration</span> <span class="kn">import</span> <span class="n">Configuration</span>
-
-
-<div class="viewcode-block" id="load_from_file"><a class="viewcode-back" href="../../_autosummary/deeperwin.dispatch.load_from_file.html#deeperwin.dispatch.load_from_file">[docs]</a><span class="k">def</span> <span class="nf">load_from_file</span><span class="p">(</span><span class="n">fname</span><span class="p">):</span>
-    <span class="k">with</span> <span class="n">bz2</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span></div>
-
-
-<div class="viewcode-block" id="save_to_file"><a class="viewcode-back" href="../../_autosummary/deeperwin.dispatch.save_to_file.html#deeperwin.dispatch.save_to_file">[docs]</a><span class="k">def</span> <span class="nf">save_to_file</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="o">**</span><span class="n">data</span><span class="p">):</span>
-    <span class="k">with</span> <span class="n">bz2</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-        <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span></div>
-
-
-<div class="viewcode-block" id="load_all_runs"><a class="viewcode-back" href="../../_autosummary/deeperwin.dispatch.load_all_runs.html#deeperwin.dispatch.load_all_runs">[docs]</a><span class="k">def</span> <span class="nf">load_all_runs</span><span class="p">(</span><span class="n">root_dir</span><span class="p">,</span> <span class="n">max_history_length</span><span class="o">=</span><span class="mi">50</span><span class="p">):</span>
-    <span class="n">full_data</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="k">for</span> <span class="n">fname</span> <span class="ow">in</span> <span class="n">Path</span><span class="p">(</span><span class="n">root_dir</span><span class="p">)</span><span class="o">.</span><span class="n">rglob</span><span class="p">(</span><span class="s2">&quot;results.bz2&quot;</span><span class="p">):</span>
-        <span class="n">raw_data</span> <span class="o">=</span> <span class="n">load_from_file</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span>
-        <span class="n">data</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">raw_data</span><span class="p">[</span><span class="s1">&#39;config&#39;</span><span class="p">])</span>
-        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">raw_data</span><span class="p">[</span><span class="s1">&#39;metrics&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">max_history_length</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">max_history_length</span><span class="p">):</span>
-                <span class="k">continue</span>
-            <span class="n">data</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
-        <span class="n">data</span><span class="p">[</span><span class="s1">&#39;dirname&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">fname</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">name</span>
-        <span class="n">full_data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">full_data</span><span class="p">)</span></div>
-
-
-<div class="viewcode-block" id="prepare_checkpoints"><a class="viewcode-back" href="../../_autosummary/deeperwin.dispatch.prepare_checkpoints.html#deeperwin.dispatch.prepare_checkpoints">[docs]</a><span class="k">def</span> <span class="nf">prepare_checkpoints</span><span class="p">(</span><span class="n">run_path</span><span class="p">,</span> <span class="n">chkpt_epochs</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Configuration</span><span class="p">):</span>
-    <span class="n">checkpoints</span> <span class="o">=</span> <span class="p">{}</span>
-    <span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="n">chkpt_epochs</span><span class="p">:</span>
-        <span class="n">chkpt_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;chkpt</span><span class="si">{</span><span class="n">epoch</span><span class="si">:</span><span class="s2">06d</span><span class="si">}</span><span class="s2">&quot;</span>
-        <span class="n">chkpt_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">run_path</span><span class="p">,</span> <span class="n">chkpt_name</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">chkpt_dir</span><span class="p">):</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Directory </span><span class="si">{</span><span class="n">chkpt_dir</span><span class="si">}</span><span class="s2"> already exists. Results might be overwritten.&quot;</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">chkpt_dir</span><span class="p">)</span>
-        <span class="n">config_chkpt</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
-        <span class="n">config_chkpt</span><span class="o">.</span><span class="n">optimization</span><span class="o">.</span><span class="n">n_epochs</span> <span class="o">=</span> <span class="n">epoch</span>
-        <span class="n">config_chkpt</span><span class="o">.</span><span class="n">evaluation</span><span class="o">.</span><span class="n">n_epochs</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="n">config_chkpt</span><span class="o">.</span><span class="n">experiment_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">config_chkpt</span><span class="o">.</span><span class="n">experiment_name</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">chkpt_name</span><span class="si">}</span><span class="s2">&quot;</span>
-        <span class="n">config_chkpt</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">chkpt_dir</span><span class="p">,</span> <span class="s2">&quot;full_config.yml&quot;</span><span class="p">))</span>
-        <span class="n">checkpoints</span><span class="p">[</span><span class="n">epoch</span><span class="p">]</span> <span class="o">=</span> <span class="n">chkpt_dir</span>
-    <span class="k">return</span> <span class="n">checkpoints</span></div>
 
 
 <div class="viewcode-block" id="is_checkpoint"><a class="viewcode-back" href="../../_autosummary/deeperwin.dispatch.is_checkpoint.html#deeperwin.dispatch.is_checkpoint">[docs]</a><span class="k">def</span> <span class="nf">is_checkpoint</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
     <span class="k">return</span> <span class="s1">&#39;chkpt&#39;</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">path</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span></div>
-
-
-<div class="viewcode-block" id="load_run"><a class="viewcode-back" href="../../_autosummary/deeperwin.dispatch.load_run.html#deeperwin.dispatch.load_run">[docs]</a><span class="k">def</span> <span class="nf">load_run</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">contains_run</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
-        <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not load run from path, due to missing files or wrong path: </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="n">results</span> <span class="o">=</span> <span class="n">load_from_file</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;results.bz2&quot;</span><span class="p">))</span>
-    <span class="n">parsed_config</span> <span class="o">=</span> <span class="n">Configuration</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;full_config.yml&quot;</span><span class="p">))</span>
-    <span class="k">return</span> <span class="n">results</span><span class="p">,</span> <span class="n">parsed_config</span></div>
 
 
 <div class="viewcode-block" id="contains_run"><a class="viewcode-back" href="../../_autosummary/deeperwin.dispatch.contains_run.html#deeperwin.dispatch.contains_run">[docs]</a><span class="k">def</span> <span class="nf">contains_run</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
@@ -166,8 +111,8 @@
     <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">idx</span><span class="si">:</span><span class="s2">04d</span><span class="si">}</span><span class="s2">&quot;</span></div>
 
 
-<div class="viewcode-block" id="dump_config_dict"><a class="viewcode-back" href="../../_autosummary/deeperwin.dispatch.dump_config_dict.html#deeperwin.dispatch.dump_config_dict">[docs]</a><span class="k">def</span> <span class="nf">dump_config_dict</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">config_dict</span><span class="p">):</span>
-    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">directory</span><span class="p">)</span><span class="o">.</span><span class="n">joinpath</span><span class="p">(</span><span class="s1">&#39;config.yml&#39;</span><span class="p">),</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+<div class="viewcode-block" id="dump_config_dict"><a class="viewcode-back" href="../../_autosummary/deeperwin.dispatch.dump_config_dict.html#deeperwin.dispatch.dump_config_dict">[docs]</a><span class="k">def</span> <span class="nf">dump_config_dict</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">config_dict</span><span class="p">,</span> <span class="n">config_name</span> <span class="o">=</span> <span class="s1">&#39;config.yml&#39;</span><span class="p">):</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">directory</span><span class="p">)</span><span class="o">.</span><span class="n">joinpath</span><span class="p">(</span><span class="n">config_name</span><span class="p">),</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
         <span class="n">yaml</span><span class="o">.</span><span class="n">YAML</span><span class="p">()</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">Configuration</span><span class="o">.</span><span class="n">_to_prettified_yaml</span><span class="p">(</span><span class="n">config_dict</span><span class="p">),</span> <span class="n">f</span><span class="p">)</span></div>
 
 
@@ -197,6 +142,8 @@
 <div class="viewcode-block" id="build_experiment_name"><a class="viewcode-back" href="../../_autosummary/deeperwin.dispatch.build_experiment_name.html#deeperwin.dispatch.build_experiment_name">[docs]</a><span class="k">def</span> <span class="nf">build_experiment_name</span><span class="p">(</span><span class="n">parameters</span><span class="p">,</span> <span class="n">include_param_shorthand</span><span class="p">,</span> <span class="n">basename</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">):</span>
     <span class="n">s</span> <span class="o">=</span> <span class="p">[</span><span class="n">basename</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">basename</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="p">[]</span>
     <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">parameters</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;experiment_name&#39;</span> <span class="ow">or</span> <span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;reuse.path&#39;</span><span class="p">:</span>
+            <span class="k">continue</span>
         <span class="k">if</span> <span class="n">include_param_shorthand</span><span class="p">:</span>
             <span class="n">s</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">shorten_parameter_name</span><span class="p">(</span><span class="n">name</span><span class="p">)</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
@@ -246,12 +193,19 @@
     <span class="k">return</span> <span class="n">ret</span></div>
 
 
+<span class="k">def</span> <span class="nf">_map_dgx_path</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+    <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;/home&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;/nfs&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">path</span>
+
 <div class="viewcode-block" id="dispatch_to_dgx"><a class="viewcode-back" href="../../_autosummary/deeperwin.dispatch.dispatch_to_dgx.html#deeperwin.dispatch.dispatch_to_dgx">[docs]</a><span class="k">def</span> <span class="nf">dispatch_to_dgx</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">run_dir</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Configuration</span><span class="p">):</span>
     <span class="n">command</span> <span class="o">=</span> <span class="n">append_nfs_to_fullpaths</span><span class="p">(</span><span class="n">command</span><span class="p">)</span>
     <span class="n">time_in_minutes</span> <span class="o">=</span> <span class="n">duration_string_to_minutes</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">dispatch</span><span class="o">.</span><span class="n">time</span><span class="p">)</span>
-    <span class="n">src_dir</span> <span class="o">=</span> <span class="s2">&quot;/nfs&quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span><span class="p">)</span>
+    <span class="n">src_dir</span> <span class="o">=</span> <span class="n">_map_dgx_path</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span><span class="p">)</span>
     <span class="n">jobfile_content</span> <span class="o">=</span> <span class="n">get_jobfile_content_dgx</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">command</span><span class="p">),</span> <span class="n">config</span><span class="o">.</span><span class="n">experiment_name</span><span class="p">,</span>
-                                              <span class="s2">&quot;/nfs&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">run_dir</span><span class="p">)),</span>
+                                              <span class="n">_map_dgx_path</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">run_dir</span><span class="p">)),</span>
                                               <span class="n">time_in_minutes</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">dispatch</span><span class="o">.</span><span class="n">conda_env</span><span class="p">,</span>
                                               <span class="n">src_dir</span><span class="p">)</span>
 
@@ -303,6 +257,7 @@
 <span class="s2">module load cuda/11.2.2</span>
 <span class="s2">source /opt/sw/x86_64/glibc-2.17/ivybridge-ep/anaconda3/5.3.0/etc/profile.d/conda.sh</span>
 <span class="s2">conda activate </span><span class="si">{</span><span class="n">conda_env</span><span class="si">}</span><span class="s2"></span>
+<span class="s2">export WANDB_DIR=&quot;$</span><span class="se">{{</span><span class="s2">HOME</span><span class="se">}}</span><span class="s2">/tmp&quot;</span>
 <span class="si">{</span><span class="n">command</span><span class="si">}</span><span class="s2">&quot;&quot;&quot;</span></div>
 
 
@@ -321,6 +276,8 @@
 <span class="s2">export PYTHONPATH=&quot;</span><span class="si">{</span><span class="n">src_dir</span><span class="si">}</span><span class="s2">&quot;</span>
 <span class="s2">export WANDB_API_KEY=$(grep -Po &quot;(?&lt;=password ).*&quot; /nfs$HOME/.netrc)</span>
 <span class="s2">export CUDA_VISIBLE_DEVICES=&quot;0&quot;</span>
+<span class="s2">export WANDB_DIR=&quot;/nfs$</span><span class="se">{{</span><span class="s2">HOME</span><span class="se">}}</span><span class="s2">/tmp&quot;</span>
+<span class="s2">export XLA_FLAGS=--xla_gpu_force_compilation_parallelism=1</span>
 <span class="si">{</span><span class="n">command</span><span class="si">}</span><span class="s2">&quot;&quot;&quot;</span></div>
 
 

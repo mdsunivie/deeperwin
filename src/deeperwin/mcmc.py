@@ -11,7 +11,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
-from deeperwin.configuration import MCMCConfig, MCMCLangevinProposalConfig, PhysicalConfig
+from deeperwin.configuration import MCMCConfig, MCMCLangevinProposalConfig, PhysicalConfig, LocalStepsizeProposalConfig
 from deeperwin.utils import get_el_ion_distance_matrix
 
 
@@ -28,9 +28,11 @@ class MCMCState:
     walker_age: jnp.array = None  # [batch-size]; dtype=int
     rng_state: Tuple[jnp.array] = jax.random.PRNGKey(0)
     stepsize: jnp.array = jnp.array(1e-2)
+    step_nr: jnp.array = jnp.array(0, dtype=int)
+    acc_rate: jnp.array = jnp.array(0.0)
 
     def tree_flatten(self):
-        children = (self.r, self.R, self.Z, self.log_psi_sqr, self.walker_age, self.rng_state, self.stepsize)
+        children = (self.r, self.R, self.Z, self.log_psi_sqr, self.walker_age, self.rng_state, self.stepsize, self.step_nr, self.acc_rate)
         aux_data = None
         return (children, aux_data)
 
@@ -100,6 +102,51 @@ def _calculate_stepsize_and_langevin_bias(r, R, Z, stepsize, mcmc_langevin_scale
     return s, g_r
 
 
+def _propose_step_local_stepsize(state: MCMCState, config: LocalStepsizeProposalConfig):
+    new_state = copy.copy(state)
+    new_state.rng_state, subkey = jax.random.split(state.rng_state)
+
+    dist_closest = jnp.min(get_el_ion_distance_matrix(state.r, state.R)[1], axis=-1)
+    s = state.stepsize * jnp.clip(dist_closest, config.r_min, config.r_max)
+    new_state.r += jax.random.normal(subkey, state.r.shape) * s[..., None]
+
+    dist_closest = jnp.min(get_el_ion_distance_matrix(new_state.r, state.R)[1], axis=-1)
+    s_new = state.stepsize * jnp.clip(dist_closest, config.r_min, config.r_max)
+
+    dist_sqr = jnp.sum((new_state.r - state.r) ** 2, axis=-1)
+    log_q_ratio = 3 * (jnp.log(s) - jnp.log(s_new))
+    log_q_ratio += 0.5 * dist_sqr * (1 / s ** 2 - 1 / s_new ** 2)
+    log_q_ratio = jnp.sum(log_q_ratio, axis=-1) # sum over electrons
+    return new_state, log_q_ratio
+
+def _propose_step_local_stepsize_one_el(state: MCMCState, config: LocalStepsizeProposalConfig):
+    new_state = copy.copy(state)
+    new_state.rng_state, subkey = jax.random.split(state.rng_state)
+    n_el = state.r.shape[-2]
+    index = state.step_nr % n_el
+
+    #new_state.r += jax.random.normal(subkey, state.r.shape) * s[..., None]
+    dist_closest = jnp.min(get_el_ion_distance_matrix(state.r, state.R)[1], axis=-1).at[..., index].get()
+    s = state.stepsize * jnp.clip(dist_closest, config.r_min, config.r_max)
+    new_state.r = new_state.r.at[..., index, :].add(jax.random.normal(subkey, state.r.shape[:-2] + (3,)) * s[..., None])
+
+    dist_closest = jnp.min(get_el_ion_distance_matrix(new_state.r, state.R)[1], axis=-1).at[..., index].get()
+    s_new = state.stepsize * jnp.clip(dist_closest, config.r_min, config.r_max)
+
+    dist_sqr = jnp.sum((new_state.r.at[..., index, :].get() - state.r.at[..., index, :].get()) ** 2, axis=-1)
+    log_q_ratio = 3 * (jnp.log(s) - jnp.log(s_new))
+    log_q_ratio += 0.5 * dist_sqr * (1 / s ** 2 - 1 / s_new ** 2)    #log_q_ratio = jnp.sum(log_q_ratio, axis=-1) # sum over electrons
+    return new_state, log_q_ratio
+
+def _propose_normal_one_el(state: MCMCState):
+    n_el = state.r.shape[-2]
+    index = state.step_nr % n_el
+
+    new_state = copy.copy(state)
+    new_state.rng_state, subkey = jax.random.split(state.rng_state)
+    new_state.r = new_state.r.at[..., index, :].add(jax.random.normal(subkey, state.r[..., index, :].shape) * state.stepsize)
+    return new_state, jnp.zeros(state.r.shape[0])
+
 def _propose_step_local_approximated_langevin(state: MCMCState, config: MCMCLangevinProposalConfig):
     """
     Proposes a new electron configuration for metropolis hastings, using 2 techniques: Local stepsize and an approximated langevin-dynamics.
@@ -149,8 +196,16 @@ class MetropolisHastingsMonteCarlo:
             self.propose = _propose_cauchy
         elif self.config.proposal.name == "langevin":
             self.propose = functools.partial(_propose_step_local_approximated_langevin, config=self.config.proposal)
+        elif self.config.proposal.name == 'local':
+            self.propose = functools.partial(_propose_step_local_stepsize, config=self.config.proposal)
+        elif self.config.proposal.name == 'normal_one_el':
+            self.propose = _propose_normal_one_el
+        elif self.config.proposal.name == "local_one_el":
+            self.propose = functools.partial(_propose_step_local_stepsize_one_el, config=self.config.proposal)
+        else:
+            raise NotImplementedError("Unknown MCMC proposal type")
 
-    def make_mcmc_step(self, func, func_params, state: MCMCState, method):
+    def make_mcmc_step(self, func, func_params, state: MCMCState, method, stepsize_update_interval):
         # Propose a new state
         state_new, log_q_ratio = self.propose(state)
         state_new.log_psi_sqr = func(*state_new.model_args, *func_params)
@@ -170,48 +225,54 @@ class MetropolisHastingsMonteCarlo:
 
         state_new.log_psi_sqr = jnp.where(do_accept, state_new.log_psi_sqr, state.log_psi_sqr)
         state_new.r = jnp.where(do_accept[..., np.newaxis, np.newaxis], state_new.r, state.r)
+        acceptance_rate = jnp.mean(do_accept)
 
-        # Update stepsize to reach target acceptance rate
-        state_new.stepsize = self.adjust_stepsize(state.stepsize, jnp.mean(do_accept))
+        state_new.step_nr += 1
+
+        if self.config.debug_mcmc_stepsize:
+            state_new.stepsize = jax.lax.cond(state_new.step_nr % stepsize_update_interval == 0,
+                                              lambda x: x*1.25,
+                                              lambda x: x,
+                                              state.stepsize)
+        else:
+            state_new.acc_rate = jax.lax.cond(state_new.step_nr % stepsize_update_interval == 0,
+                                              lambda x: jnp.array(0.0),
+                                              lambda x: x[0] + x[1],
+                                              (state.acc_rate,
+                                               acceptance_rate))
+            state_new.stepsize = jax.lax.cond(state_new.step_nr % stepsize_update_interval == 0,
+                                              self._adjust_stepsize,
+                                              lambda x: x[0],
+                                              (state.stepsize,
+                                              state.acc_rate/(stepsize_update_interval-1)))
         return state_new
 
-    def adjust_stepsize(self, stepsize, acceptance_rate):
+
+    def _adjust_stepsize(self, args):
+        stepsize, acceptance_rate = args
         stepsize = jax.lax.cond(
-            acceptance_rate < self.config.target_acceptance_rate, lambda s: s * 0.95, lambda s: s * 1.05, stepsize
+            acceptance_rate < self.config.target_acceptance_rate, lambda s: s / 1.05, lambda s: s * 1.05, stepsize
         )
         stepsize = jnp.clip(stepsize, self.config.min_stepsize_scale, self.config.max_stepsize_scale)
         return stepsize
 
-    def _run_mcmc_steps(self, func, func_params, state, n_steps, method='opt'):
+    @functools.partial(jax.jit, static_argnums=(0, 1, 4, 5, 6))
+    def _run_mcmc_steps(self, func, func_params, state, n_steps, method, stepsize_update_interval):
         def _loop_body(i, _state):
-            return self.make_mcmc_step(func, func_params, _state, method)
-
+            return self.make_mcmc_step(func, func_params, _state, method, stepsize_update_interval)
+        # if self.config.proposal.name == 'normal_one_el':
+        #     return jax.lax.fori_loop(0, n_steps*state.r.shape[-2], _loop_body, state)
+        # else:
         return jax.lax.fori_loop(0, n_steps, _loop_body, state)
 
-    @functools.partial(jax.jit, static_argnums=(0, 1, 4))
+
     def run_inter_steps(self, func, func_params, state: MCMCState, method='opt'):
-        return self._run_mcmc_steps(func, func_params, state, self.config.n_inter_steps, method)
+        return self._run_mcmc_steps(func, func_params, state, self.config.n_inter_steps, method, self.config.stepsize_update_interval)
 
-    @functools.partial(jax.jit, static_argnums=(0, 1))
     def run_burn_in_opt(self, func, func_params, state: MCMCState):
-        return self._run_mcmc_steps(func, func_params, state, self.config.n_burn_in_opt)
+        return self._run_mcmc_steps(func, func_params, state, self.config.n_burn_in_opt, 'opt', self.config.stepsize_update_interval)
 
-    @functools.partial(jax.jit, static_argnums=(0, 1))
     def run_burn_in_eval(self, func, func_params, state: MCMCState):
-        return self._run_mcmc_steps(func, func_params, state, self.config.n_burn_in_eval)
+        return self._run_mcmc_steps(func, func_params, state, self.config.n_burn_in_eval, 'eval', self.config.stepsize_update_interval)
 
 
-def calculate_metrics(epoch_nr: int, E_epoch: jnp.array, mcmc_state: MCMCState,
-                      time_per_epoch: float,
-                      metric_type: str, epoch_per_geometry: int = None):
-    metrics = {}
-    metrics[metric_type + "_E_mean"] = float(jnp.mean(E_epoch))
-    metrics[metric_type + "_E_std"] = float(jnp.std(E_epoch))
-    metrics[metric_type + "_mcmc_stepsize"] = float(mcmc_state.stepsize)
-    metrics[metric_type + "_mcmc_max_age"] = float(jnp.max(mcmc_state.walker_age))
-    metrics[metric_type + "_t_epoch"] = time_per_epoch
-    if epoch_per_geometry is None:
-        epoch_per_geometry = epoch_nr
-    metrics[metric_type + "_epoch_per_geom"] = epoch_per_geometry
-
-    return metrics, int(epoch_nr), metric_type

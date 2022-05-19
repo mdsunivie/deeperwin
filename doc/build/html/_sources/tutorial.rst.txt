@@ -28,7 +28,7 @@ To enable GPU-support, use a pre-built jaxlib version with CUDA-support:
 
 .. code-block:: bash
 
-    pip install jax jaxlib==0.1.69+cuda101 -f https://storage.googleapis.com/jax-releases/jax_releases.html
+    pip install jax jaxlib==0.3.0+cuda11.cudnn82 -f https://storage.googleapis.com/jax-releases/jax_releases.html
 
 
 Running a simple calculation
@@ -156,6 +156,8 @@ restart        path                                                     Path to 
 
 Optimization using weight-sharing
 =================================
+ATTENTION: The weight-sharing technique is currenlty not supported on the master branch. A fully functioning codebase for weight-sharing
+can be found under the "weight_sharing" branch.
 
 When calculating wavefunctions for multiple related wavefunctions (e.g. for different geometries of the samemolecule), the naive approach would be to conduct independent wavefuntion optimiziations for each run.
 To do this you can set *changes* to the physical-configuration, to launch multiple independent experiments with the same configuration, but different physical systems.
@@ -190,7 +192,6 @@ To disable weight-sharing, simply set :code:`optimization.shared_optimization = 
     optimization:
         shared_optimization:
             use: True
-            shared_modules: ["embed", "jastrow", "bf_fac_general", "bf_shift"]
 
 
 .. _arxiv publication: https://arxiv.org/pdf/2105.08351.pdf

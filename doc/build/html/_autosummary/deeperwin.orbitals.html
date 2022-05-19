@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17: http://docutils.sourceforge.net/" />
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>deeperwin.orbitals &mdash; deeperwin 1.0.0 documentation</title>
@@ -21,8 +21,8 @@
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="deeperwin.orbitals.build_el_el_cusp_correction" href="deeperwin.orbitals.build_el_el_cusp_correction.html" />
-    <link rel="prev" title="deeperwin.optimization.optimize_wavefunction" href="deeperwin.optimization.optimize_wavefunction.html" /> 
+    <link rel="next" title="deeperwin.orbitals.build_pyscf_molecule" href="deeperwin.orbitals.build_pyscf_molecule.html" />
+    <link rel="prev" title="deeperwin.optimization.pretrain_orbitals" href="deeperwin.optimization.pretrain_orbitals.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -52,6 +52,7 @@
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.configuration.html">deeperwin.configuration</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.dispatch.html">deeperwin.dispatch</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.evaluation.html">deeperwin.evaluation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.features.html">deeperwin.features</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.hamiltonian.html">deeperwin.hamiltonian</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.kfac.html">deeperwin.kfac</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.html">deeperwin.kfac_ferminet_alpha</a></li>
@@ -61,17 +62,24 @@
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.model.html">deeperwin.model</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.optimization.html">deeperwin.optimization</a></li>
 <li class="toctree-l3 current"><a class="current reference internal" href="#">deeperwin.orbitals</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="deeperwin.orbitals.build_el_el_cusp_correction.html">deeperwin.orbitals.build_el_el_cusp_correction</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.orbitals.build_pyscf_molecule.html">deeperwin.orbitals.build_pyscf_molecule</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.orbitals.build_pyscf_molecule_from_physical_config.html">deeperwin.orbitals.build_pyscf_molecule_from_physical_config</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.orbitals.calculate_molecular_orbital_cusp_params.html">deeperwin.orbitals.calculate_molecular_orbital_cusp_params</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.orbitals.eval_atomic_orbitals.html">deeperwin.orbitals.eval_atomic_orbitals</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.orbitals.eval_gaussian_orbital.html">deeperwin.orbitals.eval_gaussian_orbital</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.orbitals.evaluate_molecular_orbitals.html">deeperwin.orbitals.evaluate_molecular_orbitals</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.orbitals.fit_orbital_envelopes_to_hartree_fock.html">deeperwin.orbitals.fit_orbital_envelopes_to_hartree_fock</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.orbitals.get_baseline_solution.html">deeperwin.orbitals.get_baseline_solution</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.orbitals.get_cisd_leading_determinants.html">deeperwin.orbitals.get_cisd_leading_determinants</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.orbitals.get_envelope_exponents_cisd.html">deeperwin.orbitals.get_envelope_exponents_cisd</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.orbitals.get_envelope_exponents_from_atomic_orbitals.html">deeperwin.orbitals.get_envelope_exponents_from_atomic_orbitals</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.orbitals.get_envelope_exponents_hardcoded.html">deeperwin.orbitals.get_envelope_exponents_hardcoded</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.orbitals.get_hartree_fock_solution.html">deeperwin.orbitals.get_hartree_fock_solution</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.orbitals.get_orbital_type.html">deeperwin.orbitals.get_orbital_type</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.orbitals.get_p_orbital_indices_per_atom.html">deeperwin.orbitals.get_p_orbital_indices_per_atom</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.orbitals.split_results_into_spins.html">deeperwin.orbitals.split_results_into_spins</a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="deeperwin.process_molecule.html">deeperwin.process_molecule</a></li>
-<li class="toctree-l3"><a class="reference internal" href="deeperwin.process_molecules_shared.html">deeperwin.process_molecules_shared</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.register_curvature.html">deeperwin.register_curvature</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.sweep_agent.html">deeperwin.sweep_agent</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.utils.html">deeperwin.utils</a></li>
@@ -120,16 +128,16 @@
 <col style="width: 90%" />
 </colgroup>
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.orbitals.build_el_el_cusp_correction.html#deeperwin.orbitals.build_el_el_cusp_correction" title="deeperwin.orbitals.build_el_el_cusp_correction"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_el_el_cusp_correction</span></code></a>(n_electrons, ...)</p></td>
-<td><p></p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.orbitals.build_pyscf_molecule.html#deeperwin.orbitals.build_pyscf_molecule" title="deeperwin.orbitals.build_pyscf_molecule"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_pyscf_molecule</span></code></a>(R, Z[, charge, spin, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.orbitals.build_pyscf_molecule.html#deeperwin.orbitals.build_pyscf_molecule" title="deeperwin.orbitals.build_pyscf_molecule"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_pyscf_molecule</span></code></a>(R, Z[, charge, spin, ...])</p></td>
 <td><p><dl class="field-list simple">
 <dt class="field-odd">param R</dt>
 <dd class="field-odd"><p>ion positions, shape [Nx3]</p>
 </dd>
 </dl>
 </p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.orbitals.build_pyscf_molecule_from_physical_config.html#deeperwin.orbitals.build_pyscf_molecule_from_physical_config" title="deeperwin.orbitals.build_pyscf_molecule_from_physical_config"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_pyscf_molecule_from_physical_config</span></code></a>(...)</p></td>
+<td><p></p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.orbitals.calculate_molecular_orbital_cusp_params.html#deeperwin.orbitals.calculate_molecular_orbital_cusp_params" title="deeperwin.orbitals.calculate_molecular_orbital_cusp_params"><code class="xref py py-obj docutils literal notranslate"><span class="pre">calculate_molecular_orbital_cusp_params</span></code></a>(...)</p></td>
 <td><p></p></td>
@@ -148,7 +156,34 @@
 <tr class="row-even"><td><p><a class="reference internal" href="deeperwin.orbitals.evaluate_molecular_orbitals.html#deeperwin.orbitals.evaluate_molecular_orbitals" title="deeperwin.orbitals.evaluate_molecular_orbitals"><code class="xref py py-obj docutils literal notranslate"><span class="pre">evaluate_molecular_orbitals</span></code></a>(el_ion_diff, ...)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.orbitals.get_baseline_solution.html#deeperwin.orbitals.get_baseline_solution" title="deeperwin.orbitals.get_baseline_solution"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_baseline_solution</span></code></a>(physical_config, ...)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.orbitals.fit_orbital_envelopes_to_hartree_fock.html#deeperwin.orbitals.fit_orbital_envelopes_to_hartree_fock" title="deeperwin.orbitals.fit_orbital_envelopes_to_hartree_fock"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fit_orbital_envelopes_to_hartree_fock</span></code></a>(...)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.orbitals.get_baseline_solution.html#deeperwin.orbitals.get_baseline_solution" title="deeperwin.orbitals.get_baseline_solution"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_baseline_solution</span></code></a>(physical_config, ...)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.orbitals.get_cisd_leading_determinants.html#deeperwin.orbitals.get_cisd_leading_determinants" title="deeperwin.orbitals.get_cisd_leading_determinants"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_cisd_leading_determinants</span></code></a>(...[, basis_set])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.orbitals.get_envelope_exponents_cisd.html#deeperwin.orbitals.get_envelope_exponents_cisd" title="deeperwin.orbitals.get_envelope_exponents_cisd"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_envelope_exponents_cisd</span></code></a>(physical_config, ...)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.orbitals.get_envelope_exponents_from_atomic_orbitals.html#deeperwin.orbitals.get_envelope_exponents_from_atomic_orbitals" title="deeperwin.orbitals.get_envelope_exponents_from_atomic_orbitals"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_envelope_exponents_from_atomic_orbitals</span></code></a>(...)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.orbitals.get_envelope_exponents_hardcoded.html#deeperwin.orbitals.get_envelope_exponents_hardcoded" title="deeperwin.orbitals.get_envelope_exponents_hardcoded"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_envelope_exponents_hardcoded</span></code></a>(...)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.orbitals.get_hartree_fock_solution.html#deeperwin.orbitals.get_hartree_fock_solution" title="deeperwin.orbitals.get_hartree_fock_solution"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_hartree_fock_solution</span></code></a>(physical_config, ...)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.orbitals.get_orbital_type.html#deeperwin.orbitals.get_orbital_type" title="deeperwin.orbitals.get_orbital_type"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_orbital_type</span></code></a>(atomic_orbital)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.orbitals.get_p_orbital_indices_per_atom.html#deeperwin.orbitals.get_p_orbital_indices_per_atom" title="deeperwin.orbitals.get_p_orbital_indices_per_atom"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_p_orbital_indices_per_atom</span></code></a>(atomic_orbitals)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.orbitals.split_results_into_spins.html#deeperwin.orbitals.split_results_into_spins" title="deeperwin.orbitals.split_results_into_spins"><code class="xref py py-obj docutils literal notranslate"><span class="pre">split_results_into_spins</span></code></a>(hf)</p></td>
 <td><p></p></td>
 </tr>
 </tbody>
@@ -159,8 +194,8 @@
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="deeperwin.optimization.optimize_wavefunction.html" class="btn btn-neutral float-left" title="deeperwin.optimization.optimize_wavefunction" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="deeperwin.orbitals.build_el_el_cusp_correction.html" class="btn btn-neutral float-right" title="deeperwin.orbitals.build_el_el_cusp_correction" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="deeperwin.optimization.pretrain_orbitals.html" class="btn btn-neutral float-left" title="deeperwin.optimization.pretrain_orbitals" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="deeperwin.orbitals.build_pyscf_molecule.html" class="btn btn-neutral float-right" title="deeperwin.orbitals.build_pyscf_molecule" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

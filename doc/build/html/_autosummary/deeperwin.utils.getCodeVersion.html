@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17: http://docutils.sourceforge.net/" />
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>deeperwin.utils.getCodeVersion &mdash; deeperwin 1.0.0 documentation</title>
@@ -52,6 +52,7 @@
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.configuration.html">deeperwin.configuration</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.dispatch.html">deeperwin.dispatch</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.evaluation.html">deeperwin.evaluation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.features.html">deeperwin.features</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.hamiltonian.html">deeperwin.hamiltonian</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.kfac.html">deeperwin.kfac</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.html">deeperwin.kfac_ferminet_alpha</a></li>
@@ -61,15 +62,15 @@
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.model.html">deeperwin.model</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.optimization.html">deeperwin.optimization</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.orbitals.html">deeperwin.orbitals</a></li>
-<li class="toctree-l3"><a class="reference internal" href="deeperwin.process_molecule.html">deeperwin.process_molecule</a></li>
-<li class="toctree-l3"><a class="reference internal" href="deeperwin.process_molecules_shared.html">deeperwin.process_molecules_shared</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.register_curvature.html">deeperwin.register_curvature</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.sweep_agent.html">deeperwin.sweep_agent</a></li>
 <li class="toctree-l3 current"><a class="reference internal" href="deeperwin.utils.html">deeperwin.utils</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.adam_inverse.html">deeperwin.utils.adam_inverse</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.adam_scaled.html">deeperwin.utils.adam_scaled</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.build_inverse_schedule.html">deeperwin.utils.build_inverse_schedule</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.build_learning_rate_schedule.html">deeperwin.utils.build_learning_rate_schedule</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.calculate_clipping_state.html">deeperwin.utils.calculate_clipping_state</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.calculate_metrics.html">deeperwin.utils.calculate_metrics</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.convert_to_jnp.html">deeperwin.utils.convert_to_jnp</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.fit_morse_potential.html">deeperwin.utils.fit_morse_potential</a></li>
 <li class="toctree-l4 current"><a class="current reference internal" href="#">deeperwin.utils.getCodeVersion</a></li>
@@ -81,14 +82,19 @@
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.get_ion_pos_string.html">deeperwin.utils.get_ion_pos_string</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.get_module_params_nested.html">deeperwin.utils.get_module_params_nested</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.get_number_of_params.html">deeperwin.utils.get_number_of_params</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.load_all_runs.html">deeperwin.utils.load_all_runs</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.load_from_file.html">deeperwin.utils.load_from_file</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.load_run.html">deeperwin.utils.load_run</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.make_opt_state_picklable.html">deeperwin.utils.make_opt_state_picklable</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.merge_trainable_params.html">deeperwin.utils.merge_trainable_params</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.morse_potential.html">deeperwin.utils.morse_potential</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.prepare_data_for_logging.html">deeperwin.utils.prepare_data_for_logging</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.remove_module_params_nested.html">deeperwin.utils.remove_module_params_nested</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.save_to_file.html">deeperwin.utils.save_to_file</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.save_xyz_file.html">deeperwin.utils.save_xyz_file</a></li>
-<li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.set_adam_scaled_lr_scale.html">deeperwin.utils.set_adam_scaled_lr_scale</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.set_module_params_nested.html">deeperwin.utils.set_module_params_nested</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.set_scaled_optimizer_lr.html">deeperwin.utils.set_scaled_optimizer_lr</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.sgd_scaled.html">deeperwin.utils.sgd_scaled</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.split_trainable_params.html">deeperwin.utils.split_trainable_params</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.unpickle_opt_state.html">deeperwin.utils.unpickle_opt_state</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.PickleableOptState.html">deeperwin.utils.PickleableOptState</a></li>

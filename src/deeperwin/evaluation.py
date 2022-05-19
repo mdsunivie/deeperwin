@@ -13,7 +13,8 @@ from jax import numpy as jnp
 from deeperwin.configuration import EvaluationConfig
 from deeperwin.hamiltonian import get_local_energy, calculate_forces
 from deeperwin.loggers import DataLogger
-from deeperwin.mcmc import MCMCState, MetropolisHastingsMonteCarlo, calculate_metrics
+from deeperwin.mcmc import MCMCState, MetropolisHastingsMonteCarlo
+from deeperwin.utils import calculate_metrics, save_to_file
 
 LOGGER = logging.getLogger("dpe")
 
@@ -59,7 +60,8 @@ def evaluate_wavefunction(
         mcmc_state: MCMCState,
         config: EvaluationConfig,
         logger: DataLogger = None,
-        evaluation_step_func=None
+        evaluation_step_func=None,
+        evaluation_type="eval"
 ):
     params = (trainable_params, fixed_params)
     LOGGER.debug("Starting burn-in for evaluation...")
@@ -71,17 +73,28 @@ def evaluate_wavefunction(
     t_start = time.time()
     E_eval_mean = []
     forces_mean = []
+    mcmc_walker_position = []
+    log_psi_data = []
     for n_epoch in range(config.n_epochs):
+        mcmc_state_old = mcmc_state
         mcmc_state, E_epoch, forces = evaluation_step_func(mcmc_state, (trainable_params, fixed_params))
         t_end = time.time()
         if E_epoch is not None:
-            E_eval_mean.append(jnp.nanmean(E_epoch))
+            E_eval_mean.append(np.nanmean(np.array(E_epoch, dtype=float)))
         if logger is not None:
             if E_epoch is not None:
-                logger.log_metrics(*calculate_metrics(n_epoch, E_epoch, mcmc_state, (t_end - t_start), "eval"))
+                E_ref = fixed_params['baseline_energies']['E_ref']
+                logger.log_metrics(*calculate_metrics(n_epoch, E_epoch, None, E_eval_mean, mcmc_state, mcmc_state_old, (t_end - t_start), evaluation_type, E_ref=E_ref, smoothing=1.0))
             if forces is not None:
                 logger.log_metric("forces", forces, n_epoch, "eval")
                 forces_mean.append(forces)
+            if config.log_mcmc_info:
+                mcmc_walker_position.append(mcmc_state.r)
+                log_psi_data.append(mcmc_state.log_psi_sqr)
         t_start = t_end
     forces_mean = jnp.array(forces_mean) if (len(forces_mean) > 0) else None
-    return jnp.array(E_eval_mean), forces_mean, mcmc_state
+
+    if config.log_mcmc_info:
+        save_to_file("mcmc_info.bz2", **{'mcmc_r': mcmc_walker_position, 'log_psi': log_psi_data})
+
+    return np.array(E_eval_mean, dtype=float), forces_mean, mcmc_state

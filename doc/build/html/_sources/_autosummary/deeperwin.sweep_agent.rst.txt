@@ -15,6 +15,7 @@ deeperwin.sweep\_agent
       :toctree:
    
       get_current_run_nr
+      run_sweep_agent
    
    
 
