@@ -1,6 +1,0 @@
-deeperwin.bfgs.calculate\_metrics\_bfgs
-=======================================
-
-.. currentmodule:: deeperwin.bfgs
-
-.. autofunction:: calculate_metrics_bfgs

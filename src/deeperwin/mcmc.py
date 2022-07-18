@@ -4,19 +4,16 @@ Logic for Markov chain Monte Carlo (MCMC) steps.
 
 import copy
 import functools
-from dataclasses import dataclass
 from typing import Tuple
-
 import jax
 import jax.numpy as jnp
 import numpy as np
+import chex
 
 from deeperwin.configuration import MCMCConfig, MCMCLangevinProposalConfig, PhysicalConfig, LocalStepsizeProposalConfig
-from deeperwin.utils import get_el_ion_distance_matrix
+from deeperwin.utils import get_el_ion_distance_matrix, pmap, pmean, batch_rng_split
 
-
-@jax.tree_util.register_pytree_node_class
-@dataclass
+@chex.dataclass
 class MCMCState:
     """
     Dataclasss that holds an electronic configuration and metadata required for MCMC.
@@ -31,29 +28,80 @@ class MCMCState:
     step_nr: jnp.array = jnp.array(0, dtype=int)
     acc_rate: jnp.array = jnp.array(0.0)
 
-    def tree_flatten(self):
-        children = (self.r, self.R, self.Z, self.log_psi_sqr, self.walker_age, self.rng_state, self.stepsize, self.step_nr, self.acc_rate)
-        aux_data = None
-        return (children, aux_data)
-
-    @classmethod
-    def tree_unflatten(cls, aux_data, children):
-        return cls(*children)
-
-    @property
-    def model_args(self):
-        return self.r, self.R, self.Z
+    def build_batch(self, fixed_params):
+        return self.r, self.R, self.Z, fixed_params
 
     @classmethod
     def initialize_around_nuclei(cls, n_walkers, physical_config: PhysicalConfig):
         r0 = np.random.normal(size=[n_walkers, physical_config.n_electrons, 3])
         for i_el, i_nuc in enumerate(physical_config.el_ion_mapping):
             r0[:, i_el, :] += np.array(physical_config.R[i_nuc])
-        r0 = jnp.array(r0)
-        return cls(
-            r=r0, R=jnp.array(physical_config.R), Z=jnp.array(physical_config.Z),
-            walker_age=jnp.zeros(n_walkers, dtype=int)
-        )
+        return cls(r=jnp.array(r0),
+                   R=jnp.array(physical_config.R),
+                   Z=jnp.array(physical_config.Z),
+                   log_psi_sqr=-jnp.ones(n_walkers) * 1000, # initialize walkers with very low probability; will always be accepted in first MCMC move,
+                   walker_age=jnp.zeros(n_walkers, dtype=int),
+                   rng_state=jax.random.split(jax.random.PRNGKey(0), n_walkers))
+
+    @classmethod
+    def resize_or_init(cls, mcmc_state, n_walkers, physical_config: PhysicalConfig, n_devices=None):
+        if mcmc_state:
+            if mcmc_state.r.ndim == 4:
+                mcmc_state = mcmc_state.merge_devices()
+            mcmc_state = resize_nr_of_walkers(mcmc_state, n_walkers)
+        else:
+            mcmc_state = cls.initialize_around_nuclei(n_walkers, physical_config)
+
+        if n_devices:
+            mcmc_state = mcmc_state.split_across_devices(n_devices)
+        return mcmc_state
+
+    def split_across_devices(self, n_devices):
+        assert self.r.ndim == 3, "State is already split across devices"
+        n_samples_total = self.r.shape[0]
+        assert n_samples_total % n_devices == 0, f"Number of samples ({n_samples_total}) is not evenly divisible acros devices ({n_devices}"
+        batch_dims = (n_devices, n_samples_total // n_devices)
+
+        def _split(x):
+            return x.reshape(batch_dims + x.shape[1:])
+
+        def _tile(x):
+            return jnp.tile(x, [n_devices] + [1] * x.ndim)
+
+        return MCMCState(r=_split(self.r),
+                         log_psi_sqr=_split(self.log_psi_sqr),
+                         walker_age=_split(self.walker_age),
+                         rng_state=_split(self.rng_state),
+                         R=_tile(self.R),
+                         Z=_tile(self.Z),
+                         stepsize=_tile(self.stepsize),
+                         step_nr=_tile(self.step_nr),
+                         acc_rate=_tile(self.acc_rate)
+                         )
+
+    def merge_devices(self):
+        if self.r.ndim == 3:
+            return self   # already merged
+        assert self.r.ndim == 4, "State is not split across devices"
+
+        def _reshape(x):
+            return x.reshape((-1,) + x.shape[2:])
+
+        return MCMCState(r=_reshape(self.r),
+                         log_psi_sqr=_reshape(self.log_psi_sqr),
+                         walker_age=_reshape(self.walker_age),
+                         rng_state=_reshape(self.rng_state),
+                         R=self.R[0],
+                         Z=self.Z[0],
+                         stepsize=self.stepsize[0],
+                         step_nr=self.step_nr[0],
+                         acc_rate=self.acc_rate[0]
+                         )
+
+
+# MCMC_PMAP_AXES = MCMCState(r=0, R=None, Z=None, log_psi_sqr=0, walker_age=0, rng_state=0, stepsize=None, step_nr=None, acc_rate=None)
+MCMC_BATCH_AXES = MCMCState(r=0, R=None, Z=None, log_psi_sqr=0, walker_age=0, rng_state=0, stepsize=None, step_nr=None, acc_rate=None)
+
 
 
 def _resize_array(x, new_length):
@@ -67,25 +115,38 @@ def _resize_array(x, new_length):
 
 
 def resize_nr_of_walkers(state: MCMCState, n_walkers_new):
+    if n_walkers_new == len(state.r):
+        return state
     new_state = copy.deepcopy(state)
     new_state.r = _resize_array(state.r, n_walkers_new)
     new_state.log_psi_sqr = _resize_array(state.log_psi_sqr, n_walkers_new)
     new_state.walker_age = _resize_array(state.walker_age, n_walkers_new)
+    new_state.rng_state = jax.random.split(state.rng_state[0], n_walkers_new)
     return new_state
 
-
+@functools.partial(jax.vmap, in_axes=(MCMC_BATCH_AXES,), out_axes=(MCMC_BATCH_AXES, 0))
 def _propose_normal(state: MCMCState):
     new_state = copy.copy(state)
     new_state.rng_state, subkey = jax.random.split(state.rng_state)
     new_state.r += jax.random.normal(subkey, state.r.shape) * state.stepsize
-    return new_state, jnp.zeros(state.r.shape[0])
+    return new_state, 0.0
 
+@functools.partial(jax.vmap, in_axes=(MCMC_BATCH_AXES,), out_axes=(MCMC_BATCH_AXES, 0))
+def _propose_normal_one_el(state: MCMCState):
+    n_el = state.r.shape[-2]
+    index = state.step_nr % n_el
 
+    new_state = copy.copy(state)
+    new_state.rng_state, subkey = jax.random.split(state.rng_state)
+    new_state.r = new_state.r.at[..., index, :].add(jax.random.normal(subkey, state.r[..., index, :].shape) * state.stepsize)
+    return new_state, 0.0
+
+@functools.partial(jax.vmap, in_axes=(MCMC_BATCH_AXES,), out_axes=(MCMC_BATCH_AXES, 0))
 def _propose_cauchy(state: MCMCState):
     new_state = copy.copy(state)
     new_state.rng_state, subkey = jax.random.split(state.rng_state)
     new_state.r += jax.random.cauchy(subkey, state.r.shape) * state.stepsize
-    return new_state, jnp.zeros(state.r.shape[0])
+    return new_state, 0.0
 
 
 def _calculate_local_stepsize(d_to_closest_ion, stepsize, r_min=0.1, r_max=2.0):
@@ -101,7 +162,7 @@ def _calculate_stepsize_and_langevin_bias(r, R, Z, stepsize, mcmc_langevin_scale
     s = stepsize * jnp.clip(dist_closest, mcmc_r_min, mcmc_r_max)
     return s, g_r
 
-
+@functools.partial(jax.vmap, in_axes=(MCMC_BATCH_AXES,), out_axes=(MCMC_BATCH_AXES, 0))
 def _propose_step_local_stepsize(state: MCMCState, config: LocalStepsizeProposalConfig):
     new_state = copy.copy(state)
     new_state.rng_state, subkey = jax.random.split(state.rng_state)
@@ -119,6 +180,7 @@ def _propose_step_local_stepsize(state: MCMCState, config: LocalStepsizeProposal
     log_q_ratio = jnp.sum(log_q_ratio, axis=-1) # sum over electrons
     return new_state, log_q_ratio
 
+@functools.partial(jax.vmap, in_axes=(MCMC_BATCH_AXES,), out_axes=(MCMC_BATCH_AXES, 0))
 def _propose_step_local_stepsize_one_el(state: MCMCState, config: LocalStepsizeProposalConfig):
     new_state = copy.copy(state)
     new_state.rng_state, subkey = jax.random.split(state.rng_state)
@@ -138,15 +200,8 @@ def _propose_step_local_stepsize_one_el(state: MCMCState, config: LocalStepsizeP
     log_q_ratio += 0.5 * dist_sqr * (1 / s ** 2 - 1 / s_new ** 2)    #log_q_ratio = jnp.sum(log_q_ratio, axis=-1) # sum over electrons
     return new_state, log_q_ratio
 
-def _propose_normal_one_el(state: MCMCState):
-    n_el = state.r.shape[-2]
-    index = state.step_nr % n_el
 
-    new_state = copy.copy(state)
-    new_state.rng_state, subkey = jax.random.split(state.rng_state)
-    new_state.r = new_state.r.at[..., index, :].add(jax.random.normal(subkey, state.r[..., index, :].shape) * state.stepsize)
-    return new_state, jnp.zeros(state.r.shape[0])
-
+@functools.partial(jax.vmap, in_axes=(MCMC_BATCH_AXES,), out_axes=(MCMC_BATCH_AXES, 0))
 def _propose_step_local_approximated_langevin(state: MCMCState, config: MCMCLangevinProposalConfig):
     """
     Proposes a new electron configuration for metropolis hastings, using 2 techniques: Local stepsize and an approximated langevin-dynamics.
@@ -205,46 +260,29 @@ class MetropolisHastingsMonteCarlo:
         else:
             raise NotImplementedError("Unknown MCMC proposal type")
 
-    def make_mcmc_step(self, func, func_params, state: MCMCState, method, stepsize_update_interval):
+    def make_mcmc_step(self, func, state: MCMCState):
         # Propose a new state
         state_new, log_q_ratio = self.propose(state)
-        state_new.log_psi_sqr = func(*state_new.model_args, *func_params)
+        state_new.log_psi_sqr = func(state_new)
 
         # Decide which samples to accept and which ones to reject
         p_accept = jnp.exp(state_new.log_psi_sqr - state.log_psi_sqr + log_q_ratio)
-        state_new.rng_state, subkey = jax.random.split(state.rng_state)
-        thr_accept = jax.random.uniform(subkey, p_accept.shape)
+        state_new.rng_state, subkeys = batch_rng_split(state.rng_state)
+        thr_accept = jax.vmap(lambda k: jax.random.uniform(k, ()))(subkeys)
         do_accept = p_accept > thr_accept
-
-        if method == 'opt':
-            is_too_old = state_new.walker_age >= self.config.max_age_opt
-        else:
-            is_too_old = state_new.walker_age >= self.config.max_age_eval
-        do_accept = jnp.logical_or(do_accept, is_too_old)
+        do_accept = jnp.logical_or(do_accept, state_new.walker_age >= self.config.max_age)
         state_new.walker_age = jnp.where(do_accept, 0, state_new.walker_age + 1)
-
         state_new.log_psi_sqr = jnp.where(do_accept, state_new.log_psi_sqr, state.log_psi_sqr)
         state_new.r = jnp.where(do_accept[..., np.newaxis, np.newaxis], state_new.r, state.r)
-        acceptance_rate = jnp.mean(do_accept)
+        acceptance_rate = pmean(jnp.mean(do_accept))
 
+        # Update running acceptance rate and stepsize
         state_new.step_nr += 1
-
-        if self.config.debug_mcmc_stepsize:
-            state_new.stepsize = jax.lax.cond(state_new.step_nr % stepsize_update_interval == 0,
-                                              lambda x: x*1.25,
-                                              lambda x: x,
-                                              state.stepsize)
-        else:
-            state_new.acc_rate = jax.lax.cond(state_new.step_nr % stepsize_update_interval == 0,
-                                              lambda x: jnp.array(0.0),
-                                              lambda x: x[0] + x[1],
-                                              (state.acc_rate,
-                                               acceptance_rate))
-            state_new.stepsize = jax.lax.cond(state_new.step_nr % stepsize_update_interval == 0,
-                                              self._adjust_stepsize,
-                                              lambda x: x[0],
-                                              (state.stepsize,
-                                              state.acc_rate/(stepsize_update_interval-1)))
+        state_new.acc_rate = 0.9 * state.acc_rate + 0.1 * acceptance_rate # exp running average of acc_rate
+        state_new.stepsize = jax.lax.cond(state_new.step_nr % self.config.stepsize_update_interval == 0,
+                                          self._adjust_stepsize,
+                                          lambda x: x[0],
+                                          (state.stepsize, state.acc_rate))
         return state_new
 
 
@@ -256,23 +294,19 @@ class MetropolisHastingsMonteCarlo:
         stepsize = jnp.clip(stepsize, self.config.min_stepsize_scale, self.config.max_stepsize_scale)
         return stepsize
 
-    @functools.partial(jax.jit, static_argnums=(0, 1, 4, 5, 6))
-    def _run_mcmc_steps(self, func, func_params, state, n_steps, method, stepsize_update_interval):
+    def _run_mcmc_steps(self, func, state, params, fixed_params, n_steps):
+        def partial_func(s):
+            return func(params, *s.build_batch(fixed_params))
+        if state.log_psi_sqr is None:
+            state.log_psi_sqr = partial_func(state)
         def _loop_body(i, _state):
-            return self.make_mcmc_step(func, func_params, _state, method, stepsize_update_interval)
-        # if self.config.proposal.name == 'normal_one_el':
-        #     return jax.lax.fori_loop(0, n_steps*state.r.shape[-2], _loop_body, state)
-        # else:
+            return self.make_mcmc_step(partial_func, _state)
         return jax.lax.fori_loop(0, n_steps, _loop_body, state)
 
+    @functools.partial(pmap, static_broadcasted_argnums=(0,1))
+    def run_inter_steps(self, func, state: MCMCState, params, fixed_params):
+        return self._run_mcmc_steps(func, state, params, fixed_params, self.config.n_inter_steps)
 
-    def run_inter_steps(self, func, func_params, state: MCMCState, method='opt'):
-        return self._run_mcmc_steps(func, func_params, state, self.config.n_inter_steps, method, self.config.stepsize_update_interval)
-
-    def run_burn_in_opt(self, func, func_params, state: MCMCState):
-        return self._run_mcmc_steps(func, func_params, state, self.config.n_burn_in_opt, 'opt', self.config.stepsize_update_interval)
-
-    def run_burn_in_eval(self, func, func_params, state: MCMCState):
-        return self._run_mcmc_steps(func, func_params, state, self.config.n_burn_in_eval, 'eval', self.config.stepsize_update_interval)
-
-
+    @functools.partial(pmap, static_broadcasted_argnums=(0,1))
+    def run_burn_in(self, func, state: MCMCState, params, fixed_params):
+        return self._run_mcmc_steps(func, state, params, fixed_params, self.config.n_burn_in)

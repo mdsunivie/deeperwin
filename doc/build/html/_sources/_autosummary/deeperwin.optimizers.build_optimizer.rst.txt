@@ -1,0 +1,6 @@
+deeperwin.optimizers.build\_optimizer
+=====================================
+
+.. currentmodule:: deeperwin.optimizers
+
+.. autofunction:: build_optimizer

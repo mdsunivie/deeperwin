@@ -1,6 +1,0 @@
-deeperwin.dispatch.dispatch\_job
-================================
-
-.. currentmodule:: deeperwin.dispatch
-
-.. autofunction:: dispatch_job

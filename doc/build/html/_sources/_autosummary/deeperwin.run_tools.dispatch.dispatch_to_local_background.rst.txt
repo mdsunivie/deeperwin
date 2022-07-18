@@ -1,0 +1,6 @@
+deeperwin.run\_tools.dispatch.dispatch\_to\_local\_background
+=============================================================
+
+.. currentmodule:: deeperwin.run_tools.dispatch
+
+.. autofunction:: dispatch_to_local_background

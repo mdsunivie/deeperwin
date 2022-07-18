@@ -12,6 +12,6 @@ physical:
   el_ion_mapping: [0, 1]
 
 model:
-  baseline:
+  orbitals:
     n_determinants: 1
 

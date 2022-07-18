@@ -1,0 +1,30 @@
+deeperwin.run\_tools.available\_gpus
+====================================
+
+.. automodule:: deeperwin.run_tools.available_gpus
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+   
+      assign_free_GPU_ids
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+

@@ -3,9 +3,9 @@ Logging of metrics and weights to local disk and web services.
 """
 
 import logging
+import time
 import os.path
 import sys
-import copy
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Literal
 
@@ -14,7 +14,7 @@ import wandb
 
 from deeperwin.configuration import LoggingConfig, BasicLoggerConfig, LoggerBaseConfig, PickleLoggerConfig, \
     WandBConfig, Configuration
-from deeperwin.utils import save_to_file
+from deeperwin.checkpoints import save_run, RunData
 
 
 def build_dpe_root_logger(config: BasicLoggerConfig):
@@ -68,6 +68,9 @@ class DataLogger(ABC):
     def log_tags(self, tags: List[str]):
         self.log_param("tags", tags)
 
+    def log_config(self, config: Configuration):
+        self.log_params(config.as_flattened_dict())
+
     @abstractmethod
     def log_params(self, params: Dict[str, Any]):
         pass
@@ -76,7 +79,7 @@ class DataLogger(ABC):
     def log_metrics(self, metrics: Dict[str, Any], epoch=None, metric_type: Literal["", "opt", "eval", "pre"] = "", force_log=False):
         pass
 
-    def log_checkpoint(self, chkpt_dir, n_epoch, pretraining=False):
+    def log_checkpoint(self, n_epoch, params=None, fixed_params=None, mcmc_state=None, opt_state=None, clipping_state=None):
         pass
 
     def on_run_end(self):
@@ -84,10 +87,6 @@ class DataLogger(ABC):
 
     def on_run_begin(self):
         pass
-
-    def log_weights(self, weight_dict):
-        pass
-
 
 class LoggerCollection(DataLogger):
     """
@@ -109,9 +108,9 @@ class LoggerCollection(DataLogger):
             loggers.append(WandBLogger(config.wandb, name, save_path, prefix))
         return loggers
 
-    def log_checkpoint(self, chkpt_dir, n_epoch, pretraining=False):
+    def log_checkpoint(self, n_epoch, params=None, fixed_params=None, mcmc_state=None, opt_state=None, clipping_state=None):
         for l in self.loggers:
-            l.log_checkpoint(chkpt_dir, n_epoch, pretraining=pretraining)
+            l.log_checkpoint(n_epoch, params, fixed_params, mcmc_state, opt_state, clipping_state)
 
     def on_run_begin(self):
         for l in self.loggers:
@@ -120,6 +119,10 @@ class LoggerCollection(DataLogger):
     def on_run_end(self):
         for l in self.loggers:
             l.on_run_end()
+
+    def log_config(self, config: Configuration):
+        for l in self.loggers:
+            l.log_config(config)
 
     def log_params(self, params: Dict[str, Any]):
         for l in self.loggers:
@@ -132,10 +135,6 @@ class LoggerCollection(DataLogger):
     def log_tags(self, tags: List[str]):
         for l in self.loggers:
             l.log_tags(tags)
-
-    def log_weights(self, weight_dict):
-        for l in self.loggers:
-            l.log_weights(weight_dict)
 
 
 class WandBLogger(DataLogger):
@@ -186,10 +185,7 @@ class WandBLogger(DataLogger):
     def log_metrics(self, metrics, epoch=None, metric_type: str = "", force_log=False):
         if (not force_log) and self._should_skip_epoch(epoch):
             return
-        metrics_prefixed = {}
-        for k, v in metrics.items():
-            if not k.endswith(self.blacklist):
-                metrics_prefixed[self.prefix + k] = v
+        metrics_prefixed = {self.prefix + k: v for k,v in metrics.items() if not k.endswith(self.blacklist)}
         for key in metrics_prefixed:
             metrics_prefixed[key] = self._convert_metric_datatype(metrics_prefixed[key])
         if epoch is None:
@@ -244,58 +240,136 @@ class PickleLogger(DataLogger):
 
     def __init__(self, config: PickleLoggerConfig, name, save_path=".", log_opt_state=True):
         super().__init__(config, name, save_path)
-        self.metrics = dict(opt_epochs=[], eval_epochs=[], pre_epochs=[])
-        self.config = dict()
+        self.history = []
+        self.summary = dict()
+        self.config = None
+        self.meta_data = dict()
         self.weights = dict()
         self.log_opt_state = log_opt_state
+
+    def log_config(self, config: Configuration):
+        self.config = config
 
     def log_metrics(self, metrics: Dict[str, Any], epoch=None, metric_type: Literal["", "opt", "eval", "pre"] = "", force_log=False):
         if (not force_log) and self._should_skip_epoch(epoch):
             return
-        for key, value in metrics.items():
-            if (key not in self.metrics) and (epoch is not None):
-                self.metrics[key] = []
-            if epoch is None:
-                self.metrics[key] = value
+        if epoch is None:
+            if metric_type:
+                metrics = {metric_type + "_" + k:v for k,v in metrics.items()}
+            self.summary.update(metrics)
+        else:
+            if metric_type:
+                epoch_key = f"{metric_type}_epoch"
             else:
-                self.metrics[key].append(value)
-            if (epoch is not None) and metric_type:
-                n_epoch_key = f"{metric_type}_epochs"
+                epoch_key = "epoch"
+            self.history.append({epoch_key: epoch, **metrics})
 
-                if n_epoch_key not in self.metrics:
-                    self.metrics[n_epoch_key] = []
-                if (len(self.metrics[n_epoch_key]) == 0) or (self.metrics[n_epoch_key][-1] != epoch):
-                    self.metrics[n_epoch_key].append(epoch)
 
     def log_params(self, params: Dict[str, Any]):
-        self.config.update(params)
+        self.meta_data.update(params)
 
-    def log_weights(self, weight_dict):
-        # For some unclear reason this deepcopy has caused the code to get stuck for hours without progress.
-        # Not copying should be fine since we only store the weights once, but this could in principle be problematic when
-        # external code modifies stored weights in-place
-        # logging.debug(f"Pickle logger: Creating deepcopy of weight dict; keys = {weight_dict.keys()}")
-        # weight_dict = copy.deepcopy(weight_dict)
-        logging.debug("Pickle logger: Updating self.weights")
-        self.weights.update(weight_dict)
-        if ('opt' in self.weights) and (not self.log_opt_state):
-            del self.weights['opt']
+    def log_checkpoint(self, n_epoch, params=None, fixed_params=None, mcmc_state=None, opt_state=None, clipping_state=None):
+        data = RunData(config=self.config,
+                       metadata=dict(n_epochs=n_epoch, **self.meta_data),
+                       history=self.history,
+                       summary=self.summary,
+                       params=params,
+                       fixed_params=fixed_params,
+                       opt_state=opt_state,
+                       mcmc_state=mcmc_state,
+                       clipping_state=clipping_state)
+        if n_epoch is None:
+            fname = os.path.join(self.save_path, f"chkpt.zip")
+        else:
+            fname = os.path.join(self.save_path, f"chkpt{n_epoch:06d}.zip")
+        save_run(fname, data)
 
-    def log_checkpoint(self, chkpt_dir, n_epoch=None, pretraining=False):
-        config_dict = copy.deepcopy(self.config)
-        if n_epoch is not None:
-            chkpt_name = f"chkpt{n_epoch:06d}"
-            for k in ['code_version', 'n_params', 'tags']:
-                config_dict.pop(k, None)
-            config_chkpt = Configuration.from_flattened_dict(config_dict)
-            config_chkpt.optimization.n_epochs = n_epoch if not pretraining else 0
-            config_chkpt.evaluation.n_epochs = 0
-            config_chkpt.experiment_name = f"{config_chkpt.experiment_name}_{chkpt_name}"
-            config_chkpt.save(os.path.join(chkpt_dir, "full_config.yml"))
-            config_dict = config_chkpt.get_as_flattened_dict()
-        data = dict(metrics=self.metrics, config=config_dict, weights=self.weights)
-        save_to_file(os.path.join(chkpt_dir, self.logger_config.fname), **data)
+class WavefunctionLogger:
+    def __init__(self, loggers: LoggerCollection, prefix = "", n_step=0, smoothing=0.05):
+        self.loggers = loggers
+        self.n_step = n_step
+        self.prefix = prefix
+        self.smoothing = smoothing
+        self.history = {}
+        self._time = time.time()
+        self._mcmc_state_old = None
 
-    def on_run_end(self):
-        self.log_checkpoint(self.save_path)
+    def smooth(self, key, value):
+        if key not in self.history:
+            self.history[key] = []
+        self.history[key].append(value)
+        n_averaging = int(self.smoothing * len(self.history[key]))
+        samples_for_averaging = self.history[key][-n_averaging:]
+        if len(samples_for_averaging) > 0:
+            return np.nanmean(samples_for_averaging, axis=0)
+
+    def log_step(self, E_loc_unclipped, E_loc_clipped=None, forces=None, E_ref=None, mcmc_state:'MCMCState' =None, opt_stats=None,
+                 extra_metrics=None):
+        if self.loggers is None:
+            return
+        metrics = dict()
+        metrics["E_mean"] = np.nanmean(E_loc_unclipped)
+        metrics["E_std"] = np.nanstd(E_loc_unclipped)
+
+        if E_loc_clipped is not None:
+            metrics["E_mean_clipped"] = np.nanmean(E_loc_clipped)
+            metrics["E_std_clipped"] = np.nanstd(E_loc_clipped)
+
+        if E_ref is not None:
+            metrics["error_E_mean"] = (metrics["E_mean"] - E_ref) * 1e3
+
+        if mcmc_state is not None:
+            mcmc_state = mcmc_state.merge_devices()
+            metrics["mcmc_stepsize"] = float(mcmc_state.stepsize)
+            metrics["mcmc_acc_rate"] = float(mcmc_state.acc_rate)
+            metrics["mcmc_max_age"] = np.max(mcmc_state.walker_age)
+            if self._mcmc_state_old:
+                delta_r = np.linalg.norm(mcmc_state.r - self._mcmc_state_old.r, axis=-1)
+                metrics["mcmc_delta_r_mean"] = np.mean(delta_r)
+                metrics["mcmc_delta_r_median"] = np.median(delta_r)
+            self._mcmc_state_old = mcmc_state
+
+        if forces is not None:
+            if forces.ndim == 3:
+                forces = np.mean(forces, axis=0) # average over devices
+            metrics["forces"] = forces
+
+        if opt_stats is not None:
+            for key in ['param_norm', 'grad_norm', 'precon_grad_norm', 'norm_constraint_factor']:
+                if key in opt_stats:
+                    metrics[key] = opt_stats[key]
+
+        for key in ["E_mean", "error_E_mean", "forces"]:
+            if key not in metrics:
+                continue
+            smoothed = self.smooth(key, metrics[key])
+            if smoothed is not None:
+                metrics[f"{key}_smooth"] = smoothed
+
+        t = time.time()
+        metrics["t_epoch"] = t - self._time
+        self._time = t
+        metrics = {f"{self.prefix}_{k}": v for k, v in metrics.items()}
+        if extra_metrics:
+            metrics.update(extra_metrics)
+
+        self.loggers.log_metrics(metrics, self.n_step, self.prefix)
+        self.n_step += 1
+
+    def log_summary(self, E_ref=None, epoch_nr=None):
+        metrics = dict()
+        if "E_mean" in self.history:
+            energies = np.array(self.history["E_mean"], dtype=float)
+            metrics["E_mean"] = np.nanmean(energies)
+            metrics["E_mean_sigma"] = np.nanstd(energies) / np.sqrt(len(energies))
+            if E_ref is not None:
+                metrics["error_eval"] = 1e3 * (metrics["E_mean"] - E_ref)
+                metrics["sigma_error_eval"] = 1e3 * metrics["E_mean_sigma"]
+                metrics["error_plus_2_stdev"] = metrics["error_eval"] + 2 * metrics["sigma_error_eval"]
+        if "forces" in self.history:
+            metrics["forces_mean"] = np.nanmean(self.history["forces"], axis=0)
+        if len(metrics) > 0:
+            self.loggers.log_metrics(metrics, epoch_nr, "opt", force_log=True)
+
+
 

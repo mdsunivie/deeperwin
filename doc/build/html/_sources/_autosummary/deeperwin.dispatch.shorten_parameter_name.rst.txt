@@ -1,6 +1,0 @@
-deeperwin.dispatch.shorten\_parameter\_name
-===========================================
-
-.. currentmodule:: deeperwin.dispatch
-
-.. autofunction:: shorten_parameter_name

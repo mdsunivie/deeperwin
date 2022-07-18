@@ -1,6 +1,0 @@
-deeperwin.dispatch.find\_runs\_rec
-==================================
-
-.. currentmodule:: deeperwin.dispatch
-
-.. autofunction:: find_runs_rec

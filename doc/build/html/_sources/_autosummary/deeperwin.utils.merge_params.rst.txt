@@ -1,0 +1,6 @@
+deeperwin.utils.merge\_params
+=============================
+
+.. currentmodule:: deeperwin.utils
+
+.. autofunction:: merge_params

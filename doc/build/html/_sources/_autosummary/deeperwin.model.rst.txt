@@ -14,30 +14,36 @@ deeperwin.model
    .. autosummary::
       :toctree:
    
-      build_backflow_factor
-      build_backflow_shift
-      build_embedding
-      build_jastrow_factor
       build_log_psi_squared
-      build_orbital_net
-      build_preprocessor
-      calculate_shift_decay
-      dense_layer
-      el_el_cusp
       evaluate_sum_of_determinants
-      ffwd_net
       get_baseline_slater_matrices
-      get_embedding_dim
-      get_nr_of_input_features
-      get_pairwise_features
-      init_ffwd_net
-      init_fixed_params_for_input_features
       init_model_fixed_params
-      scale
    
    
 
    
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: custom_class.rst
+   
+      BaselineOrbitals
+      ConvolutionalFeatures
+      DiffAndDistances
+      Embeddings
+      EnvelopeOrbitals
+      FermiNetEmbedding
+      InputFeatures
+      InputPreprocessor
+      JastrowFactor
+      MLP
+      OrbitalNet
+      PairwiseFeatures
+      PauliNetEmbedding
+      SymmetricFeatures
+      Wavefunction
    
    
 

@@ -1,0 +1,6 @@
+deeperwin.optimizers.build\_optax\_optimizer
+============================================
+
+.. currentmodule:: deeperwin.optimizers
+
+.. autofunction:: build_optax_optimizer

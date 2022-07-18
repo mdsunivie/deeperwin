@@ -1,6 +1,0 @@
-deeperwin.model.dense\_layer
-============================
-
-.. currentmodule:: deeperwin.model
-
-.. autofunction:: dense_layer

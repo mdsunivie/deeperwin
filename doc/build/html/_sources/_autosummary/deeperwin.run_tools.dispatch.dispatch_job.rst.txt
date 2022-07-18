@@ -1,0 +1,6 @@
+deeperwin.run\_tools.dispatch.dispatch\_job
+===========================================
+
+.. currentmodule:: deeperwin.run_tools.dispatch
+
+.. autofunction:: dispatch_job

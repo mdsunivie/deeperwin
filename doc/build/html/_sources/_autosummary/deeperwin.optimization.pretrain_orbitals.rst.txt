@@ -1,0 +1,6 @@
+deeperwin.optimization.pretrain\_orbitals
+=========================================
+
+.. currentmodule:: deeperwin.optimization
+
+.. autofunction:: pretrain_orbitals

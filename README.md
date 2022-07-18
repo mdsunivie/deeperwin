@@ -4,8 +4,7 @@ DeepErwin is python package that implements and optimizes wave function models f
 
 DeepErwin is based on JAX and supports:
 - Optimizing a wavefunction for a single nuclear geometry
-- Optimizing wavefunctions for multiple nuclear geometries in parallel, while sharing neural network weights across 
-these wavefunctions to speed-up optimization (see weight_sharing branch)
+- Optimizing wavefunctions for multiple nuclear geometries in parallel, while sharing neural network weights across these wavefunctions to speed-up optimization
 - Using pre-trained weights of a network to speed-up optimization for entirely new wavefunctions
 - Using second-order optimizers such as KFAC or L-BFGS 
 
@@ -18,7 +17,7 @@ arXiv preprint [arXiv:2105.08351](https://arxiv.org/pdf/2105.08351.pdf) (2021).
 
 ## Getting Started
 
-The quickest way to get started with DeepErwin is to have a look at our [documentation](https://mdsunivie.github.io/deeperwin/). It contains a detailed description of our python codebase and a [tutorial](https://mipunivie.github.io/deeperwin/tutorial.html) which should help you to quickly get up-and-running using DeepErwin.
+The quickest way to get started with DeepErwin is to have a look at our [documentation](https://mipunivie.github.io/deeperwin/). It contains a detailed description of our python codebase and a [tutorial](https://mipunivie.github.io/deeperwin/tutorial.html) which should help you to quickly get up-and-running using DeepErwin.
 
 ## About
 

@@ -1,51 +1,51 @@
-experiment_name: init
-
-model:
-  default: dpe4
-  embedding:
-    default: dpe4
-    use_w_mapping: true
-    use_h_two_same_diff: true
-    n_hidden_one_el: 20
-    n_hidden_two_el: 10
-    n_iterations: 2
-  orbitals:
-    n_determinants: 32
-    use_full_det: True
-    envelope_orbitals:
-      initialization: analytical
-      initialization_off_diag: constant
-
-optimization:
-  optimizer:
-    name: kfac
-    inversion_mode: pinv
-  n_epochs: 5
-  batch_size: 50
-  checkpoints: [0]
-
-mcmc:
-  n_walkers_opt: 50
-  n_burn_in_opt: 5
-  n_burn_in_eval: 5
-
-pre_training:
-  baseline:
-    basis_set: STO-6G
-  use_only_leading_determinant: true
-  n_epochs: 3
+experiment_name: debug_intermedeval
 
 physical:
-  name: Fe
-  n_electrons: 10
-  n_up: 5
+  name: LiH
+
+optimization:
+  n_epochs: 100
+  checkpoints:
+    keep_every_n_epochs: 20
+  mcmc:
+    n_walkers: 50
+    n_inter_steps: 1
+    n_burn_in: 0
+  optimizer:
+    name: kfac_adam
 
 evaluation:
-  n_epochs: 10
-#
+  n_epochs: 20
+  mcmc:
+    n_walkers: 50
+    n_inter_steps: 1
+    n_burn_in: 0
+
+pre_training:
+  n_epochs: 50
+  mcmc:
+    n_walkers: 100
+    n_burn_in: 5
+
+model:
+  name: dpe4
+  embedding:
+    n_iterations: 2
+    n_hidden_one_el: 10
+    n_hidden_two_el: 5
+  orbitals:
+    baseline_orbitals:
+      use_bf_shift: true
+  jastrow:
+    n_determinants: 2
+
 #logging:
 #  wandb:
+#    entity: schroedinger_univie
 #    project: debug
 
 computation:
-  disable_jit: True
+  require_gpu: false
+  disable_jit: false
+  n_devices: 2
+  force_device_count: True

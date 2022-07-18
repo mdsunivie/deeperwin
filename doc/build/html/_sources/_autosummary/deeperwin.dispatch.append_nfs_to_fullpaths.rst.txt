@@ -1,6 +1,0 @@
-deeperwin.dispatch.append\_nfs\_to\_fullpaths
-=============================================
-
-.. currentmodule:: deeperwin.dispatch
-
-.. autofunction:: append_nfs_to_fullpaths

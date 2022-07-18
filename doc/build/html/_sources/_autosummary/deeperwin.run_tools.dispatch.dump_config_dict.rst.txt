@@ -1,0 +1,6 @@
+deeperwin.run\_tools.dispatch.dump\_config\_dict
+================================================
+
+.. currentmodule:: deeperwin.run_tools.dispatch
+
+.. autofunction:: dump_config_dict

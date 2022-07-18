@@ -14,9 +14,7 @@ deeperwin.optimization
    .. autosummary::
       :toctree:
    
-      build_grad_loss
-      build_optimize_epoch_first_order
-      build_optimizer
+      build_value_and_grad_func
       optimize_wavefunction
       pretrain_orbitals
    

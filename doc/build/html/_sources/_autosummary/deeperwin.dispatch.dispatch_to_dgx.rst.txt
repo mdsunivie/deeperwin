@@ -1,6 +1,0 @@
-deeperwin.dispatch.dispatch\_to\_dgx
-====================================
-
-.. currentmodule:: deeperwin.dispatch
-
-.. autofunction:: dispatch_to_dgx

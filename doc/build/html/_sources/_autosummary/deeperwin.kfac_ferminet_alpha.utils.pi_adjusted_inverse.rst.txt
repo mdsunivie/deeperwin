@@ -1,6 +1,0 @@
-deeperwin.kfac\_ferminet\_alpha.utils.pi\_adjusted\_inverse
-===========================================================
-
-.. currentmodule:: deeperwin.kfac_ferminet_alpha.utils
-
-.. autofunction:: pi_adjusted_inverse

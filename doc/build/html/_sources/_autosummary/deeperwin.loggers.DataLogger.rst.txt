@@ -17,12 +17,12 @@ deeperwin.loggers.DataLogger
    
       ~DataLogger.__init__
       ~DataLogger.log_checkpoint
+      ~DataLogger.log_config
       ~DataLogger.log_metric
       ~DataLogger.log_metrics
       ~DataLogger.log_param
       ~DataLogger.log_params
       ~DataLogger.log_tags
-      ~DataLogger.log_weights
       ~DataLogger.on_run_begin
       ~DataLogger.on_run_end
    

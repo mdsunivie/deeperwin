@@ -1,6 +1,0 @@
-deeperwin.optimization.build\_optimize\_epoch\_first\_order
-===========================================================
-
-.. currentmodule:: deeperwin.optimization
-
-.. autofunction:: build_optimize_epoch_first_order

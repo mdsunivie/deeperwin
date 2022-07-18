@@ -1,6 +1,0 @@
-deeperwin.bfgs.calculate\_hvp\_by\_2loop\_recursion
-===================================================
-
-.. currentmodule:: deeperwin.bfgs
-
-.. autofunction:: calculate_hvp_by_2loop_recursion

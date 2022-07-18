@@ -1,6 +1,0 @@
-deeperwin.kfac\_ferminet\_alpha.utils.psd\_inv\_cholesky
-========================================================
-
-.. currentmodule:: deeperwin.kfac_ferminet_alpha.utils
-
-.. autofunction:: psd_inv_cholesky

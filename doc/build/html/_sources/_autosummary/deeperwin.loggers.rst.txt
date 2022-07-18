@@ -32,6 +32,7 @@ deeperwin.loggers
       LoggerCollection
       PickleLogger
       WandBLogger
+      WavefunctionLogger
    
    
 

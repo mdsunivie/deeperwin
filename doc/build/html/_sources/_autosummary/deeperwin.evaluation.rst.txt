@@ -14,7 +14,6 @@ deeperwin.evaluation
    .. autosummary::
       :toctree:
    
-      build_evaluation_step
       evaluate_wavefunction
    
    

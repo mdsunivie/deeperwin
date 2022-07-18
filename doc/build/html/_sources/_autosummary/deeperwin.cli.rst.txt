@@ -1,0 +1,30 @@
+deeperwin.cli
+=============
+
+.. automodule:: deeperwin.cli
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+   
+      main
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+

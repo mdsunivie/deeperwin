@@ -1,6 +1,0 @@
-deeperwin.hamiltonian.clip\_energies
-====================================
-
-.. currentmodule:: deeperwin.hamiltonian
-
-.. autofunction:: clip_energies

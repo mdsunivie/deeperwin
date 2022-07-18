@@ -15,14 +15,11 @@ deeperwin.hamiltonian
       :toctree:
    
       calculate_forces
-      clip_energies
       get_el_el_potential_energy
       get_ion_ion_potential_energy
       get_kinetic_energy
-      get_kinetic_energy_fwd_diff
       get_local_energy
       get_potential_energy
-      log_mcmc_debug_info
    
    
 

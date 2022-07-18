@@ -1,0 +1,30 @@
+deeperwin.run\_tools.setup\_calculations
+========================================
+
+.. automodule:: deeperwin.run_tools.setup_calculations
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+   
+      setup_calculations
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+

@@ -16,8 +16,11 @@ In particular DeepErwin supports:
 - Using pre-trained weights of a network to speed-up optimization for entirely new wavefunctions
 - Using second-order optimizers such as KFAC or BFGS
 
+A detailed description of our method and the corresponding results can be found in our publications:
+ - `Gold-standard solutions to the Schrödinger equation using deep learning: How much physics do we need? <https://arxiv.org/abs/2205.09438>`_
+ - `Solving the electronic Schrödinger equation for multiple nuclear geometries with weight-sharing deep neural networks <https://doi.org/10.1038/s43588-022-00228-x>`_
 
-A detailed description of our method and the corresponding results can be found in our recent `arxiv publication`_. Please cite this paper, whenever you use any parts of DeepErwin.
+Please cite the corresponding papers, whenever you use any parts of DeepErwin.
 
 
 Getting Started
@@ -36,4 +39,3 @@ For questions regarding this code, freel free to `reach out via e-mail`_
 
 
 .. _reach out via e-mail: mailto:deeperwin.datascience@univie.ac.at
-.. _arxiv publication: https://arxiv.org/pdf/2105.08351.pdf

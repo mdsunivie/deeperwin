@@ -1,2 +1,2 @@
-from deeperwin.main import main
+from deeperwin.cli import main
 main()

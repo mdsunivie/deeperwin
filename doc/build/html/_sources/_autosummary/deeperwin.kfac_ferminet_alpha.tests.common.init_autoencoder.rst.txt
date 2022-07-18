@@ -1,6 +1,0 @@
-deeperwin.kfac\_ferminet\_alpha.tests.common.init\_autoencoder
-==============================================================
-
-.. currentmodule:: deeperwin.kfac_ferminet_alpha.tests.common
-
-.. autofunction:: init_autoencoder

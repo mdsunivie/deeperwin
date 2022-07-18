@@ -1,0 +1,26 @@
+deeperwin.optimizers.OptaxWrapper
+=================================
+
+.. currentmodule:: deeperwin.optimizers
+
+.. autoclass:: OptaxWrapper
+   :members:
+   :show-inheritance:
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~OptaxWrapper.__init__
+      ~OptaxWrapper.init
+      ~OptaxWrapper.step
+   
+   
+
+   
+   
+   

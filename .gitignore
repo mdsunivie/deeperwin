@@ -1,8 +1,8 @@
 .idea
 *.pyc
 *.log
-build/
-dist/
+/build/
+/dist/
 /results.bz2
 /full_config.yml
 /wandb

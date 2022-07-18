@@ -1,6 +1,0 @@
-deeperwin.optimization.build\_grad\_loss
-========================================
-
-.. currentmodule:: deeperwin.optimization
-
-.. autofunction:: build_grad_loss

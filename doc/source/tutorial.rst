@@ -119,44 +119,18 @@ Major configuration options
 To see a structure of all possible configuration options, take a look at the class :class:`~deeperwin.configuration.Configuration` which contains a full tree of all possible config options.
 Alternatively you can see the full configuration tree when looking at the *full_config.yml* file that is being generated at every run.
 
+
 Here are some of the most important configuration options:
 
-============== ======================================================== ============================================================================================================================================
-Category       Option                                                   Description
-============== ======================================================== ============================================================================================================================================
-optimization   optimizer.name                                           Type of optimizer, e.g. "adam", "rmsprop", "kfac", "slbfgs"
--------------- -------------------------------------------------------- --------------------------------------------------------------------------------------------------------------------------------------------
-optimization   learning_rate                                            Initial learning-rate during optimization. May be modified during optimization by the LR-schedule (optimization.schedule).
--------------- -------------------------------------------------------- --------------------------------------------------------------------------------------------------------------------------------------------
-optimization   optimizer.name                                           Type of optimizer, e.g. "adam", "rmsprop", "kfac", "slbfgs"
--------------- -------------------------------------------------------- --------------------------------------------------------------------------------------------------------------------------------------------
-optimization   batch_size                                               Size of a single backprop batch. Use lower batch-size if GPU-memory is insufficient.
--------------- -------------------------------------------------------- --------------------------------------------------------------------------------------------------------------------------------------------
-optimization   n_epochs                                                 Number of epochs to train the wavefunction model. In each epoch all n_walkers walkers are updated using MCMC and then optimized batch-by-batch.
--------------- -------------------------------------------------------- --------------------------------------------------------------------------------------------------------------------------------------------
-optimization   shared_optimization.use                                  Boolean flag to enable interdependent optimization of multiple geometries use weight-sharing between them (disabled by default). This can significantly reduce the total number of epochs required when optimizing wavefunctions for multiple geometries.
--------------- -------------------------------------------------------- --------------------------------------------------------------------------------------------------------------------------------------------
-model          baseline.n_determinants                                  Number of determinants to use for building the wavefunction
--------------- -------------------------------------------------------- --------------------------------------------------------------------------------------------------------------------------------------------
-model          use_bf_shift, use_bf_factor, use_jastrow                 Boolean flags to enable/disable parts of the architecture
--------------- -------------------------------------------------------- --------------------------------------------------------------------------------------------------------------------------------------------
-model          embedding.n_iterations                                   Number of iterations of the SchNet embedding
--------------- -------------------------------------------------------- --------------------------------------------------------------------------------------------------------------------------------------------
-model          n_hidden_bf_factor, n_hidden_bf_shift, n_hidden_jastrow  List of integers, specifiying the number of hidden units per network layer
--------------- -------------------------------------------------------- --------------------------------------------------------------------------------------------------------------------------------------------
-evaluation     n_epochs                                                 Number of evaluation steps after the wavefunction optimization
--------------- -------------------------------------------------------- --------------------------------------------------------------------------------------------------------------------------------------------
-mcmc           n_walkers_opt, n_walkers_eval                            Number of MCMC-walkers to use for optimization and evaluation
--------------- -------------------------------------------------------- --------------------------------------------------------------------------------------------------------------------------------------------
-logging        wandb.entity, wandb.project                              When set, this enables logging of the experiment to Weights&Biases. Set logging.wandb=None to disable W&B-logging (default).
--------------- -------------------------------------------------------- --------------------------------------------------------------------------------------------------------------------------------------------
-restart        path                                                     Path to a directory containing a previously successfully finished wavefunction optimization to use as initializer for this experiment.
-============== ======================================================== ============================================================================================================================================
+.. csv-table:: Major configuration options
+   :file: major_config_options.csv
+   :widths: 15, 25, 60
+   :header-rows: 1
 
 
 Optimization using weight-sharing
 =================================
-ATTENTION: The weight-sharing technique is currenlty not supported on the master branch. A fully functioning codebase for weight-sharing
+**ATTENTION**: The weight-sharing technique is currenlty not supported on the master branch. A fully functioning codebase for weight-sharing
 can be found under the "weight_sharing" branch.
 
 When calculating wavefunctions for multiple related wavefunctions (e.g. for different geometries of the samemolecule), the naive approach would be to conduct independent wavefuntion optimiziations for each run.

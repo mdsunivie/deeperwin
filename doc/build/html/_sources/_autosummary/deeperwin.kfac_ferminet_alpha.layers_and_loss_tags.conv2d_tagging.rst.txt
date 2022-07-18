@@ -1,6 +1,0 @@
-deeperwin.kfac\_ferminet\_alpha.layers\_and\_loss\_tags.conv2d\_tagging
-=======================================================================
-
-.. currentmodule:: deeperwin.kfac_ferminet_alpha.layers_and_loss_tags
-
-.. autofunction:: conv2d_tagging

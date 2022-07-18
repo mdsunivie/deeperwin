@@ -1,179 +1,111 @@
 """
 Logic for wavefunction optimization.
 """
-import time
-from jax.flatten_util import ravel_pytree
-import jax.profiler
-from deeperwin.bfgs import build_bfgs_optimizer, calculate_metrics_bfgs
-from deeperwin.configuration import OptimizationConfig, EvaluationConfig, ClippingConfig, LoggingConfig, PreTrainingConfig, DeepErwinModelConfig, PhysicalConfig
-from deeperwin.evaluation import evaluate_wavefunction, build_evaluation_step
-from deeperwin.hamiltonian import *
-from deeperwin.kfac import build_grad_loss_kfac, build_optimize_epoch_kfac_test
-from deeperwin.loggers import DataLogger, prepare_checkpoint_directory
+import logging
+import jax
+import jax.numpy as jnp
+import kfac_jax
+from deeperwin.configuration import OptimizationConfig, EvaluationConfig, ClippingConfig, LoggingConfig, PreTrainingConfig, ModelConfig, PhysicalConfig
+from deeperwin.evaluation import evaluate_wavefunction
+from deeperwin.hamiltonian import get_local_energy
+from deeperwin.checkpoints import is_checkpoint_required, delete_obsolete_checkpoints
+from deeperwin.loggers import DataLogger, WavefunctionLogger
 from deeperwin.mcmc import MetropolisHastingsMonteCarlo, MCMCState
-from deeperwin.utils import get_builtin_optimizer, calculate_clipping_state, prepare_data_for_logging, _update_adam_opt_state, \
-    _update_adam_scaled_opt_state, set_scaled_optimizer_lr, calculate_metrics
+from deeperwin.utils import get_el_ion_distance_matrix
 from deeperwin.model import evaluate_sum_of_determinants, get_baseline_slater_matrices
 from deeperwin.orbitals import get_baseline_solution
+from deeperwin.optimizers import build_optimizer
+from deeperwin.utils import pmap, replicate_across_devices, merge_from_devices, pmean
+import functools
 
 LOGGER = logging.getLogger("dpe")
 
-def build_optimizer(
-    log_psi_squared_func, grad_loss_func, mcmc, initial_params, fixed_params, opt_config: OptimizationConfig, n_walkers, mcmc_state=None
-):
-    """
-    Builds an optimizer for optimizing the wavefunction model defined by `log_psi_squared_func`.
+def _update_clipping_state(E, clipping_state, clipping_config: ClippingConfig):
+    del clipping_state
+    center = dict(mean=jnp.nanmean,
+                  median=jnp.nanmedian,
+                  )[clipping_config.center](E)
+    center = pmean(center)
+    width = dict(std=jnp.nanstd,
+                 mae=lambda x: jnp.nanmean(jnp.abs(x-center)),
+                 )[clipping_config.width_metric](E) * clipping_config.clip_by
+    width = pmean(width)
+    return center, width
 
-    Args:
-        log_psi_squared_func (callable): A function representing the wavefunction model
-        grad_loss_func (callable): A function that yields gradients for minimizing the local energies
-        mcmc (MetropolisHastingsMonteCarlo): Object that implements the MCMC algorithm
-        initial_params (array): Initial trainable parameters for the model defined by `log_psi_squared_func`
-        fixed_params (array): Fixed paraemters of the model defined by `log_psi_squared_func`
-        opt_config (OptimizationConfig): Optimization hyperparameters
-        n_walkers (int): Number of MCMC walkers
-        mcmc_state (MCMCState): Initial state of the MCMC walkers
-
-    Returns:
-        A tuple (get_params, optimize_epoch, opt_state) where get_params is a callable that extracts the (optimized) trainable parameters from and optimization state, optimize_epoch is a callable that performs one epoch of wavefunction optimization and opt_state is the initial optimization state.
-
-    """
-    if opt_config.optimizer.order == 1:
-        opt_init, opt_update, opt_get_params = get_builtin_optimizer(opt_config.optimizer, opt_config.schedule, opt_config.learning_rate)
-        opt_state = opt_init(initial_params)
-        optimize_epoch = build_optimize_epoch_first_order(
-            log_psi_squared_func, grad_loss_func, mcmc, opt_get_params, opt_update, opt_config, n_walkers
-        )
-
-        if opt_config.optimizer.name == "adam":
-            change_parameters_fn = _update_adam_opt_state
-        elif opt_config.optimizer.name == "adam_scaled":
-            change_parameters_fn = _update_adam_scaled_opt_state
-        else:
-            change_parameters_fn = None
-        return opt_get_params, optimize_epoch, opt_state, change_parameters_fn
-    elif opt_config.optimizer.name == "slbfgs":
-        return build_bfgs_optimizer(log_psi_squared_func, grad_loss_func, mcmc, initial_params, opt_config, n_walkers)
-    elif opt_config.optimizer.name == "kfac":
-        if opt_config.optimizer.internal_optimizer.name == "adam":
-            change_parameters_fn = _update_adam_opt_state
-        elif opt_config.optimizer.internal_optimizer.name == "adam_scaled":
-            change_parameters_fn = _update_adam_scaled_opt_state
-
-        def _update_kfac_opt_state(opt_state_old, params):
-            adam_state = change_parameters_fn(opt_state_old[0], params)
-            opt_state = (adam_state, params, opt_state_old[-2], opt_state_old[-1])
-            return opt_state
-
-        n_batches = n_walkers // opt_config.batch_size
-        func_state = (mcmc_state.R, mcmc_state.Z, fixed_params, (jnp.array([0.0]).squeeze(), jnp.array([1000.0]).squeeze()))
-        r_batch = mcmc_state.r.reshape([n_batches, opt_config.batch_size, -1, 3])[0]
-        # opt_get_params, optimizer, opt_state = build_kfac_optimizer(grad_loss_func, initial_params, opt_config, r_batch, func_state)
-        # optimize_epoch = build_optimize_epoch_kfac(log_psi_squared_func, mcmc, optimizer, opt_config, n_walkers, n_batches)
-        optimize_epoch, opt_get_params, opt_state = build_optimize_epoch_kfac_test(
-            grad_loss_func, initial_params, opt_config, r_batch, func_state, log_psi_squared_func, mcmc, n_walkers, n_batches
-        )
-        return opt_get_params, optimize_epoch, opt_state, _update_kfac_opt_state
+def _clip_energies(E, clipping_state, clipping_config: ClippingConfig):
+    if clipping_config.from_previous_step:
+        center, width = clipping_state
     else:
-        raise ValueError("Unsupported optimizer")
+        center, width = _update_clipping_state(E, clipping_state, clipping_config)
 
+    if clipping_config.name == "hard":
+        clipped_energies = jnp.clip(E, center - width, center + width)
+    elif clipping_config.name == "tanh":
+        clipped_energies = center + jnp.tanh((E - center) / width) * width
+    else:
+        raise ValueError(f"Unsupported config-value for optimization.clipping.name: {clipping_config.name}")
+    new_clipping_state = _update_clipping_state(clipped_energies, clipping_state, clipping_config)
+    return clipped_energies, new_clipping_state
 
-def build_optimize_epoch_first_order(log_psi_squared_func, grad_loss_func, mcmc, opt_get_params, opt_update_params, opt_config, n_walkers):
-    """
-    Returns a callable that optimizes the model defined by `log_psi_squared_func` for a single epoch with a first-order method.
-
-    Args:
-        log_psi_squared_func (callable): A function representing the wavefunction model
-        grad_loss_func (callable): A function that yields gradients for minimizing the local energies
-        mcmc (MetropolisHastingsMonteCarlo): Object that implements the MCMC algorithm
-        opt_get_params (callable): A function to extract the trainable parameters from an optimization state object
-        opt_update_params (callable): Function that implements an update rule for the model weights given the gradient of the loss function
-        opt_config (OptimizationConfig): Optimization hyperparameters
-        n_walkers (int): Number of MCMC walkers
-
-    """
-    n_batches_per_epoch = n_walkers // opt_config.batch_size
-
-    @jax.jit
-    def _optimize_epoch(epoch_nr, mcmc_state: MCMCState, opt_state, clipping_state, fixed_params):
-        mcmc_state = mcmc.run_inter_steps(log_psi_squared_func, (opt_get_params(opt_state), fixed_params), mcmc_state)
-        r_batches = mcmc_state.r.reshape([n_batches_per_epoch, opt_config.batch_size, -1, 3])
-
-        def _batch_step(opt_state, r_batch):
-            grads, E_batch, E_batch_unclipped = grad_loss_func(r_batch, mcmc_state.R, mcmc_state.Z, opt_get_params(opt_state), fixed_params, clipping_state)
-            opt_state = opt_update_params(epoch_nr, grads, opt_state)
-            return opt_state, (E_batch, E_batch_unclipped)
-
-        opt_state, (E_epoch, E_epoch_unclipped) = jax.lax.scan(_batch_step, opt_state, r_batches)
-        E_epoch = E_epoch.flatten()
-        E_epoch_unclipped = E_epoch_unclipped.flatten()
-
-        clipping_state = calculate_clipping_state(E_epoch, opt_config.clipping)
-        mcmc_state.log_psi_sqr = log_psi_squared_func(*mcmc_state.model_args, opt_get_params(opt_state), fixed_params)
-        return E_epoch, E_epoch_unclipped, mcmc_state, opt_state, clipping_state
-
-    return _optimize_epoch
-
-
-def build_grad_loss(log_psi_func, clipping_config: ClippingConfig, use_fwd_fwd_hessian=False):
+def build_value_and_grad_func(log_psi_sqr_func, clipping_config: ClippingConfig):
     """
     Returns a callable that computes the gradient of the mean local energy for a given set of MCMC walkers with respect to the model defined by `log_psi_func`.
 
     Args:
-        log_psi_func (callable): A function representing the wavefunction model
+        log_psi_sqr_func (callable): A function representing the wavefunction model
         clipping_config (ClippingConfig): Clipping hyperparameters
         use_fwd_fwd_hessian (bool): If true, the second partial derivatives required for computing the local energy are obtained with a forward-forward scheme.
 
     """
 
+    # Build custom total energy jvp. Based on https://github.com/deepmind/ferminet/blob/jax/ferminet/train.py
     @jax.custom_jvp
-    def total_energy(trainable_params, aux_params):
-        r, R, Z, fixed_params, clipping_state = aux_params
-        E_loc_unclipped = get_local_energy(log_psi_func, r, R, Z, trainable_params, fixed_params, use_fwd_fwd_hessian)
-        E_loc = clip_energies(E_loc_unclipped, *clipping_state, clipping_config)
-        E_loc = jnp.where(jnp.isnan(E_loc), jnp.nanmean(E_loc) * jnp.ones_like(E_loc), E_loc)
-        return jnp.mean(E_loc), (E_loc, E_loc_unclipped)
+    def total_energy(params, state, batch):
+        clipping_state = state
+        E_loc_unclipped = get_local_energy(log_psi_sqr_func, params, *batch)
+        E_loc_clipped, clipping_state = _clip_energies(E_loc_unclipped, clipping_state, clipping_config)
+        E_mean_clipped = pmean(jnp.nanmean(E_loc_clipped))
+        stats = dict(E_mean_clipped=E_mean_clipped,
+                     E_loc_clipped=E_loc_clipped,
+                     E_loc_unclipped=E_loc_unclipped)
+        loss = E_mean_clipped
+        return loss, (clipping_state, stats)
 
     @total_energy.defjvp
     def total_energy_jvp(primals, tangents):
-        trainable_params, (r, R, Z, fixed_params, clipping_state) = primals
-        E_mean, (E_loc, E_loc_unclipped) = total_energy(*primals)
-        log_psi_func_simplified = lambda p: log_psi_func(r, R, Z, p, fixed_params)
-        psi_primal, psi_tan = jax.jvp(log_psi_func_simplified, primals[:1], tangents[:1])
-        primals_out = (E_mean, (E_loc, E_loc_unclipped))
-        tangents_out = (jnp.dot(psi_tan, E_loc - E_mean) / len(E_loc), (E_loc, E_loc_unclipped))
+        params, state, batch = primals
+        batch_size = batch[0].shape[0]
+
+        loss, (state, stats) = total_energy(*primals)
+        diff = stats["E_loc_clipped"] - stats["E_mean_clipped"]
+
+        log_psi_sqr, tangents_log_psi_sqr = jax.jvp(lambda p: log_psi_sqr_func(p, *batch), (primals[0],), (tangents[0],))
+        kfac_jax.register_normal_predictive_distribution(log_psi_sqr[:, None])  # Register loss for kfac optimizer
+
+        primals_out = loss, (state, stats)
+        tangents_out = jnp.dot(tangents_log_psi_sqr, diff) / batch_size, (state, stats)
         return primals_out, tangents_out
 
-    def grad_loss_func(r, R, Z, trainable_params, fixed_params, clipping_state):
-        grads, (E_batch, E_batch_unclipped) = jax.grad(total_energy, argnums=0, has_aux=True)(trainable_params, (r, R, Z, fixed_params, clipping_state))
-        grads_flat, unravel_func = ravel_pytree(grads)
-        grads_flat = jnp.nan_to_num(grads_flat, nan=0.0)
-        grads = unravel_func(grads_flat)
-        return grads, E_batch, E_batch_unclipped
-
-    return grad_loss_func
+    return jax.value_and_grad(total_energy, has_aux=True)
 
 
 def optimize_wavefunction(
         log_psi_squared,
-        initial_trainable_params,
+        params,
         fixed_params,
-        mcmc: MetropolisHastingsMonteCarlo,
         mcmc_state: MCMCState,
         opt_config: OptimizationConfig,
-        checkpoints=None,
+        phys_config: PhysicalConfig,
         logger: DataLogger = None,
         initial_opt_state=None,
         initial_clipping_state=None,
-        E_ref=None,
-        use_profiler= False
 ):
     """
     Minimizes the energy of the wavefunction defined by the callable `log_psi_squared` by adjusting the trainable parameters.
 
     Args:
         log_psi_func (callable): A function representing the wavefunction model
-        initial_trainable_params (dict): Trainable paramters of the model defined by `log_psi_func`
+        params (dict): Trainable paramters of the model defined by `log_psi_func`
         fixed_params (dict): Fixed paramters of the model defined by `log_psi_func`
         mcmc (MetropolisHastingsMonteCarlo): Object that implements the MCMC algorithm
         mcmc_state (MCMCState): Initial state of the MCMC walkers
@@ -187,134 +119,133 @@ def optimize_wavefunction(
 
     """
     LOGGER.debug("Starting optimize_wavefunction")
-    checkpoints = checkpoints or []
-    n_walkers = mcmc_state.r.shape[0]
+
+    # Run burn-in of monte carlo chain
+    LOGGER.debug(f"Starting burn-in for optimization: {opt_config.mcmc.n_burn_in} steps")
+    n_devices = jax.device_count()
+    log_psi_squared_pmapped = jax.pmap(log_psi_squared)
+
+    mcmc = MetropolisHastingsMonteCarlo(opt_config.mcmc)
+    mcmc_state = MCMCState.resize_or_init(mcmc_state, opt_config.mcmc.n_walkers, phys_config, n_devices)
     clipping_state = initial_clipping_state or (jnp.array([0.0]).squeeze(), jnp.array([1e5]).squeeze())  # do not clip at first epoch, then adjust
+    params, fixed_params, initial_opt_state, clipping_state = replicate_across_devices(
+        (params, fixed_params, initial_opt_state, clipping_state), n_devices)
+    mcmc_state.log_psi_sqr = log_psi_squared_pmapped(params, *mcmc_state.build_batch(fixed_params))
+    mcmc_state = mcmc.run_burn_in(log_psi_squared, mcmc_state, params, fixed_params)
 
-    if opt_config.optimizer.name == "kfac":
-        grad_loss_func = build_grad_loss_kfac(log_psi_squared, opt_config.clipping)
-    else:
-        grad_loss_func = build_grad_loss(log_psi_squared, opt_config.clipping)
+    # Initialize loss and optimizer
+    rng = jax.random.split(jax.random.PRNGKey(0), n_devices)
+    value_and_grad_func = build_value_and_grad_func(log_psi_squared, opt_config.clipping)
+    optimizer = build_optimizer(value_and_grad_func, opt_config.optimizer, True, True)
+    opt_state = optimizer.init(params, rng, mcmc_state.build_batch(fixed_params), clipping_state)
+    opt_state = initial_opt_state or opt_state
 
-    opt_get_params, optimize_epoch, opt_state, _ = build_optimizer(
-            log_psi_squared, grad_loss_func, mcmc, initial_trainable_params, fixed_params, opt_config, n_walkers, mcmc_state
-        )
-    if initial_opt_state is not None:
-        opt_state = initial_opt_state
+    # Set-up check-points
+    eval_checkpoints = set(opt_config.intermediate_eval.opt_epochs) if opt_config.intermediate_eval else set()
 
-    if mcmc.config.n_burn_in_opt > 0:
-        LOGGER.debug("Starting burn-in for optimization...")
-        mcmc_state = mcmc.run_burn_in_opt(log_psi_squared, (initial_trainable_params, fixed_params), mcmc_state)
-
-    if opt_config.intermediate_eval is not None:
-        eval_checkpoints = set(opt_config.intermediate_eval.opt_epochs)
-    else:
-        eval_checkpoints = set()
-    intermediate_eval_step_func = None
-
-    t_start = time.time()
-    E_mean_unclipped_history = []
+    wf_logger = WavefunctionLogger(logger, prefix="opt", n_step=opt_config.n_epochs_prev, smoothing=0.05)
     for n_epoch in range(opt_config.n_epochs_prev, opt_config.n_epochs_prev+opt_config.n_epochs):
-        if use_profiler and (n_epoch == 2):
-            jax.profiler.start_trace('profiler')
-        mcmc_state_old = mcmc_state
-        E_epoch, E_epoch_unclipped, mcmc_state, opt_state, clipping_state = optimize_epoch(n_epoch, mcmc_state, opt_state, clipping_state, fixed_params)
-        if use_profiler and (n_epoch == 2):
-            jax.profiler.stop_trace()
-        t_end = time.time()
+        mcmc_state = mcmc.run_inter_steps(log_psi_squared, mcmc_state, params, fixed_params)
+        params, opt_state, clipping_state, stats = optimizer.step(params,
+                                                                  opt_state,
+                                                                  rng=None,
+                                                                  batch=mcmc_state.build_batch(fixed_params),
+                                                                  func_state=clipping_state)
+        mcmc_state.log_psi_sqr = log_psi_squared_pmapped(params, *mcmc_state.build_batch(fixed_params))
+        wf_logger.log_step(E_loc_unclipped=stats["aux"]["E_loc_unclipped"], E_loc_clipped=stats["aux"]["E_loc_clipped"],
+                           E_ref=phys_config.E_ref, mcmc_state=mcmc_state, opt_stats=merge_from_devices(stats))
 
-        if (n_epoch in checkpoints) and (logger is not None):
-            checkpoint_dir = prepare_checkpoint_directory(n_epoch)
-            full_data = prepare_data_for_logging(opt_get_params(opt_state), fixed_params, mcmc_state, opt_state, clipping_state)
-            logger.log_weights(full_data)
-            LOGGER.info(f"Logging checkpoint to folder {checkpoint_dir}")
-            logger.log_checkpoint(checkpoint_dir, n_epoch)
+        if is_checkpoint_required(n_epoch, opt_config.checkpoints) and (logger is not None):
+            LOGGER.debug(f"Saving checkpoint n_epoch={n_epoch}")
+            params_merged, fixed_params_merged, opt_state_merged, clipping_state_merged = merge_from_devices(
+                (params, fixed_params, opt_state, clipping_state))
+            mcmc_state_merged = mcmc_state.merge_devices()
+            logger.log_checkpoint(n_epoch, params_merged, fixed_params_merged, mcmc_state_merged, opt_state_merged, clipping_state_merged)
+            delete_obsolete_checkpoints(n_epoch, opt_config.checkpoints)
 
-        if logger is not None:
-            E_ref = fixed_params['baseline_energies']['E_ref']
-            E_mean_unclipped_history.append(np.nanmean(np.array(E_epoch_unclipped, dtype=float)))
-            logger.log_metrics(*calculate_metrics(n_epoch, E_epoch, E_epoch_unclipped, E_mean_unclipped_history, mcmc_state, mcmc_state_old, t_end - t_start, "opt", E_ref=E_ref))
-            if opt_config.optimizer.name == "slbfgs":
-                logger.log_metrics(calculate_metrics_bfgs(opt_state), n_epoch, "opt")
-
-        if n_epoch in eval_checkpoints:
+        if (n_epoch+1) in eval_checkpoints:
             LOGGER.debug(f"opt epoch {n_epoch:5d}: Running intermediate evaluation...")
             eval_config = EvaluationConfig(n_epochs=opt_config.intermediate_eval.n_epochs)
-            if intermediate_eval_step_func is None:
-                intermediate_eval_step_func = build_evaluation_step(log_psi_squared, mcmc, eval_config)
-            E_eval, _, _ = evaluate_wavefunction(
-                log_psi_squared, opt_get_params(opt_state), fixed_params, mcmc, mcmc_state, eval_config, logger=logger,
-                evaluation_step_func=intermediate_eval_step_func, evaluation_type="Intermed_eval"
+            params_merged, fixed_params_merged = merge_from_devices((params_merged, fixed_params_merged))
+            mcmc_state_merged = mcmc_state.merge_devices()
+            evaluate_wavefunction(
+                log_psi_squared, params_merged, fixed_params_merged, mcmc_state_merged, eval_config, phys_config, logger, n_epoch,
             )
-            intermed_metrics = dict(E_intermed_eval_mean=jnp.nanmean(E_eval), E_intermed_eval_std=jnp.nanstd(E_eval))
-            if E_ref is not None:
-                intermed_metrics['error_intermed_eval'] = 1e3 * (intermed_metrics['E_intermed_eval_mean'] - E_ref)
-                intermed_metrics['sigma_intermed_eval'] = 1e3 * intermed_metrics['E_intermed_eval_std'] / np.sqrt(eval_config.n_epochs)
-            logger.log_metrics(intermed_metrics, n_epoch, "opt", force_log=True)
-        t_start = t_end
+
     LOGGER.debug("Finished wavefunction optimization...")
-    return mcmc_state, opt_get_params(opt_state), opt_state, clipping_state
+    params, opt_state, clipping_state = merge_from_devices((params, opt_state, clipping_state))
+    return mcmc_state, params, opt_state, clipping_state
 
 
-def pretrain_orbitals(orbital_func, mcmc, mcmc_state: MCMCState, initial_trainable_params, fixed_params,
+def pretrain_orbitals(orbital_func, mcmc_state: MCMCState, params, fixed_params,
                       config: PreTrainingConfig,
-                      physical_config: PhysicalConfig,
-                      model_config: DeepErwinModelConfig,
+                      phys_config: PhysicalConfig,
+                      model_config: ModelConfig,
                       loggers: DataLogger = None, opt_state=None):
-
     if model_config.orbitals.baseline_orbitals and (model_config.orbitals.baseline_orbitals.baseline == config.baseline):
         baseline_orbitals = fixed_params['orbitals']
         LOGGER.debug("Identical CASSCF-config for pre-training and baseline model: Reusing baseline calculation")
     else:
         LOGGER.warning("Using different baseline pySCF settings for pre-training and the baked-in baseline model. Calculating new orbitals...")
         n_determinants = 1 if config.use_only_leading_determinant else model_config.orbitals.n_determinants
-        baseline_orbitals, (E_hf, E_casscf) = get_baseline_solution(physical_config, config.baseline, n_determinants)
+        baseline_orbitals, (E_hf, E_casscf) = get_baseline_solution(phys_config, config.baseline, n_determinants)
         LOGGER.debug(f"Finished baseline calculation for pretraining: E_HF = {E_hf:.6f}, E_casscf={E_casscf:.6f}")
 
-    def loss_func(r, R, Z, params, fixed_params):
+    def loss_func(params, batch):
+        r, R, Z, fixed_params = batch
         # Calculate HF / CASSCF reference orbitals
         diff_el_ion, dist_el_ion = get_el_ion_distance_matrix(r, R)
-        mo_up_ref, mo_dn_ref = get_baseline_slater_matrices(diff_el_ion, dist_el_ion, baseline_orbitals, model_config.orbitals.use_full_det)
+        mo_up_ref, mo_dn_ref = get_baseline_slater_matrices(diff_el_ion, dist_el_ion, baseline_orbitals,
+                                                            model_config.orbitals.use_full_det)
 
         if config.use_only_leading_determinant:
             mo_up_ref = mo_up_ref[...,:1,:,:]
             mo_dn_ref = mo_dn_ref[...,:1,:,:]
 
         # Calculate neural net orbitals
-        mo_up, mo_dn = orbital_func(r, R, Z, params, fixed_params)
+        mo_up, mo_dn = orbital_func(params, *batch)
         residual_up = mo_up - mo_up_ref
         residual_dn = mo_dn - mo_dn_ref
         return jnp.mean(residual_up**2) + jnp.mean(residual_dn**2)
 
-    def log_psi_squared_func(r, R, Z, params, fixed_params):
-        mo_up, mo_dn = orbital_func(r, R, Z, params, fixed_params)
+    def log_psi_squared_func(params, r, R, Z, fixed_params):
+        mo_up, mo_dn = orbital_func(params, r, R, Z, fixed_params)
         return evaluate_sum_of_determinants(mo_up, mo_dn, model_config.orbitals.use_full_det)
+    log_psi_sqr_pmapped = pmap(log_psi_squared_func)
 
-    opt_init, opt_update_params, opt_get_params = get_builtin_optimizer(config.optimizer, config.schedule, config.learning_rate)
 
-    @jax.jit
-    def pretrain_step(epoch_nr, mcmc_state: MCMCState, opt_state):
-        loss, grads = jax.value_and_grad(loss_func, argnums=3)(*mcmc_state.model_args, opt_get_params(opt_state), fixed_params)
-        opt_state = opt_update_params(epoch_nr, grads, opt_state)
-
-        mcmc_state.log_psi_sqr = log_psi_squared_func(*mcmc_state.model_args, opt_get_params(opt_state), fixed_params)
-        # mcmc_state = mcmc.run_inter_steps(log_psi_squared_func, params, mcmc_state)
-        mcmc_state = mcmc.make_mcmc_step(log_psi_squared_func, (opt_get_params(opt_state), fixed_params), mcmc_state, 'opt', config.n_epochs)
-        return opt_state, mcmc_state, loss
-
+    # Init MCMC
     logging.debug(f"Starting pretraining...")
-    opt_state = opt_state or opt_init(initial_trainable_params)
-    mcmc_state.log_psi_sqr = log_psi_squared_func(*mcmc_state.model_args, opt_get_params(opt_state), fixed_params)
-    for n in range(config.n_epochs):
-        opt_state, mcmc_state, loss = pretrain_step(n, mcmc_state, opt_state)
-        if loggers is not None:
-            loggers.log_metrics(dict(loss=float(loss), mcmc_stepsize=float(mcmc_state.stepsize), mcmc_step_nr=int(mcmc_state.step_nr)), epoch=n, metric_type="pre")
+    n_devices = jax.device_count()
+    mcmc = MetropolisHastingsMonteCarlo(config.mcmc)
+    mcmc_state = MCMCState.resize_or_init(mcmc_state, config.mcmc.n_walkers, phys_config, n_devices)
 
-        if (n in config.checkpoints) and (loggers is not None):
-            checkpoint_dir = prepare_checkpoint_directory(n, pretraining_checkpoint=True)
-            full_data = prepare_data_for_logging(opt_get_params(opt_state), fixed_params, mcmc_state, opt_state)
-            loggers.log_weights(full_data)
-            LOGGER.info(f"Logging checkpoint to folder {checkpoint_dir}")
-            loggers.log_checkpoint(checkpoint_dir, n, pretraining=True)
-    return opt_get_params(opt_state), opt_state, mcmc_state
+    # Split(Replicate data across devices
+    params, fixed_params, opt_state = replicate_across_devices((params, fixed_params, opt_state), n_devices)
+    mcmc_state.log_psi_sqr = log_psi_sqr_pmapped(params, *mcmc_state.build_batch(fixed_params))
+
+    # MCMC burn-in
+    mcmc_state = mcmc.run_burn_in(log_psi_squared_func, mcmc_state, params, fixed_params)
+
+    # Init optimizer
+    rng = jax.random.PRNGKey(0)
+    optimizer = build_optimizer(jax.value_and_grad(loss_func), config.optimizer, False, False)
+    opt_state = opt_state or optimizer.init(params, rng, mcmc_state.build_batch(fixed_params))
+
+    # Pre-training optimization loop
+    for n in range(config.n_epochs):
+        mcmc_state = mcmc.run_inter_steps(log_psi_squared_func, mcmc_state, params, fixed_params)
+        params, opt_state, stats = optimizer.step(params, opt_state, None, batch=mcmc_state.build_batch(fixed_params))
+        mcmc_state.log_psi_sqr = log_psi_sqr_pmapped(params, *mcmc_state.build_batch(fixed_params))
+
+        if loggers is not None:
+            loggers.log_metrics(dict(loss=float(stats['loss'].mean()),
+                                     mcmc_stepsize=float(mcmc_state.stepsize.mean()),
+                                     mcmc_step_nr=int(mcmc_state.step_nr.mean())
+                                     ),
+                                epoch=n,
+                                metric_type="pre")
+
+    params, opt_state = merge_from_devices((params, opt_state))
+    return params, opt_state, mcmc_state
 

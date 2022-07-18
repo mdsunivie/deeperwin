@@ -14,11 +14,11 @@ deeperwin.configuration
    .. autosummary::
       :toctree:
    
+      build_flattend_dict
       build_nested_dict
-      get_attribute_by_nested_key
-      has_attribute_nested_key
-      set_with_nested_key
-      update_config
+      get_with_flattened_key
+      set_with_flattened_key
+      to_prettified_yaml
    
    
 

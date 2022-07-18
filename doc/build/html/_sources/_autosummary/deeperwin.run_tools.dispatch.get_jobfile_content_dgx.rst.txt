@@ -1,0 +1,6 @@
+deeperwin.run\_tools.dispatch.get\_jobfile\_content\_dgx
+========================================================
+
+.. currentmodule:: deeperwin.run_tools.dispatch
+
+.. autofunction:: get_jobfile_content_dgx

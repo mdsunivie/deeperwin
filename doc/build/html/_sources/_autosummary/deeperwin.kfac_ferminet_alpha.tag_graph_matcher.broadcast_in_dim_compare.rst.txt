@@ -1,6 +1,0 @@
-deeperwin.kfac\_ferminet\_alpha.tag\_graph\_matcher.broadcast\_in\_dim\_compare
-===============================================================================
-
-.. currentmodule:: deeperwin.kfac_ferminet_alpha.tag_graph_matcher
-
-.. autofunction:: broadcast_in_dim_compare

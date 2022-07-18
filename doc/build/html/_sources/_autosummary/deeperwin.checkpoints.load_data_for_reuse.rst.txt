@@ -1,0 +1,6 @@
+deeperwin.checkpoints.load\_data\_for\_reuse
+============================================
+
+.. currentmodule:: deeperwin.checkpoints
+
+.. autofunction:: load_data_for_reuse

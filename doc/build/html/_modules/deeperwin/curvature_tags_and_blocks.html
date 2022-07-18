@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>deeperwin.curvature_tags_and_blocks &mdash; deeperwin 1.0.0 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/autodoc_pydantic.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/custom_style.css" type="text/css" />
+    <link rel="shortcut icon" href="../../_static/favicon.png"/>
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../root.html" class="icon icon-home"> deeperwin
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../index.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorial.html">DeepErwin Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../configuration.html">Configuration Options</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api.html">Full documentation for developers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../indices.html">Indices and tables</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../root.html">deeperwin</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../root.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+      <li>deeperwin.curvature_tags_and_blocks</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for deeperwin.curvature_tags_and_blocks</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright 2020 DeepMind Technologies Limited.</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1"># https://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+
+<span class="sd">&quot;&quot;&quot;Curvature blocks for FermiNet.&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">Union</span>
+<span class="kn">import</span> <span class="nn">chex</span>
+<span class="kn">import</span> <span class="nn">jax</span>
+<span class="kn">import</span> <span class="nn">jax.numpy</span> <span class="k">as</span> <span class="nn">jnp</span>
+<span class="kn">import</span> <span class="nn">kfac_jax</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+
+<span class="n">vmap_psd_inv_cholesky</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">vmap</span><span class="p">(</span><span class="n">kfac_jax</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">psd_inv_cholesky</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span>
+<span class="n">vmap_matmul</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">vmap</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">matmul</span><span class="p">,</span> <span class="n">in_axes</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">out_axes</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+
+<span class="n">repeated_dense_tag</span> <span class="o">=</span> <span class="n">kfac_jax</span><span class="o">.</span><span class="n">LayerTag</span><span class="p">(</span><span class="s2">&quot;repeated_dense_tag&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="register_repeated_dense"><a class="viewcode-back" href="../../_autosummary/deeperwin.curvature_tags_and_blocks.register_repeated_dense.html#deeperwin.curvature_tags_and_blocks.register_repeated_dense">[docs]</a><span class="k">def</span> <span class="nf">register_repeated_dense</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">b</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">repeated_dense_tag</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">w</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">repeated_dense_tag</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="RepeatedDenseBlock"><a class="viewcode-back" href="../../_autosummary/deeperwin.curvature_tags_and_blocks.RepeatedDenseBlock.html#deeperwin.curvature_tags_and_blocks.RepeatedDenseBlock">[docs]</a><span class="k">class</span> <span class="nc">RepeatedDenseBlock</span><span class="p">(</span><span class="n">kfac_jax</span><span class="o">.</span><span class="n">DenseTwoKroneckerFactored</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Dense block that is repeatedly applied to multiple inputs (e.g. vmap).&quot;&quot;&quot;</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">scale</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+        <span class="p">(</span><span class="n">x_shape</span><span class="p">,)</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inputs_shapes</span>
+        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">kfac_jax</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">product</span><span class="p">(</span><span class="n">x_shape</span><span class="p">)</span> <span class="o">//</span> <span class="p">(</span><span class="n">x_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">x_shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span>
+
+<div class="viewcode-block" id="RepeatedDenseBlock.update_curvature_matrix_estimate"><a class="viewcode-back" href="../../_autosummary/deeperwin.curvature_tags_and_blocks.RepeatedDenseBlock.html#deeperwin.curvature_tags_and_blocks.RepeatedDenseBlock.update_curvature_matrix_estimate">[docs]</a>    <span class="k">def</span> <span class="nf">update_curvature_matrix_estimate</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">state</span><span class="p">:</span> <span class="n">kfac_jax</span><span class="o">.</span><span class="n">TwoKroneckerFactored</span><span class="o">.</span><span class="n">State</span><span class="p">,</span>
+        <span class="n">estimation_data</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">chex</span><span class="o">.</span><span class="n">Array</span><span class="p">]],</span>
+        <span class="n">ema_old</span><span class="p">:</span> <span class="n">chex</span><span class="o">.</span><span class="n">Numeric</span><span class="p">,</span>
+        <span class="n">ema_new</span><span class="p">:</span> <span class="n">chex</span><span class="o">.</span><span class="n">Numeric</span><span class="p">,</span>
+        <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">pmap_axis_name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">kfac_jax</span><span class="o">.</span><span class="n">TwoKroneckerFactored</span><span class="o">.</span><span class="n">State</span><span class="p">:</span>
+        <span class="n">estimation_data</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="o">**</span><span class="n">estimation_data</span><span class="p">)</span>
+        <span class="p">(</span><span class="n">x</span><span class="p">,)</span> <span class="o">=</span> <span class="n">estimation_data</span><span class="p">[</span><span class="s2">&quot;inputs&quot;</span><span class="p">]</span>
+        <span class="p">(</span><span class="n">dy</span><span class="p">,)</span> <span class="o">=</span> <span class="n">estimation_data</span><span class="p">[</span><span class="s2">&quot;outputs_tangent&quot;</span><span class="p">]</span>
+        <span class="k">assert</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">batch_size</span>
+        <span class="n">estimation_data</span><span class="p">[</span><span class="s2">&quot;inputs&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">reshape</span><span class="p">([</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]]),)</span>
+        <span class="n">estimation_data</span><span class="p">[</span><span class="s2">&quot;outputs_tangent&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">dy</span><span class="o">.</span><span class="n">reshape</span><span class="p">([</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">dy</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]]),)</span>
+        <span class="n">batch_size</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">size</span> <span class="o">//</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">update_curvature_matrix_estimate</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="n">estimation_data</span><span class="p">,</span> <span class="n">ema_old</span><span class="p">,</span> <span class="n">ema_new</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">,</span> <span class="n">pmap_axis_name</span><span class="p">)</span></div></div>
+
+
+<span class="k">def</span> <span class="nf">_dense</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">chex</span><span class="o">.</span><span class="n">Array</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">chex</span><span class="o">.</span><span class="n">Array</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">chex</span><span class="o">.</span><span class="n">Array</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Example of a dense layer function.&quot;&quot;&quot;</span>
+    <span class="n">w</span><span class="p">,</span> <span class="o">*</span><span class="n">opt_b</span> <span class="o">=</span> <span class="n">params</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">w</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">y</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">opt_b</span> <span class="k">else</span> <span class="n">y</span> <span class="o">+</span> <span class="n">opt_b</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+
+<span class="k">def</span> <span class="nf">_dense_parameter_extractor</span><span class="p">(</span>
+    <span class="n">eqns</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">jax</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">JaxprEqn</span><span class="p">],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+    <span class="sd">&quot;&quot;&quot;Extracts all parameters from the conv_general_dilated operator.&quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">eqn</span> <span class="ow">in</span> <span class="n">eqns</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">eqn</span><span class="o">.</span><span class="n">primitive</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;dot_general&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="o">**</span><span class="n">eqn</span><span class="o">.</span><span class="n">params</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="kc">False</span>
+
+
+<span class="c1"># repeating a dense layer once</span>
+<span class="n">_repeated_dense1</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">vmap</span><span class="p">(</span><span class="n">_dense</span><span class="p">,</span> <span class="n">in_axes</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]])</span>
+<span class="n">_repeated_dense2</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">vmap</span><span class="p">(</span><span class="n">_repeated_dense1</span><span class="p">,</span> <span class="n">in_axes</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]])</span>
+<span class="n">_repeated_dense1_no_b</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">vmap</span><span class="p">(</span><span class="n">_dense</span><span class="p">,</span> <span class="n">in_axes</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">]])</span>
+<span class="n">_repeated_dense2_no_b</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">vmap</span><span class="p">(</span><span class="n">_repeated_dense1_no_b</span><span class="p">,</span> <span class="n">in_axes</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">]])</span>
+
+<span class="c1"># Computation for repeated dense layer</span>
+<span class="n">repeated_dense1_with_bias_pattern</span> <span class="o">=</span> <span class="n">kfac_jax</span><span class="o">.</span><span class="n">tag_graph_matcher</span><span class="o">.</span><span class="n">GraphPattern</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;repeated_dense1_with_bias&quot;</span><span class="p">,</span>
+    <span class="n">tag_primitive</span><span class="o">=</span><span class="n">repeated_dense_tag</span><span class="p">,</span>
+    <span class="n">precedence</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+    <span class="n">compute_func</span><span class="o">=</span><span class="n">_repeated_dense1</span><span class="p">,</span>
+    <span class="n">parameters_extractor_func</span><span class="o">=</span><span class="n">_dense_parameter_extractor</span><span class="p">,</span>
+    <span class="n">example_args</span><span class="o">=</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">9</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">13</span><span class="p">]),</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">13</span><span class="p">,</span> <span class="mi">7</span><span class="p">]),</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">7</span><span class="p">])]],</span>
+<span class="p">)</span>
+
+<span class="n">repeated_dense1_no_bias_pattern</span> <span class="o">=</span> <span class="n">kfac_jax</span><span class="o">.</span><span class="n">tag_graph_matcher</span><span class="o">.</span><span class="n">GraphPattern</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;repeated_dense1_no_bias&quot;</span><span class="p">,</span>
+    <span class="n">tag_primitive</span><span class="o">=</span><span class="n">repeated_dense_tag</span><span class="p">,</span>
+    <span class="n">precedence</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+    <span class="n">compute_func</span><span class="o">=</span><span class="n">_repeated_dense1_no_b</span><span class="p">,</span>
+    <span class="n">parameters_extractor_func</span><span class="o">=</span><span class="n">_dense_parameter_extractor</span><span class="p">,</span>
+    <span class="n">example_args</span><span class="o">=</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">9</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">13</span><span class="p">]),</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">13</span><span class="p">,</span> <span class="mi">7</span><span class="p">])]],</span>
+<span class="p">)</span>
+
+<span class="n">repeated_dense2_with_bias_pattern</span> <span class="o">=</span> <span class="n">kfac_jax</span><span class="o">.</span><span class="n">tag_graph_matcher</span><span class="o">.</span><span class="n">GraphPattern</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;repeated_dense2_with_bias&quot;</span><span class="p">,</span>
+    <span class="n">tag_primitive</span><span class="o">=</span><span class="n">repeated_dense_tag</span><span class="p">,</span>
+    <span class="n">precedence</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+    <span class="n">compute_func</span><span class="o">=</span><span class="n">_repeated_dense2</span><span class="p">,</span>
+    <span class="n">parameters_extractor_func</span><span class="o">=</span><span class="n">_dense_parameter_extractor</span><span class="p">,</span>
+    <span class="n">example_args</span><span class="o">=</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">8</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">13</span><span class="p">]),</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">13</span><span class="p">,</span> <span class="mi">7</span><span class="p">]),</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">7</span><span class="p">])]],</span>
+<span class="p">)</span>
+
+<span class="n">repeated_dense2_no_bias_pattern</span> <span class="o">=</span> <span class="n">kfac_jax</span><span class="o">.</span><span class="n">tag_graph_matcher</span><span class="o">.</span><span class="n">GraphPattern</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;repeated_dense2_no_bias&quot;</span><span class="p">,</span>
+    <span class="n">tag_primitive</span><span class="o">=</span><span class="n">repeated_dense_tag</span><span class="p">,</span>
+    <span class="n">precedence</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+    <span class="n">compute_func</span><span class="o">=</span><span class="n">_repeated_dense2_no_b</span><span class="p">,</span>
+    <span class="n">parameters_extractor_func</span><span class="o">=</span><span class="n">_dense_parameter_extractor</span><span class="p">,</span>
+    <span class="n">example_args</span><span class="o">=</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">8</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">13</span><span class="p">]),</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">13</span><span class="p">,</span> <span class="mi">7</span><span class="p">])]],</span>
+<span class="p">)</span>
+
+<span class="n">GRAPH_PATTERNS</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">repeated_dense1_with_bias_pattern</span><span class="p">,</span>
+    <span class="n">repeated_dense2_with_bias_pattern</span><span class="p">,</span>
+    <span class="n">repeated_dense1_no_bias_pattern</span><span class="p">,</span>
+    <span class="n">repeated_dense2_no_bias_pattern</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">+</span> <span class="n">kfac_jax</span><span class="o">.</span><span class="n">tag_graph_matcher</span><span class="o">.</span><span class="n">DEFAULT_GRAPH_PATTERNS</span>
+
+
+<span class="n">kfac_jax</span><span class="o">.</span><span class="n">set_default_tag_to_block_ctor</span><span class="p">(</span><span class="s2">&quot;repeated_dense_tag&quot;</span><span class="p">,</span> <span class="n">RepeatedDenseBlock</span><span class="p">)</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Michael Scherbela, Leon Gerard, Rafael Reisenhofer.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

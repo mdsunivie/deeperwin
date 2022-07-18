@@ -4,7 +4,7 @@ Full documentation for developers
 
 The DeepErwin codebase consists of several key modules:
 
-* :mod:`~deeperwin.main` is the main entry point to using the code. It sets up calculations and dispatches them to be calculated locally or on a SLURM cluster.
+* :mod:`~deeperwin.cli` is the main entry point to using the code. It sets up calculations and dispatches them to be calculated locally or on a SLURM cluster.
 * :mod:`~deeperwin.process_molecule` and :mod:`~deeperwin.process_molecules_shared` contain the main program for optimizing a single molecule, or multiple molecules in an interdependent way (e.g. by using weight-sharing).
 * :mod:`~deeperwin.model` contains all neural network architectures. The contain methods to build the wavefunction which computes :math:`\psi` from electron coordinates :math:`r`.
 * :mod:`~deeperwin.optimization` and :mod:`~deeperwin.evaluation` contain the respective methods to optimize and later evaluate wavefunctions. They contain imports for more advanced second-order optimizers such as KFAC or BFGS.

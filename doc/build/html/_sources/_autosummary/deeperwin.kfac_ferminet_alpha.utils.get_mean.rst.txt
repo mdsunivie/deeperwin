@@ -1,6 +1,0 @@
-deeperwin.kfac\_ferminet\_alpha.utils.get\_mean
-===============================================
-
-.. currentmodule:: deeperwin.kfac_ferminet_alpha.utils
-
-.. autofunction:: get_mean

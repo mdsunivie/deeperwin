@@ -1,0 +1,6 @@
+deeperwin.configuration.to\_prettified\_yaml
+============================================
+
+.. currentmodule:: deeperwin.configuration
+
+.. autofunction:: to_prettified_yaml

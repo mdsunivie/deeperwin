@@ -1,100 +1,51 @@
 """
 Logic for wavefunction evaluation.
 """
-
 import logging
-import time
-
 import jax
-import functools
-import numpy as np
-from jax import numpy as jnp
-
-from deeperwin.configuration import EvaluationConfig
+from deeperwin.configuration import EvaluationConfig, PhysicalConfig
 from deeperwin.hamiltonian import get_local_energy, calculate_forces
-from deeperwin.loggers import DataLogger
+from deeperwin.loggers import DataLogger, WavefunctionLogger
 from deeperwin.mcmc import MCMCState, MetropolisHastingsMonteCarlo
-from deeperwin.utils import calculate_metrics, save_to_file
+from deeperwin.utils import pmap, replicate_across_devices
 
 LOGGER = logging.getLogger("dpe")
 
-
-@functools.partial(jax.jit, static_argnums=(0, 1))
-def _evaluation_step(log_psi_squared, mcmc, mcmc_state, params):
-    mcmc_state = mcmc.run_inter_steps(log_psi_squared, params, mcmc_state, "eval")
-    E_loc = get_local_energy(log_psi_squared, *mcmc_state.model_args, *params)
-    return mcmc_state, E_loc
-
-
-def _build_force_polynomial_coefficients(R_core, polynomial_degree):
-    j = np.arange(1, polynomial_degree + 1)
-    A = R_core ** 2 / (2 + j[np.newaxis, :] + j[:, np.newaxis] + 1)
-    b = 1 / (j + 1)
-    coeff = np.linalg.solve(A, b)
-    coeff = np.reshape(coeff, [-1, 1, 1, 1, 1])
-    return coeff
-
-def build_evaluation_step(log_psi_sqr_func, mcmc, eval_config: EvaluationConfig):
-    def _evaluation_step(mcmc_state: MCMCState, params):
-        mcmc_state = mcmc.run_inter_steps(log_psi_sqr_func, params, mcmc_state)
-        if eval_config.calculate_energies:
-            E_loc = get_local_energy(log_psi_sqr_func, *mcmc_state.model_args, *params)
-        else:
-            E_loc = None
-        if eval_config.forces is not None:
-            poly_coeffs = _build_force_polynomial_coefficients(eval_config.forces.R_core,
-                                                               eval_config.forces.polynomial_degree)
-            forces = calculate_forces(*mcmc_state.model_args, mcmc_state.log_psi_sqr, log_psi_sqr_func, params,
-                                      eval_config.forces, poly_coeffs)
-        else:
-            forces = None
-        return mcmc_state, E_loc, forces
-    return jax.jit(_evaluation_step)
-
-
 def evaluate_wavefunction(
-        log_psi_squared,
-        trainable_params,
+        log_psi_sqr,
+        params,
         fixed_params,
-        mcmc: MetropolisHastingsMonteCarlo,
         mcmc_state: MCMCState,
         config: EvaluationConfig,
+        phys_config: PhysicalConfig,
         logger: DataLogger = None,
-        evaluation_step_func=None,
-        evaluation_type="eval"
+        opt_epoch_nr=None,
 ):
-    params = (trainable_params, fixed_params)
-    LOGGER.debug("Starting burn-in for evaluation...")
-    mcmc_state = mcmc.run_burn_in_eval(log_psi_squared, params, mcmc_state)
+    # Burn-in MCMC
+    LOGGER.debug(f"Starting burn-in for evaluation: {config.mcmc.n_burn_in} steps")
+    n_devices = jax.device_count()
+    mcmc = MetropolisHastingsMonteCarlo(config.mcmc)
+    mcmc_state = MCMCState.resize_or_init(mcmc_state, config.mcmc.n_walkers, phys_config, n_devices)
+    params, fixed_params = replicate_across_devices((params, fixed_params), n_devices)
+    mcmc_state.log_psi_sqr = pmap(log_psi_sqr)(params, *mcmc_state.build_batch(fixed_params))
+    mcmc_state = mcmc.run_burn_in(log_psi_sqr, mcmc_state, params, fixed_params)
 
-    if evaluation_step_func is None:
-        evaluation_step_func = build_evaluation_step(log_psi_squared, mcmc, config)
+    @pmap
+    def get_observables(params, fixed_params, mcmc_state: MCMCState):
+        energies, forces = None, None
+        if config.calculate_energies:
+            energies = get_local_energy(log_psi_sqr, params, *mcmc_state.build_batch(fixed_params))
+        if config.forces:
+            forces = calculate_forces(log_psi_sqr, params, *mcmc_state.build_batch(fixed_params),
+                                      mcmc_state.log_psi_sqr, config.forces)
+        return energies, forces
 
-    t_start = time.time()
-    E_eval_mean = []
-    forces_mean = []
-    mcmc_walker_position = []
-    log_psi_data = []
+    # Evaluation loop
+    wf_logger = WavefunctionLogger(logger, prefix="eval", smoothing=1.0)
     for n_epoch in range(config.n_epochs):
-        mcmc_state_old = mcmc_state
-        mcmc_state, E_epoch, forces = evaluation_step_func(mcmc_state, (trainable_params, fixed_params))
-        t_end = time.time()
-        if E_epoch is not None:
-            E_eval_mean.append(np.nanmean(np.array(E_epoch, dtype=float)))
-        if logger is not None:
-            if E_epoch is not None:
-                E_ref = fixed_params['baseline_energies']['E_ref']
-                logger.log_metrics(*calculate_metrics(n_epoch, E_epoch, None, E_eval_mean, mcmc_state, mcmc_state_old, (t_end - t_start), evaluation_type, E_ref=E_ref, smoothing=1.0))
-            if forces is not None:
-                logger.log_metric("forces", forces, n_epoch, "eval")
-                forces_mean.append(forces)
-            if config.log_mcmc_info:
-                mcmc_walker_position.append(mcmc_state.r)
-                log_psi_data.append(mcmc_state.log_psi_sqr)
-        t_start = t_end
-    forces_mean = jnp.array(forces_mean) if (len(forces_mean) > 0) else None
-
-    if config.log_mcmc_info:
-        save_to_file("mcmc_info.bz2", **{'mcmc_r': mcmc_walker_position, 'log_psi': log_psi_data})
-
-    return np.array(E_eval_mean, dtype=float), forces_mean, mcmc_state
+        mcmc_state = mcmc.run_inter_steps(log_psi_sqr, mcmc_state, params, fixed_params)
+        E_loc, forces = get_observables(params, fixed_params, mcmc_state)
+        wf_logger.log_step(E_loc_unclipped=E_loc, forces=forces, E_ref=phys_config.E_ref, mcmc_state=mcmc_state,
+                           extra_metrics={'opt_epoch': opt_epoch_nr})
+    wf_logger.log_summary(E_ref=phys_config.E_ref, epoch_nr=opt_epoch_nr)
+    return wf_logger.history, mcmc_state

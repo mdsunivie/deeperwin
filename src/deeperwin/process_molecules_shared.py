@@ -2,11 +2,6 @@
 """
 CLI to process multiple molecules with shared optimization.
 """
-import os
-from deeperwin.available_gpus import get_free_GPU_id
-os.environ['CUDA_VISIBLE_DEVICES'] = get_free_GPU_id()
-
-import argparse
 import copy
 import logging
 import os
@@ -20,13 +15,13 @@ from jax.config import config as jax_config
 from jax.lib import xla_bridge
 
 from deeperwin.configuration import Configuration, SharedOptimizationConfig, OptimizationConfig, LoggingConfig
-from deeperwin.dispatch import idx_to_job_name, setup_job_dir, prepare_checkpoints
+from deeperwin.run_tools.dispatch import idx_to_job_name, setup_job_dir, prepare_checkpoints
 from deeperwin.evaluation import evaluate_wavefunction, build_evaluation_step
 from deeperwin.kfac import build_grad_loss_kfac
 from deeperwin.loggers import LoggerCollection, build_dpe_root_logger
 from deeperwin.mcmc import MCMCState, MetropolisHastingsMonteCarlo, resize_nr_of_walkers
 from deeperwin.model import build_log_psi_squared
-from deeperwin.optimization import build_grad_loss, build_optimizer
+from deeperwin.optimization import build_value_and_grad_func, build_optimizer
 from deeperwin.utils import getCodeVersion, prepare_data_for_logging, get_number_of_params, merge_trainable_params, split_trainable_params, \
     calculate_metrics
 
@@ -105,7 +100,7 @@ def init_wfs(config: Configuration):
     if config.optimization.optimizer.name == 'kfac':
         grad_loss_func = build_grad_loss_kfac(log_psi_squared, config.optimization.clipping)
     else:
-        grad_loss_func = build_grad_loss(log_psi_squared, config.optimization.clipping)
+        grad_loss_func = build_value_and_grad_func(log_psi_squared, config.optimization.clipping)
 
     trainable_params = merge_trainable_params(shared_params, wfs[0].unique_trainable_params)
     opt_get_params, optimize_epoch, opt_state, opt_set_params = build_optimizer(log_psi_squared, grad_loss_func,
@@ -207,18 +202,14 @@ def optimize_shared(opt_config: OptimizationConfig, wfs, shared_params, optimize
     return wfs, opt_get_params, opt_set_params, opt_state
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Optimization of wavefunction for multiple molecular configurations with shared optimization.")
-    parser.add_argument("config_file", default="config.yml", help="Path to input config file", nargs="?")
-    args = parser.parse_args()
-    config = Configuration.load(args.config_file)
+def process_molecule_shared(config_file):
+    config = Configuration.load(config_file)
     logger = build_dpe_root_logger(config.logging.basic)
 
     config.save("full_config.yml")
     loggers_set = LoggerCollection(config.logging, config.experiment_name)
     loggers_set.on_run_begin()
-    loggers_set.log_params(config.get_as_flattened_dict())
+    loggers_set.log_params(config.as_flattened_dict())
     loggers_set.log_tags(config.logging.tags)
 
     jax_config.update("jax_enable_x64", config.computation.float_precision == "float64")
@@ -285,3 +276,7 @@ if __name__ == "__main__":
     for wf in wfs:
         wf.loggers.on_run_end()
     loggers_set.on_run_end()
+
+if __name__ == '__main__':
+    process_molecule_shared(sys.argv[1])
+

@@ -1,0 +1,6 @@
+deeperwin.run\_tools.dispatch.setup\_job\_dir
+=============================================
+
+.. currentmodule:: deeperwin.run_tools.dispatch
+
+.. autofunction:: setup_job_dir

@@ -20,12 +20,8 @@ deeperwin.orbitals
       eval_atomic_orbitals
       eval_gaussian_orbital
       evaluate_molecular_orbitals
-      fit_orbital_envelopes_to_hartree_fock
       get_baseline_solution
-      get_cisd_leading_determinants
-      get_envelope_exponents_cisd
       get_envelope_exponents_from_atomic_orbitals
-      get_envelope_exponents_hardcoded
       get_hartree_fock_solution
       get_orbital_type
       get_p_orbital_indices_per_atom
