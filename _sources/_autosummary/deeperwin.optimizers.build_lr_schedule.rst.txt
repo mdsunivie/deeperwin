@@ -1,0 +1,6 @@
+deeperwin.optimizers.build\_lr\_schedule
+========================================
+
+.. currentmodule:: deeperwin.optimizers
+
+.. autofunction:: build_lr_schedule

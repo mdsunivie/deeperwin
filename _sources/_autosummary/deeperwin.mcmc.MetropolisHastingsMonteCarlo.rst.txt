@@ -17,8 +17,7 @@ deeperwin.mcmc.MetropolisHastingsMonteCarlo
    
       ~MetropolisHastingsMonteCarlo.__init__
       ~MetropolisHastingsMonteCarlo.make_mcmc_step
-      ~MetropolisHastingsMonteCarlo.run_burn_in_eval
-      ~MetropolisHastingsMonteCarlo.run_burn_in_opt
+      ~MetropolisHastingsMonteCarlo.run_burn_in
       ~MetropolisHastingsMonteCarlo.run_inter_steps
    
    

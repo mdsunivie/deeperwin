@@ -1,6 +1,0 @@
-deeperwin.main.main
-===================
-
-.. currentmodule:: deeperwin.main
-
-.. autofunction:: main

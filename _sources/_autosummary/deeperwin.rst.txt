@@ -28,26 +28,22 @@
    :template: custom_module.rst
    :recursive:
 
-   deeperwin.ase_bindings
-   deeperwin.available_gpus
    deeperwin.bfgs
+   deeperwin.checkpoints
+   deeperwin.cli
    deeperwin.configuration
-   deeperwin.dispatch
+   deeperwin.curvature_tags_and_blocks
    deeperwin.evaluation
-   deeperwin.features
    deeperwin.hamiltonian
-   deeperwin.kfac
-   deeperwin.kfac_ferminet_alpha
+   deeperwin.local_features
    deeperwin.loggers
-   deeperwin.main
    deeperwin.mcmc
    deeperwin.model
    deeperwin.optimization
+   deeperwin.optimizers
    deeperwin.orbitals
    deeperwin.process_molecule
    deeperwin.process_molecules_shared
-   deeperwin.register_curvature
-   deeperwin.sweep_agent
+   deeperwin.run_tools
    deeperwin.utils
-   deeperwin.wandb_utils
 

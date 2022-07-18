@@ -73,70 +73,40 @@
 <span></span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">Helper functions.</span>
 <span class="sd">&quot;&quot;&quot;</span>
-<span class="kn">import</span> <span class="nn">bz2</span>
-<span class="kn">import</span> <span class="nn">copy</span>
+<span class="kn">import</span> <span class="nn">functools</span>
 <span class="kn">import</span> <span class="nn">logging</span>
 <span class="kn">import</span> <span class="nn">os</span>
-<span class="kn">import</span> <span class="nn">pickle</span>
 <span class="kn">import</span> <span class="nn">subprocess</span>
-<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">List</span>
-
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">jax</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
 <span class="kn">import</span> <span class="nn">scipy.optimize</span>
 <span class="kn">from</span> <span class="nn">jax</span> <span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">jnp</span>
-<span class="kn">from</span> <span class="nn">jax.experimental</span> <span class="kn">import</span> <span class="n">optimizers</span> <span class="k">as</span> <span class="n">jaxopt</span>
-<span class="kn">from</span> <span class="nn">jax.experimental.optimizers</span> <span class="kn">import</span> <span class="n">OptimizerState</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="n">make_schedule</span>
-<span class="kn">from</span> <span class="nn">jax.tree_util</span> <span class="kn">import</span> <span class="n">tree_unflatten</span><span class="p">,</span> <span class="n">tree_flatten</span>
-<span class="kn">from</span> <span class="nn">jax._src.util</span> <span class="kn">import</span> <span class="n">unzip2</span>
-<span class="kn">from</span> <span class="nn">jax.flatten_util</span> <span class="kn">import</span> <span class="n">ravel_pytree</span>
-
-<span class="kn">from</span> <span class="nn">deeperwin.configuration</span> <span class="kn">import</span>  <span class="n">ClippingConfig</span><span class="p">,</span> <span class="n">Configuration</span>
-<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">OrderedDict</span>
+<span class="kn">from</span> <span class="nn">deeperwin.configuration</span> <span class="kn">import</span> <span class="n">ClippingConfig</span>
+<span class="kn">import</span> <span class="nn">haiku</span> <span class="k">as</span> <span class="nn">hk</span>
 
 <span class="n">LOGGER</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;dpe&quot;</span><span class="p">)</span>
 
 <span class="c1">###############################################################################</span>
-<span class="c1">##################################### Logging  ################################</span>
+<span class="c1">############################# Parallelization  ################################</span>
 <span class="c1">###############################################################################</span>
 
-<div class="viewcode-block" id="calculate_metrics"><a class="viewcode-back" href="../../_autosummary/deeperwin.utils.calculate_metrics.html#deeperwin.utils.calculate_metrics">[docs]</a><span class="k">def</span> <span class="nf">calculate_metrics</span><span class="p">(</span><span class="n">epoch_nr</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">E_epoch</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="n">E_epoch_unclipped</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="n">E_epoch_unclipped_history</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span>
-                      <span class="n">mcmc_state</span><span class="p">:</span> <span class="s1">&#39;MCMCState&#39;</span><span class="p">,</span> <span class="n">mcmc_state_old</span><span class="p">:</span> <span class="s1">&#39;MCMCState&#39;</span><span class="p">,</span> <span class="n">time_per_epoch</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">metric_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">epoch_per_geometry</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">E_ref</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">smoothing</span><span class="o">=</span><span class="mf">0.05</span><span class="p">):</span>
-    <span class="n">metrics</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="n">pmap</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">jax</span><span class="o">.</span><span class="n">pmap</span><span class="p">,</span> <span class="n">axis_name</span><span class="o">=</span><span class="s2">&quot;devices&quot;</span><span class="p">)</span>
+<span class="n">pmean</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">jax</span><span class="o">.</span><span class="n">lax</span><span class="o">.</span><span class="n">pmean</span><span class="p">,</span> <span class="n">axis_name</span><span class="o">=</span><span class="s2">&quot;devices&quot;</span><span class="p">)</span>
+<span class="n">psum</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">jax</span><span class="o">.</span><span class="n">lax</span><span class="o">.</span><span class="n">psum</span><span class="p">,</span> <span class="n">axis_name</span><span class="o">=</span><span class="s2">&quot;devices&quot;</span><span class="p">)</span>
 
-    <span class="n">n_averaging</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">smoothing</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">E_epoch_unclipped_history</span><span class="p">))</span>
-    <span class="n">E_mean_smooth</span> <span class="o">=</span> <span class="n">E_epoch_unclipped_history</span><span class="p">[</span><span class="o">-</span><span class="n">n_averaging</span><span class="p">:]</span>
-    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">E_mean_smooth</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
-        <span class="n">E_smooth</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">E_mean_smooth</span><span class="p">)</span>
-        <span class="n">metrics</span><span class="p">[</span><span class="n">metric_type</span> <span class="o">+</span> <span class="s2">&quot;_E_mean_smooth&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">E_smooth</span>
-        <span class="k">if</span> <span class="n">E_ref</span><span class="p">:</span>
-            <span class="n">metrics</span><span class="p">[</span><span class="n">metric_type</span> <span class="o">+</span> <span class="s2">&quot;_error_smooth&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">E_smooth</span> <span class="o">-</span> <span class="n">E_ref</span><span class="p">)</span> <span class="o">*</span> <span class="mf">1e3</span>
+<div class="viewcode-block" id="replicate_across_devices"><a class="viewcode-back" href="../../_autosummary/deeperwin.utils.replicate_across_devices.html#deeperwin.utils.replicate_across_devices">[docs]</a><span class="k">def</span> <span class="nf">replicate_across_devices</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">n_devices</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">jax</span><span class="o">.</span><span class="n">tree_map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="p">[</span><span class="n">n_devices</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">x</span><span class="o">.</span><span class="n">ndim</span><span class="p">),</span> <span class="n">data</span><span class="p">)</span></div>
 
-    <span class="n">metrics</span><span class="p">[</span><span class="n">metric_type</span> <span class="o">+</span> <span class="s2">&quot;_E_mean&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">E_epoch</span><span class="p">))</span>
-    <span class="k">if</span> <span class="n">E_ref</span><span class="p">:</span>
-        <span class="n">metrics</span><span class="p">[</span><span class="n">metric_type</span> <span class="o">+</span> <span class="s2">&quot;_error_E_mean&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">E_epoch</span><span class="p">))</span> <span class="o">-</span> <span class="n">E_ref</span><span class="p">)</span> <span class="o">*</span> <span class="mf">1e3</span>
-    <span class="n">metrics</span><span class="p">[</span><span class="n">metric_type</span> <span class="o">+</span> <span class="s2">&quot;_E_std&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">E_epoch</span><span class="p">))</span>
-    <span class="k">if</span> <span class="n">metric_type</span> <span class="o">==</span> <span class="s2">&quot;opt&quot;</span><span class="p">:</span>
-        <span class="n">metrics</span><span class="p">[</span><span class="n">metric_type</span> <span class="o">+</span> <span class="s2">&quot;_E_mean_unclipped&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">E_epoch_unclipped</span><span class="p">))</span>
-        <span class="k">if</span> <span class="n">E_ref</span><span class="p">:</span>
-            <span class="n">metrics</span><span class="p">[</span><span class="n">metric_type</span> <span class="o">+</span> <span class="s2">&quot;_error_E_mean&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">E_epoch_unclipped</span><span class="p">))</span> <span class="o">-</span> <span class="n">E_ref</span><span class="p">)</span> <span class="o">*</span> <span class="mf">1e3</span>
-        <span class="n">metrics</span><span class="p">[</span><span class="n">metric_type</span> <span class="o">+</span> <span class="s2">&quot;_E_std_unclipped&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">E_epoch_unclipped</span><span class="p">))</span>
-    <span class="n">metrics</span><span class="p">[</span><span class="n">metric_type</span> <span class="o">+</span> <span class="s2">&quot;_mcmc_stepsize&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">mcmc_state</span><span class="o">.</span><span class="n">stepsize</span><span class="p">)</span>
-    <span class="n">metrics</span><span class="p">[</span><span class="n">metric_type</span> <span class="o">+</span> <span class="s2">&quot;_mcmc_acc_rate&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">mcmc_state</span><span class="o">.</span><span class="n">acc_rate</span><span class="p">)</span>
+<div class="viewcode-block" id="merge_from_devices"><a class="viewcode-back" href="../../_autosummary/deeperwin.utils.merge_from_devices.html#deeperwin.utils.merge_from_devices">[docs]</a><span class="k">def</span> <span class="nf">merge_from_devices</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">jax</span><span class="o">.</span><span class="n">tree_map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">data</span><span class="p">)</span></div>
 
-    <span class="k">if</span> <span class="n">mcmc_state_old</span><span class="p">:</span>
-        <span class="n">delta_r</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">mcmc_state</span><span class="o">.</span><span class="n">r</span> <span class="o">-</span> <span class="n">mcmc_state_old</span><span class="o">.</span><span class="n">r</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
-        <span class="n">metrics</span><span class="p">[</span><span class="n">metric_type</span> <span class="o">+</span> <span class="s2">&quot;_mcmc_delta_r_mean&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">delta_r</span><span class="p">))</span>
-        <span class="n">metrics</span><span class="p">[</span><span class="n">metric_type</span> <span class="o">+</span> <span class="s2">&quot;_mcmc_delta_r_median&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">delta_r</span><span class="p">))</span>
 
-    <span class="n">metrics</span><span class="p">[</span><span class="n">metric_type</span> <span class="o">+</span> <span class="s2">&quot;_mcmc_max_age&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">mcmc_state</span><span class="o">.</span><span class="n">walker_age</span><span class="p">))</span>
-    <span class="n">metrics</span><span class="p">[</span><span class="n">metric_type</span> <span class="o">+</span> <span class="s2">&quot;_t_epoch&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">time_per_epoch</span>
-    <span class="k">if</span> <span class="n">epoch_per_geometry</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">epoch_per_geometry</span> <span class="o">=</span> <span class="n">epoch_nr</span>
-    <span class="n">metrics</span><span class="p">[</span><span class="n">metric_type</span> <span class="o">+</span> <span class="s2">&quot;_epoch_per_geom&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">epoch_per_geometry</span>
+<span class="n">batch_rng_split</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">vmap</span><span class="p">(</span><span class="k">lambda</span> <span class="n">k</span><span class="p">:</span> <span class="n">jax</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">k</span><span class="p">,</span><span class="mi">2</span><span class="p">),</span> <span class="n">in_axes</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">out_axes</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 
-    <span class="k">return</span> <span class="n">metrics</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">epoch_nr</span><span class="p">),</span> <span class="n">metric_type</span></div>
+<span class="c1">###############################################################################</span>
+<span class="c1">##################################### Logging  ################################</span>
+<span class="c1">###############################################################################</span>
 
 <div class="viewcode-block" id="getCodeVersion"><a class="viewcode-back" href="../../_autosummary/deeperwin.utils.getCodeVersion.html#deeperwin.utils.getCodeVersion">[docs]</a><span class="k">def</span> <span class="nf">getCodeVersion</span><span class="p">():</span>
     <span class="sd">&quot;&quot;&quot;</span>
@@ -153,14 +123,6 @@
         <span class="k">return</span> <span class="kc">None</span></div>
 
 
-<div class="viewcode-block" id="prepare_data_for_logging"><a class="viewcode-back" href="../../_autosummary/deeperwin.utils.prepare_data_for_logging.html#deeperwin.utils.prepare_data_for_logging">[docs]</a><span class="k">def</span> <span class="nf">prepare_data_for_logging</span><span class="p">(</span><span class="n">trainable_params</span><span class="p">,</span> <span class="n">fixed_params</span><span class="p">,</span> <span class="n">mcmc_state</span><span class="p">,</span> <span class="n">opt_state</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">clipping_state</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-    <span class="c1"># create full data dict</span>
-    <span class="n">full_data</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">trainable</span><span class="o">=</span><span class="n">trainable_params</span><span class="p">,</span> <span class="n">fixed</span><span class="o">=</span><span class="n">fixed_params</span><span class="p">,</span> <span class="n">mcmc</span><span class="o">=</span><span class="n">mcmc_state</span><span class="p">,</span> <span class="n">clipping</span><span class="o">=</span><span class="n">clipping_state</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">opt_state</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">full_data</span><span class="p">[</span><span class="s2">&quot;opt&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">make_opt_state_picklable</span><span class="p">(</span><span class="n">opt_state</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">full_data</span></div>
-
-
 <span class="c1">###############################################################################</span>
 <span class="c1">############################# Model / physics / hamiltonian ###################</span>
 <span class="c1">###############################################################################</span>
@@ -175,7 +137,7 @@
 <span class="sd">        diff: shape [N_batch x n_el x N_ion x 3]</span>
 <span class="sd">        dist: shape [N_batch x n_el x N_ion]</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">diff</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">r_el</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">)</span> <span class="o">-</span> <span class="n">R_ion</span>
+    <span class="n">diff</span> <span class="o">=</span> <span class="n">r_el</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:]</span> <span class="o">-</span> <span class="n">R_ion</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span>
     <span class="n">dist</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">diff</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">diff</span><span class="p">,</span> <span class="n">dist</span></div>
 
@@ -202,274 +164,11 @@
 <span class="sd">        tuple: differences [batch_dims x n_el x n_el x 3], distances [batch_dims x n_el x n_el]</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">n_el</span> <span class="o">=</span> <span class="n">r_el</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
-    <span class="n">diff</span> <span class="o">=</span> <span class="n">r_el</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">-</span> <span class="n">r_el</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">:,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:]</span>
+    <span class="n">diff</span> <span class="o">=</span> <span class="n">r_el</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">:,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:]</span> <span class="o">-</span> <span class="n">r_el</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span>
     <span class="n">diff_padded</span> <span class="o">=</span> <span class="n">diff</span> <span class="o">+</span> <span class="n">jnp</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="n">n_el</span><span class="p">)[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
     <span class="n">dist</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">diff_padded</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">jnp</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="n">n_el</span><span class="p">))</span>
     <span class="k">return</span> <span class="n">diff</span><span class="p">,</span> <span class="n">dist</span></div>
 
-
-<span class="c1">###############################################################################</span>
-<span class="c1">##################################### Optimization ############################</span>
-<span class="c1">###############################################################################</span>
-
-
-<div class="viewcode-block" id="PickleableOptState"><a class="viewcode-back" href="../../_autosummary/deeperwin.utils.PickleableOptState.html#deeperwin.utils.PickleableOptState">[docs]</a><span class="k">class</span> <span class="nc">PickleableOptState</span><span class="p">:</span>
-<div class="viewcode-block" id="PickleableOptState.__init__"><a class="viewcode-back" href="../../_autosummary/deeperwin.utils.PickleableOptState.html#deeperwin.utils.PickleableOptState.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">unpacked_opt_state</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">unpacked_opt_state</span> <span class="o">=</span> <span class="n">unpacked_opt_state</span></div></div>
-
-
-<div class="viewcode-block" id="make_opt_state_picklable"><a class="viewcode-back" href="../../_autosummary/deeperwin.utils.make_opt_state_picklable.html#deeperwin.utils.make_opt_state_picklable">[docs]</a><span class="k">def</span> <span class="nf">make_opt_state_picklable</span><span class="p">(</span><span class="n">opt_state</span><span class="p">):</span>
-    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">opt_state</span><span class="p">,</span> <span class="n">jaxopt</span><span class="o">.</span><span class="n">OptimizerState</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">PickleableOptState</span><span class="p">(</span><span class="n">jaxopt</span><span class="o">.</span><span class="n">unpack_optimizer_state</span><span class="p">(</span><span class="n">opt_state</span><span class="p">))</span>
-    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">opt_state</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
-        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">make_opt_state_picklable</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">opt_state</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">opt_state</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
-        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">make_opt_state_picklable</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">opt_state</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">opt_state</span><span class="p">,</span> <span class="n">OrderedDict</span><span class="p">):</span>
-        <span class="n">x</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>
-        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">opt_state</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="n">x</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">make_opt_state_picklable</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">x</span>
-    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">opt_state</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
-        <span class="k">return</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">make_opt_state_picklable</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">opt_state</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">opt_state</span></div>
-
-
-<div class="viewcode-block" id="unpickle_opt_state"><a class="viewcode-back" href="../../_autosummary/deeperwin.utils.unpickle_opt_state.html#deeperwin.utils.unpickle_opt_state">[docs]</a><span class="k">def</span> <span class="nf">unpickle_opt_state</span><span class="p">(</span><span class="n">pickled_opt_state</span><span class="p">):</span>
-    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pickled_opt_state</span><span class="p">,</span> <span class="n">PickleableOptState</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">jaxopt</span><span class="o">.</span><span class="n">pack_optimizer_state</span><span class="p">(</span><span class="n">pickled_opt_state</span><span class="o">.</span><span class="n">unpacked_opt_state</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pickled_opt_state</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
-        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">unpickle_opt_state</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">pickled_opt_state</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pickled_opt_state</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
-        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">unpickle_opt_state</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">pickled_opt_state</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pickled_opt_state</span><span class="p">,</span> <span class="n">OrderedDict</span><span class="p">):</span>
-        <span class="n">x</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>
-        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">pickled_opt_state</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="n">x</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">unpickle_opt_state</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">x</span>
-    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pickled_opt_state</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
-        <span class="k">return</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">unpickle_opt_state</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">pickled_opt_state</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">pickled_opt_state</span></div>
-
-
-<div class="viewcode-block" id="build_learning_rate_schedule"><a class="viewcode-back" href="../../_autosummary/deeperwin.utils.build_learning_rate_schedule.html#deeperwin.utils.build_learning_rate_schedule">[docs]</a><span class="k">def</span> <span class="nf">build_learning_rate_schedule</span><span class="p">(</span><span class="n">base_lr</span><span class="p">,</span> <span class="n">schedule_config</span><span class="p">):</span>
-    <span class="k">if</span> <span class="n">schedule_config</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;inverse&quot;</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">build_inverse_schedule</span><span class="p">(</span><span class="n">base_lr</span><span class="p">,</span> <span class="n">schedule_config</span><span class="o">.</span><span class="n">decay_time</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="n">schedule_config</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;fixed&quot;</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">base_lr</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported config-value for optimization.schedule.name: </span><span class="si">{</span><span class="n">schedule_config</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
-
-
-<div class="viewcode-block" id="build_inverse_schedule"><a class="viewcode-back" href="../../_autosummary/deeperwin.utils.build_inverse_schedule.html#deeperwin.utils.build_inverse_schedule">[docs]</a><span class="k">def</span> <span class="nf">build_inverse_schedule</span><span class="p">(</span><span class="n">lr_init</span><span class="p">,</span> <span class="n">lr_decay_time</span><span class="p">):</span>
-    <span class="k">return</span> <span class="k">lambda</span> <span class="n">t</span><span class="p">:</span> <span class="n">lr_init</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">t</span> <span class="o">/</span> <span class="n">lr_decay_time</span><span class="p">)</span></div>
-
-
-<span class="k">def</span> <span class="nf">_update_adam_opt_state</span><span class="p">(</span><span class="n">opt_state</span><span class="p">,</span> <span class="n">params</span><span class="p">):</span>
-    <span class="n">params</span><span class="p">,</span> <span class="n">tree2</span> <span class="o">=</span> <span class="n">tree_flatten</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">do_nothing</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="n">params</span><span class="p">):</span>
-        <span class="n">x</span><span class="p">,</span> <span class="n">m</span><span class="p">,</span> <span class="n">v</span> <span class="o">=</span> <span class="n">state</span>
-        <span class="k">return</span> <span class="n">params</span><span class="p">,</span> <span class="n">m</span><span class="p">,</span> <span class="n">v</span>
-
-    <span class="n">states_flat</span><span class="p">,</span> <span class="n">tree</span><span class="p">,</span> <span class="n">subtrees</span> <span class="o">=</span> <span class="n">opt_state</span>
-    <span class="n">states</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="n">tree_unflatten</span><span class="p">,</span> <span class="n">subtrees</span><span class="p">,</span> <span class="n">states_flat</span><span class="p">)</span>
-    <span class="n">new_states</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="n">do_nothing</span><span class="p">,</span> <span class="n">states</span><span class="p">,</span> <span class="n">params</span><span class="p">)</span>
-    <span class="n">new_states_flat</span><span class="p">,</span> <span class="n">subtrees2</span> <span class="o">=</span> <span class="n">unzip2</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="n">tree_flatten</span><span class="p">,</span> <span class="n">new_states</span><span class="p">))</span>
-    <span class="k">return</span> <span class="n">OptimizerState</span><span class="p">(</span><span class="n">new_states_flat</span><span class="p">,</span> <span class="n">tree</span><span class="p">,</span> <span class="n">subtrees</span><span class="p">)</span>
-
-<div class="viewcode-block" id="adam_inverse"><a class="viewcode-back" href="../../_autosummary/deeperwin.utils.adam_inverse.html#deeperwin.utils.adam_inverse">[docs]</a><span class="nd">@optimizer</span>
-<span class="k">def</span> <span class="nf">adam_inverse</span><span class="p">(</span><span class="n">step_size</span><span class="p">,</span> <span class="n">b1</span><span class="o">=</span><span class="mf">0.9</span><span class="p">,</span> <span class="n">b2</span><span class="o">=</span><span class="mf">0.999</span><span class="p">,</span> <span class="n">eps</span><span class="o">=</span><span class="mf">1e-8</span><span class="p">):</span>
-  <span class="sd">&quot;&quot;&quot;Construct optimizer triple for Adam.</span>
-
-<span class="sd">  Args:</span>
-<span class="sd">    step_size: positive scalar, or a callable representing a step size schedule</span>
-<span class="sd">      that maps the iteration index to a positive scalar.</span>
-<span class="sd">    b1: optional, a positive scalar value for beta_1, the exponential decay rate</span>
-<span class="sd">      for the first moment estimates (default 0.9).</span>
-<span class="sd">    b2: optional, a positive scalar value for beta_2, the exponential decay rate</span>
-<span class="sd">      for the second moment estimates (default 0.999).</span>
-<span class="sd">    eps: optional, a positive scalar value for epsilon, a small constant for</span>
-<span class="sd">      numerical stability (default 1e-8).</span>
-
-<span class="sd">  Returns:</span>
-<span class="sd">    An (init_fun, update_fun, get_params) triple.</span>
-<span class="sd">  &quot;&quot;&quot;</span>
-  <span class="n">step_size</span> <span class="o">=</span> <span class="n">make_schedule</span><span class="p">(</span><span class="n">step_size</span><span class="p">)</span>
-  <span class="k">def</span> <span class="nf">init</span><span class="p">(</span><span class="n">x0</span><span class="p">):</span>
-    <span class="n">m0</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">x0</span><span class="p">)</span>
-    <span class="n">v0</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">x0</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">x0</span><span class="p">,</span> <span class="n">m0</span><span class="p">,</span> <span class="n">v0</span>
-  <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">g</span><span class="p">,</span> <span class="n">state</span><span class="p">):</span>
-    <span class="n">x</span><span class="p">,</span> <span class="n">m</span><span class="p">,</span> <span class="n">v</span> <span class="o">=</span> <span class="n">state</span>
-    <span class="n">m</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">b1</span><span class="p">)</span> <span class="o">*</span> <span class="n">g</span> <span class="o">+</span> <span class="n">b1</span> <span class="o">*</span> <span class="n">m</span>  <span class="c1"># First  moment estimate.</span>
-    <span class="n">v</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">b2</span><span class="p">)</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">square</span><span class="p">((</span><span class="n">g</span> <span class="o">-</span> <span class="n">m</span><span class="p">))</span> <span class="o">+</span> <span class="n">b2</span> <span class="o">*</span> <span class="n">v</span>  <span class="c1"># Centered second moment estimate.</span>
-    <span class="n">mhat</span> <span class="o">=</span> <span class="n">m</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">b1</span><span class="p">,</span> <span class="n">m</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span> <span class="o">**</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>  <span class="c1"># Bias correction.</span>
-    <span class="n">vhat</span> <span class="o">=</span> <span class="n">v</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">b2</span><span class="p">,</span> <span class="n">m</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span> <span class="o">**</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
-    <span class="n">m_clipped</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">mhat</span><span class="p">,</span> <span class="n">a_min</span><span class="o">=</span><span class="n">mhat</span> <span class="o">-</span> <span class="mi">3</span><span class="o">*</span><span class="n">vhat</span><span class="p">,</span> <span class="n">a_max</span><span class="o">=</span><span class="n">mhat</span> <span class="o">+</span> <span class="mi">3</span><span class="o">*</span><span class="n">vhat</span><span class="p">)</span>
-    <span class="n">x</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-</span> <span class="n">step_size</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">*</span> <span class="n">m_clipped</span>
-    <span class="k">return</span> <span class="n">x</span><span class="p">,</span> <span class="n">m</span><span class="p">,</span> <span class="n">v</span>
-  <span class="k">def</span> <span class="nf">get_params</span><span class="p">(</span><span class="n">state</span><span class="p">):</span>
-    <span class="n">x</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">state</span>
-    <span class="k">return</span> <span class="n">x</span>
-  <span class="k">return</span> <span class="n">init</span><span class="p">,</span> <span class="n">update</span><span class="p">,</span> <span class="n">get_params</span></div>
-
-
-
-
-<span class="k">def</span> <span class="nf">_update_adam_scaled_opt_state</span><span class="p">(</span><span class="n">opt_state</span><span class="p">,</span> <span class="n">params</span><span class="p">):</span>
-    <span class="n">params</span><span class="p">,</span> <span class="n">tree2</span> <span class="o">=</span> <span class="n">tree_flatten</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">do_nothing</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="n">params</span><span class="p">):</span>
-        <span class="n">x</span><span class="p">,</span> <span class="n">m</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">scale</span> <span class="o">=</span> <span class="n">state</span>
-        <span class="k">return</span> <span class="n">params</span><span class="p">,</span> <span class="n">m</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">scale</span>
-
-    <span class="n">states_flat</span><span class="p">,</span> <span class="n">tree</span><span class="p">,</span> <span class="n">subtrees</span> <span class="o">=</span> <span class="n">opt_state</span>
-    <span class="n">states</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="n">tree_unflatten</span><span class="p">,</span> <span class="n">subtrees</span><span class="p">,</span> <span class="n">states_flat</span><span class="p">)</span>
-    <span class="n">new_states</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="n">do_nothing</span><span class="p">,</span> <span class="n">states</span><span class="p">,</span> <span class="n">params</span><span class="p">)</span>
-    <span class="n">new_states_flat</span><span class="p">,</span> <span class="n">subtrees2</span> <span class="o">=</span> <span class="n">unzip2</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="n">tree_flatten</span><span class="p">,</span> <span class="n">new_states</span><span class="p">))</span>
-    <span class="k">return</span> <span class="n">OptimizerState</span><span class="p">(</span><span class="n">new_states_flat</span><span class="p">,</span> <span class="n">tree</span><span class="p">,</span> <span class="n">subtrees</span><span class="p">)</span>
-
-
-<div class="viewcode-block" id="sgd_scaled"><a class="viewcode-back" href="../../_autosummary/deeperwin.utils.sgd_scaled.html#deeperwin.utils.sgd_scaled">[docs]</a><span class="nd">@optimizer</span>
-<span class="k">def</span> <span class="nf">sgd_scaled</span><span class="p">(</span><span class="n">step_size</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Construct optimizer triple for stochastic gradient descent with differently scaled gradients for reuse option.</span>
-
-<span class="sd">    Args:</span>
-<span class="sd">    step_size: positive scalar, or a callable representing a step size schedule</span>
-<span class="sd">      that maps the iteration index to a positive scalar.</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">    An (init_fun, update_fun, get_params) triple.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">step_size</span> <span class="o">=</span> <span class="n">make_schedule</span><span class="p">(</span><span class="n">step_size</span><span class="p">)</span>
-    <span class="k">def</span> <span class="nf">init</span><span class="p">(</span><span class="n">x0</span><span class="p">):</span>
-        <span class="n">scale</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">x0</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">x0</span><span class="p">,</span> <span class="n">scale</span>
-
-    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">g</span><span class="p">,</span> <span class="n">state</span><span class="p">):</span>
-        <span class="n">x</span><span class="p">,</span> <span class="n">scale</span> <span class="o">=</span> <span class="n">state</span>
-        <span class="n">x</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-</span> <span class="n">step_size</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">*</span> <span class="n">scale</span> <span class="o">*</span> <span class="n">g</span>
-        <span class="k">return</span> <span class="n">x</span><span class="p">,</span> <span class="n">scale</span>
-
-    <span class="k">def</span> <span class="nf">get_params</span><span class="p">(</span><span class="n">state</span><span class="p">):</span>
-        <span class="n">x</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">state</span>
-        <span class="k">return</span> <span class="n">x</span>
-
-    <span class="k">return</span> <span class="n">init</span><span class="p">,</span> <span class="n">update</span><span class="p">,</span> <span class="n">get_params</span></div>
-
-
-<div class="viewcode-block" id="adam_scaled"><a class="viewcode-back" href="../../_autosummary/deeperwin.utils.adam_scaled.html#deeperwin.utils.adam_scaled">[docs]</a><span class="nd">@optimizer</span>
-<span class="k">def</span> <span class="nf">adam_scaled</span><span class="p">(</span><span class="n">step_size</span><span class="p">,</span> <span class="n">b1</span><span class="o">=</span><span class="mf">0.9</span><span class="p">,</span> <span class="n">b2</span><span class="o">=</span><span class="mf">0.999</span><span class="p">,</span> <span class="n">eps</span><span class="o">=</span><span class="mf">1e-8</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Construct optimizer triple for Adam.</span>
-
-<span class="sd">    Args:</span>
-<span class="sd">      step_size: positive scalar, or a callable representing a step size schedule</span>
-<span class="sd">        that maps the iteration index to positive scalar.</span>
-<span class="sd">      b1: optional, a positive scalar value for beta_1, the exponential decay rate</span>
-<span class="sd">        for the first moment estimates (default 0.9).</span>
-<span class="sd">      b2: optional, a positive scalar value for beta_2, the exponential decay rate</span>
-<span class="sd">        for the second moment estimates (default 0.999).</span>
-<span class="sd">      eps: optional, a positive scalar value for epsilon, a small constant for</span>
-<span class="sd">        numerical stability (default 1e-8).</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">      An (init_fun, update_fun, get_params) triple.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">step_size</span> <span class="o">=</span> <span class="n">make_schedule</span><span class="p">(</span><span class="n">step_size</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">init</span><span class="p">(</span><span class="n">x0</span><span class="p">):</span>
-        <span class="n">m0</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">x0</span><span class="p">)</span>
-        <span class="n">v0</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">x0</span><span class="p">)</span>
-        <span class="n">scale</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">x0</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">x0</span><span class="p">,</span> <span class="n">m0</span><span class="p">,</span> <span class="n">v0</span><span class="p">,</span> <span class="n">scale</span>
-
-    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">g</span><span class="p">,</span> <span class="n">state</span><span class="p">):</span>
-        <span class="n">x</span><span class="p">,</span> <span class="n">m</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">scale</span> <span class="o">=</span> <span class="n">state</span>
-        <span class="n">m</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">b1</span><span class="p">)</span> <span class="o">*</span> <span class="n">g</span> <span class="o">+</span> <span class="n">b1</span> <span class="o">*</span> <span class="n">m</span>  <span class="c1"># First  moment estimate.</span>
-        <span class="n">v</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">b2</span><span class="p">)</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">square</span><span class="p">(</span><span class="n">g</span><span class="p">)</span> <span class="o">+</span> <span class="n">b2</span> <span class="o">*</span> <span class="n">v</span>  <span class="c1"># Second moment estimate.</span>
-        <span class="n">mhat</span> <span class="o">=</span> <span class="n">m</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">b1</span><span class="p">,</span> <span class="n">m</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span> <span class="o">**</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>  <span class="c1"># Bias correction.</span>
-        <span class="n">vhat</span> <span class="o">=</span> <span class="n">v</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">b2</span><span class="p">,</span> <span class="n">m</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span> <span class="o">**</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
-        <span class="n">x</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-</span> <span class="n">scale</span> <span class="o">*</span> <span class="n">step_size</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">*</span> <span class="n">mhat</span> <span class="o">/</span> <span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">vhat</span><span class="p">)</span> <span class="o">+</span> <span class="n">eps</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">x</span><span class="p">,</span> <span class="n">m</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">scale</span>
-
-    <span class="k">def</span> <span class="nf">get_params</span><span class="p">(</span><span class="n">state</span><span class="p">):</span>
-        <span class="n">x</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">state</span>
-        <span class="k">return</span> <span class="n">x</span>
-
-    <span class="k">return</span> <span class="n">init</span><span class="p">,</span> <span class="n">update</span><span class="p">,</span> <span class="n">get_params</span></div>
-
-
-<div class="viewcode-block" id="set_scaled_optimizer_lr"><a class="viewcode-back" href="../../_autosummary/deeperwin.utils.set_scaled_optimizer_lr.html#deeperwin.utils.set_scaled_optimizer_lr">[docs]</a><span class="k">def</span> <span class="nf">set_scaled_optimizer_lr</span><span class="p">(</span><span class="n">opt_config</span><span class="p">,</span> <span class="n">opt_state</span><span class="p">,</span> <span class="n">get_params</span><span class="p">):</span>
-    <span class="n">params_ravel</span><span class="p">,</span> <span class="n">unravel_func</span> <span class="o">=</span> <span class="n">ravel_pytree</span><span class="p">(</span><span class="n">get_params</span><span class="p">(</span><span class="n">opt_state</span><span class="p">))</span>
-    <span class="n">scale</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">params_ravel</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
-    <span class="n">scale</span> <span class="o">=</span> <span class="n">unravel_func</span><span class="p">(</span><span class="n">scale</span><span class="p">)</span>
-
-    <span class="k">for</span> <span class="n">mod</span> <span class="ow">in</span> <span class="n">scale</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">mod</span> <span class="ow">in</span> <span class="n">opt_config</span><span class="o">.</span><span class="n">scaled_modules</span><span class="p">:</span>
-            <span class="n">scale_of_mod</span><span class="p">,</span> <span class="n">unravel_func</span> <span class="o">=</span> <span class="n">ravel_pytree</span><span class="p">(</span><span class="n">scale</span><span class="p">[</span><span class="n">mod</span><span class="p">])</span>
-            <span class="n">scale_of_mod</span> <span class="o">=</span> <span class="n">scale_of_mod</span> <span class="o">*</span> <span class="n">opt_config</span><span class="o">.</span><span class="n">scale_lr</span>
-            <span class="n">scale</span><span class="p">[</span><span class="n">mod</span><span class="p">]</span> <span class="o">=</span> <span class="n">unravel_func</span><span class="p">(</span><span class="n">scale_of_mod</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">_update_adam_scaled_opt_state</span><span class="p">(</span><span class="n">opt_state</span><span class="p">,</span> <span class="n">scale</span><span class="p">):</span>
-        <span class="n">scale</span><span class="p">,</span> <span class="n">tree2</span> <span class="o">=</span> <span class="n">tree_flatten</span><span class="p">(</span><span class="n">scale</span><span class="p">)</span>
-
-        <span class="k">def</span> <span class="nf">_do_nothing</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="n">scale</span><span class="p">):</span>
-            <span class="n">x</span><span class="p">,</span> <span class="n">m</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">state</span>
-            <span class="k">return</span> <span class="n">x</span><span class="p">,</span> <span class="n">m</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">scale</span>
-
-        <span class="n">states_flat</span><span class="p">,</span> <span class="n">tree</span><span class="p">,</span> <span class="n">subtrees</span> <span class="o">=</span> <span class="n">opt_state</span>
-        <span class="n">states</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="n">tree_unflatten</span><span class="p">,</span> <span class="n">subtrees</span><span class="p">,</span> <span class="n">states_flat</span><span class="p">)</span>
-        <span class="n">new_states</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="n">_do_nothing</span><span class="p">,</span> <span class="n">states</span><span class="p">,</span> <span class="n">scale</span><span class="p">)</span>
-        <span class="n">new_states_flat</span><span class="p">,</span> <span class="n">subtrees2</span> <span class="o">=</span> <span class="n">unzip2</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="n">tree_flatten</span><span class="p">,</span> <span class="n">new_states</span><span class="p">))</span>
-        <span class="k">return</span> <span class="n">OptimizerState</span><span class="p">(</span><span class="n">new_states_flat</span><span class="p">,</span> <span class="n">tree</span><span class="p">,</span> <span class="n">subtrees</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">_update_sgd_scaled_opt_state</span><span class="p">(</span><span class="n">opt_state</span><span class="p">,</span> <span class="n">scale</span><span class="p">):</span>
-        <span class="n">scale</span><span class="p">,</span> <span class="n">tree2</span> <span class="o">=</span> <span class="n">tree_flatten</span><span class="p">(</span><span class="n">scale</span><span class="p">)</span>
-        <span class="k">def</span> <span class="nf">_do_nothing</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="n">scale</span><span class="p">):</span>
-            <span class="n">x</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">state</span>
-            <span class="k">return</span> <span class="n">x</span><span class="p">,</span> <span class="n">scale</span>
-
-        <span class="n">states_flat</span><span class="p">,</span> <span class="n">tree</span><span class="p">,</span> <span class="n">subtrees</span> <span class="o">=</span> <span class="n">opt_state</span>
-        <span class="n">states</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="n">tree_unflatten</span><span class="p">,</span> <span class="n">subtrees</span><span class="p">,</span> <span class="n">states_flat</span><span class="p">)</span>
-        <span class="n">new_states</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="n">_do_nothing</span><span class="p">,</span> <span class="n">states</span><span class="p">,</span> <span class="n">scale</span><span class="p">)</span>
-        <span class="n">new_states_flat</span><span class="p">,</span> <span class="n">subtrees2</span> <span class="o">=</span> <span class="n">unzip2</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="n">tree_flatten</span><span class="p">,</span> <span class="n">new_states</span><span class="p">))</span>
-        <span class="k">return</span> <span class="n">OptimizerState</span><span class="p">(</span><span class="n">new_states_flat</span><span class="p">,</span> <span class="n">tree</span><span class="p">,</span> <span class="n">subtrees</span><span class="p">)</span>
-
-    <span class="k">if</span> <span class="n">opt_config</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;adam_scaled&quot;</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">_update_adam_scaled_opt_state</span><span class="p">(</span><span class="n">opt_state</span><span class="p">,</span> <span class="n">scale</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="n">opt_config</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;sgd_scaled&quot;</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">_update_sgd_scaled_opt_state</span><span class="p">(</span><span class="n">opt_state</span><span class="p">,</span> <span class="n">scale</span><span class="p">)</span></div>
-
-<div class="viewcode-block" id="get_builtin_optimizer"><a class="viewcode-back" href="../../_autosummary/deeperwin.utils.get_builtin_optimizer.html#deeperwin.utils.get_builtin_optimizer">[docs]</a><span class="k">def</span> <span class="nf">get_builtin_optimizer</span><span class="p">(</span><span class="n">optimizer_config</span><span class="p">,</span> <span class="n">schedule_config</span><span class="p">,</span> <span class="n">base_lr</span><span class="p">):</span>
-    <span class="n">schedule</span> <span class="o">=</span> <span class="n">build_learning_rate_schedule</span><span class="p">(</span><span class="n">base_lr</span><span class="p">,</span> <span class="n">schedule_config</span><span class="p">)</span>
-    <span class="n">name</span> <span class="o">=</span> <span class="n">optimizer_config</span><span class="o">.</span><span class="n">name</span>
-    <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;adam&quot;</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">jaxopt</span><span class="o">.</span><span class="n">adam</span><span class="p">(</span><span class="n">schedule</span><span class="p">,</span> <span class="n">b1</span><span class="o">=</span><span class="n">optimizer_config</span><span class="o">.</span><span class="n">b1</span><span class="p">,</span> <span class="n">b2</span><span class="o">=</span><span class="n">optimizer_config</span><span class="o">.</span><span class="n">b2</span><span class="p">,</span> <span class="n">eps</span><span class="o">=</span><span class="n">optimizer_config</span><span class="o">.</span><span class="n">eps</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;adam_scaled&quot;</span><span class="p">:</span>
-        <span class="n">init_fn</span><span class="p">,</span> <span class="n">update_fn</span><span class="p">,</span> <span class="n">get_params_fn</span> <span class="o">=</span> <span class="n">adam_scaled</span><span class="p">(</span><span class="n">schedule</span><span class="p">,</span> <span class="n">b1</span><span class="o">=</span><span class="n">optimizer_config</span><span class="o">.</span><span class="n">b1</span><span class="p">,</span> <span class="n">b2</span><span class="o">=</span><span class="n">optimizer_config</span><span class="o">.</span><span class="n">b2</span><span class="p">,</span> <span class="n">eps</span><span class="o">=</span><span class="n">optimizer_config</span><span class="o">.</span><span class="n">eps</span><span class="p">)</span>
-
-        <span class="k">def</span> <span class="nf">init_and_set_scales_fn</span><span class="p">(</span><span class="n">initial_params</span><span class="p">):</span>
-            <span class="n">state</span> <span class="o">=</span> <span class="n">init_fn</span><span class="p">(</span><span class="n">initial_params</span><span class="p">)</span>
-            <span class="k">return</span> <span class="n">set_scaled_optimizer_lr</span><span class="p">(</span><span class="n">optimizer_config</span><span class="p">,</span> <span class="n">state</span><span class="p">,</span> <span class="n">get_params_fn</span><span class="p">)</span>
-
-        <span class="k">return</span> <span class="n">init_and_set_scales_fn</span><span class="p">,</span> <span class="n">update_fn</span><span class="p">,</span> <span class="n">get_params_fn</span>
-    <span class="k">elif</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;adam_inverse&quot;</span><span class="p">:</span>
-        <span class="n">init_fn</span><span class="p">,</span> <span class="n">update_fn</span><span class="p">,</span> <span class="n">get_params_fn</span> <span class="o">=</span> <span class="n">adam_inverse</span><span class="p">(</span><span class="n">schedule</span><span class="p">,</span> <span class="n">b1</span><span class="o">=</span><span class="n">optimizer_config</span><span class="o">.</span><span class="n">b1</span><span class="p">,</span> <span class="n">b2</span><span class="o">=</span><span class="n">optimizer_config</span><span class="o">.</span><span class="n">b2</span><span class="p">,</span> <span class="n">eps</span><span class="o">=</span><span class="n">optimizer_config</span><span class="o">.</span><span class="n">eps</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">init_fn</span><span class="p">,</span> <span class="n">update_fn</span><span class="p">,</span> <span class="n">get_params_fn</span>
-    <span class="k">elif</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;sgd_scaled&quot;</span><span class="p">:</span>
-        <span class="n">init_fn</span><span class="p">,</span> <span class="n">update_fn</span><span class="p">,</span> <span class="n">get_params_fn</span> <span class="o">=</span> <span class="n">sgd_scaled</span><span class="p">(</span><span class="n">schedule</span><span class="p">)</span>
-
-        <span class="k">def</span> <span class="nf">init_and_set_scales_fn</span><span class="p">(</span><span class="n">initial_params</span><span class="p">):</span>
-            <span class="n">state</span> <span class="o">=</span> <span class="n">init_fn</span><span class="p">(</span><span class="n">initial_params</span><span class="p">)</span>
-            <span class="k">return</span> <span class="n">set_scaled_optimizer_lr</span><span class="p">(</span><span class="n">optimizer_config</span><span class="p">,</span> <span class="n">state</span><span class="p">,</span> <span class="n">get_params_fn</span><span class="p">)</span>
-
-        <span class="k">return</span> <span class="n">init_and_set_scales_fn</span><span class="p">,</span> <span class="n">update_fn</span><span class="p">,</span> <span class="n">get_params_fn</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">standard_optimizers</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">rmsprop_momentum</span><span class="o">=</span><span class="n">jaxopt</span><span class="o">.</span><span class="n">rmsprop_momentum</span><span class="p">,</span> <span class="n">sgd</span><span class="o">=</span><span class="n">jaxopt</span><span class="o">.</span><span class="n">sgd</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">standard_optimizers</span><span class="p">[</span><span class="n">optimizer_config</span><span class="o">.</span><span class="n">name</span><span class="p">](</span><span class="n">schedule</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="calculate_clipping_state"><a class="viewcode-back" href="../../_autosummary/deeperwin.utils.calculate_clipping_state.html#deeperwin.utils.calculate_clipping_state">[docs]</a><span class="k">def</span> <span class="nf">calculate_clipping_state</span><span class="p">(</span><span class="n">E</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">ClippingConfig</span><span class="p">):</span>
@@ -550,134 +249,17 @@
 <span class="c1">##################### Shared optimization / split model #######################</span>
 <span class="c1">###############################################################################</span>
 
+<div class="viewcode-block" id="get_params_filter_func"><a class="viewcode-back" href="../../_autosummary/deeperwin.utils.get_params_filter_func.html#deeperwin.utils.get_params_filter_func">[docs]</a><span class="k">def</span> <span class="nf">get_params_filter_func</span><span class="p">(</span><span class="n">module_names</span><span class="p">):</span>
+    <span class="n">regex</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s2">&quot;(&quot;</span> <span class="o">+</span> <span class="s2">&quot;|&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">module_names</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;)&quot;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">filter_func</span><span class="p">(</span><span class="n">module_name</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">regex</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">module_name</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">0</span>
+    <span class="k">return</span> <span class="n">filter_func</span></div>
 
-<div class="viewcode-block" id="remove_module_params_nested"><a class="viewcode-back" href="../../_autosummary/deeperwin.utils.remove_module_params_nested.html#deeperwin.utils.remove_module_params_nested">[docs]</a><span class="k">def</span> <span class="nf">remove_module_params_nested</span><span class="p">(</span><span class="n">params</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">module_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
-    <span class="n">keys</span> <span class="o">=</span> <span class="n">module_key</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)</span>
-    <span class="n">model_params</span> <span class="o">=</span> <span class="n">params</span>
-    <span class="k">for</span> <span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">keys</span><span class="p">):</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">model_params</span><span class="p">:</span>
-            <span class="n">LOGGER</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not find module </span><span class="si">{</span><span class="n">module_key</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="k">return</span> <span class="n">params</span>
-        <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">keys</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
-            <span class="n">model_params</span> <span class="o">=</span> <span class="n">model_params</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
-    <span class="n">model_params</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">keys</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
-    <span class="k">return</span> <span class="n">params</span></div>
+<div class="viewcode-block" id="split_params"><a class="viewcode-back" href="../../_autosummary/deeperwin.utils.split_params.html#deeperwin.utils.split_params">[docs]</a><span class="k">def</span> <span class="nf">split_params</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">module_names</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">hk</span><span class="o">.</span><span class="n">data_structures</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="n">get_params_filter_func</span><span class="p">(</span><span class="n">module_names</span><span class="p">),</span> <span class="n">params</span><span class="p">)</span></div>
 
-
-<div class="viewcode-block" id="get_module_params_nested"><a class="viewcode-back" href="../../_autosummary/deeperwin.utils.get_module_params_nested.html#deeperwin.utils.get_module_params_nested">[docs]</a><span class="k">def</span> <span class="nf">get_module_params_nested</span><span class="p">(</span><span class="n">params</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">module_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
-    <span class="n">keys</span> <span class="o">=</span> <span class="n">module_key</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)</span>
-    <span class="n">model_params</span> <span class="o">=</span> <span class="n">params</span>
-    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">model_params</span><span class="p">:</span>
-            <span class="n">LOGGER</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not find module </span><span class="si">{</span><span class="n">module_key</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="k">return</span> <span class="kc">None</span>
-        <span class="n">model_params</span> <span class="o">=</span> <span class="n">model_params</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
-    <span class="k">return</span> <span class="n">model_params</span></div>
-
-
-<div class="viewcode-block" id="set_module_params_nested"><a class="viewcode-back" href="../../_autosummary/deeperwin.utils.set_module_params_nested.html#deeperwin.utils.set_module_params_nested">[docs]</a><span class="k">def</span> <span class="nf">set_module_params_nested</span><span class="p">(</span><span class="n">params</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">update_params</span><span class="p">,</span> <span class="n">module_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">make_copy</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-    <span class="k">if</span> <span class="n">update_params</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">params</span>
-    <span class="n">keys</span> <span class="o">=</span> <span class="n">module_key</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)</span>
-    <span class="n">model_params</span> <span class="o">=</span> <span class="n">params</span>
-    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">model_params</span><span class="p">:</span>
-            <span class="n">model_params</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="n">model_params</span> <span class="o">=</span> <span class="n">model_params</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
-    <span class="n">model_params</span><span class="p">[</span><span class="n">keys</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]]</span> <span class="o">=</span> <span class="n">update_params</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">make_copy</span> <span class="k">else</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">update_params</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">params</span></div>
-
-
-<div class="viewcode-block" id="merge_trainable_params"><a class="viewcode-back" href="../../_autosummary/deeperwin.utils.merge_trainable_params.html#deeperwin.utils.merge_trainable_params">[docs]</a><span class="k">def</span> <span class="nf">merge_trainable_params</span><span class="p">(</span><span class="n">shared_params</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">unique_params</span><span class="p">:</span> <span class="nb">dict</span><span class="p">):</span>
-    <span class="n">merged_params</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">unique_params</span><span class="p">)</span>
-    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">shared_params</span><span class="p">:</span>
-        <span class="n">merged_params</span> <span class="o">=</span> <span class="n">set_module_params_nested</span><span class="p">(</span><span class="n">merged_params</span><span class="p">,</span> <span class="n">shared_params</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="n">key</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">merged_params</span></div>
-
-
-<div class="viewcode-block" id="split_trainable_params"><a class="viewcode-back" href="../../_autosummary/deeperwin.utils.split_trainable_params.html#deeperwin.utils.split_trainable_params">[docs]</a><span class="k">def</span> <span class="nf">split_trainable_params</span><span class="p">(</span><span class="n">full_trainable_params</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">shared_modules</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]):</span>
-    <span class="n">unique_params</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">full_trainable_params</span><span class="p">)</span>
-    <span class="n">shared_params</span> <span class="o">=</span> <span class="p">{}</span>
-    <span class="k">for</span> <span class="n">module</span> <span class="ow">in</span> <span class="n">shared_modules</span><span class="p">:</span>
-        <span class="n">shared_params</span><span class="p">[</span><span class="n">module</span><span class="p">]</span> <span class="o">=</span> <span class="n">get_module_params_nested</span><span class="p">(</span><span class="n">unique_params</span><span class="p">,</span> <span class="n">module</span><span class="p">)</span>
-        <span class="n">remove_module_params_nested</span><span class="p">(</span><span class="n">unique_params</span><span class="p">,</span> <span class="n">module</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">shared_params</span><span class="p">,</span> <span class="n">unique_params</span></div>
-
-
-<span class="c1">###############################################################################</span>
-<span class="c1">##################### Various #######################</span>
-<span class="c1">###############################################################################</span>
-
-
-<div class="viewcode-block" id="convert_to_jnp"><a class="viewcode-back" href="../../_autosummary/deeperwin.utils.convert_to_jnp.html#deeperwin.utils.convert_to_jnp">[docs]</a><span class="k">def</span> <span class="nf">convert_to_jnp</span><span class="p">(</span><span class="n">inp</span><span class="p">):</span>
-    <span class="k">if</span> <span class="n">inp</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">inp</span>
-    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">inp</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
-        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">inp</span><span class="p">:</span>
-            <span class="n">inp</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">convert_to_jnp</span><span class="p">(</span><span class="n">inp</span><span class="p">[</span><span class="n">key</span><span class="p">])</span>
-        <span class="k">return</span> <span class="n">inp</span>
-    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">inp</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
-        <span class="k">return</span> <span class="p">[</span><span class="n">convert_to_jnp</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">inp</span><span class="p">]</span>
-    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">inp</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
-        <span class="k">return</span> <span class="nb">tuple</span><span class="p">([</span><span class="n">convert_to_jnp</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">inp</span><span class="p">])</span>
-    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">inp</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">inp</span><span class="p">)</span>
-    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">inp</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">inp</span>
-    <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">inp</span><span class="p">)</span></div>
-
-
-<div class="viewcode-block" id="get_number_of_params"><a class="viewcode-back" href="../../_autosummary/deeperwin.utils.get_number_of_params.html#deeperwin.utils.get_number_of_params">[docs]</a><span class="k">def</span> <span class="nf">get_number_of_params</span><span class="p">(</span><span class="n">nested_params</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Returns the number of parameters in a nested structure.</span>
-
-<span class="sd">    Args:</span>
-<span class="sd">        nested_params: Possibly nested structure that holds different model parameters.</span>
-
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="n">nested_params</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">return</span> <span class="mi">0</span>
-    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">nested_params</span><span class="p">,</span> <span class="s2">&quot;shape&quot;</span><span class="p">):</span>
-        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">nested_params</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>
-    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">nested_params</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
-        <span class="k">return</span> <span class="nb">sum</span><span class="p">([</span><span class="n">get_number_of_params</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">nested_params</span><span class="o">.</span><span class="n">values</span><span class="p">()])</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="k">return</span> <span class="nb">sum</span><span class="p">([</span><span class="n">get_number_of_params</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">nested_params</span><span class="p">])</span></div>
-
-
-<div class="viewcode-block" id="load_from_file"><a class="viewcode-back" href="../../_autosummary/deeperwin.utils.load_from_file.html#deeperwin.utils.load_from_file">[docs]</a><span class="k">def</span> <span class="nf">load_from_file</span><span class="p">(</span><span class="n">fname</span><span class="p">):</span>
-    <span class="k">with</span> <span class="n">bz2</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span></div>
-
-
-<div class="viewcode-block" id="save_to_file"><a class="viewcode-back" href="../../_autosummary/deeperwin.utils.save_to_file.html#deeperwin.utils.save_to_file">[docs]</a><span class="k">def</span> <span class="nf">save_to_file</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="o">**</span><span class="n">data</span><span class="p">):</span>
-    <span class="k">with</span> <span class="n">bz2</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-        <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span></div>
-
-
-<div class="viewcode-block" id="load_run"><a class="viewcode-back" href="../../_autosummary/deeperwin.utils.load_run.html#deeperwin.utils.load_run">[docs]</a><span class="k">def</span> <span class="nf">load_run</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">load_config</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">ignore_extra_settings</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-    <span class="n">results</span> <span class="o">=</span> <span class="n">load_from_file</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;results.bz2&quot;</span><span class="p">))</span>
-    <span class="k">if</span> <span class="n">load_config</span><span class="p">:</span>
-        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;code_version&#39;</span><span class="p">,</span> <span class="s1">&#39;n_params&#39;</span><span class="p">,</span> <span class="s1">&#39;tags&#39;</span><span class="p">]:</span>
-            <span class="n">results</span><span class="p">[</span><span class="s1">&#39;config&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-        <span class="n">parsed_config</span> <span class="o">=</span> <span class="n">Configuration</span><span class="o">.</span><span class="n">from_flattened_dict</span><span class="p">(</span><span class="n">results</span><span class="p">[</span><span class="s1">&#39;config&#39;</span><span class="p">],</span> <span class="n">ignore_extra_settings</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">results</span><span class="p">,</span> <span class="n">parsed_config</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">results</span></div>
-
-
-<div class="viewcode-block" id="load_all_runs"><a class="viewcode-back" href="../../_autosummary/deeperwin.utils.load_all_runs.html#deeperwin.utils.load_all_runs">[docs]</a><span class="k">def</span> <span class="nf">load_all_runs</span><span class="p">(</span><span class="n">root_dir</span><span class="p">,</span> <span class="n">max_history_length</span><span class="o">=</span><span class="mi">50</span><span class="p">):</span>
-    <span class="n">full_data</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="k">for</span> <span class="n">fname</span> <span class="ow">in</span> <span class="n">Path</span><span class="p">(</span><span class="n">root_dir</span><span class="p">)</span><span class="o">.</span><span class="n">rglob</span><span class="p">(</span><span class="s2">&quot;results.bz2&quot;</span><span class="p">):</span>
-        <span class="n">raw_data</span> <span class="o">=</span> <span class="n">load_from_file</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span>
-        <span class="n">data</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">raw_data</span><span class="p">[</span><span class="s1">&#39;config&#39;</span><span class="p">])</span>
-        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">raw_data</span><span class="p">[</span><span class="s1">&#39;metrics&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">max_history_length</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">max_history_length</span><span class="p">):</span>
-                <span class="k">continue</span>
-            <span class="n">data</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
-        <span class="n">data</span><span class="p">[</span><span class="s1">&#39;dirname&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">fname</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">name</span>
-        <span class="n">full_data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">full_data</span><span class="p">)</span></div>
+<div class="viewcode-block" id="merge_params"><a class="viewcode-back" href="../../_autosummary/deeperwin.utils.merge_params.html#deeperwin.utils.merge_params">[docs]</a><span class="k">def</span> <span class="nf">merge_params</span><span class="p">(</span><span class="n">params_old</span><span class="p">,</span> <span class="n">params_new</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">hk</span><span class="o">.</span><span class="n">data_structures</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">params_old</span><span class="p">,</span> <span class="n">params_new</span><span class="p">)</span></div>
 </pre></div>
 
            </div>

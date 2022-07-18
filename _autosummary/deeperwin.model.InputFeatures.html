@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>deeperwin.model.InputFeatures &mdash; deeperwin 1.0.0 documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/autodoc_pydantic.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/custom_style.css" type="text/css" />
+    <link rel="shortcut icon" href="../_static/favicon.png"/>
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="deeperwin.model.InputPreprocessor" href="deeperwin.model.InputPreprocessor.html" />
+    <link rel="prev" title="deeperwin.model.FermiNetEmbedding" href="deeperwin.model.FermiNetEmbedding.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../root.html" class="icon icon-home"> deeperwin
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../index.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorial.html">DeepErwin Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Options</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../api.html">Full documentation for developers</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="deeperwin.html">deeperwin</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.checkpoints.html">deeperwin.checkpoints</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.cli.html">deeperwin.cli</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.configuration.html">deeperwin.configuration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.curvature_tags_and_blocks.html">deeperwin.curvature_tags_and_blocks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.evaluation.html">deeperwin.evaluation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.hamiltonian.html">deeperwin.hamiltonian</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.local_features.html">deeperwin.local_features</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.loggers.html">deeperwin.loggers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.mcmc.html">deeperwin.mcmc</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="deeperwin.model.html">deeperwin.model</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.model.build_log_psi_squared.html">deeperwin.model.build_log_psi_squared</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.model.evaluate_sum_of_determinants.html">deeperwin.model.evaluate_sum_of_determinants</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.model.get_baseline_slater_matrices.html">deeperwin.model.get_baseline_slater_matrices</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.model.init_model_fixed_params.html">deeperwin.model.init_model_fixed_params</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.model.BaselineOrbitals.html">deeperwin.model.BaselineOrbitals</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.model.ConvolutionalFeatures.html">deeperwin.model.ConvolutionalFeatures</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.model.DiffAndDistances.html">deeperwin.model.DiffAndDistances</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.model.Embeddings.html">deeperwin.model.Embeddings</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.model.EnvelopeOrbitals.html">deeperwin.model.EnvelopeOrbitals</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.model.FermiNetEmbedding.html">deeperwin.model.FermiNetEmbedding</a></li>
+<li class="toctree-l4 current"><a class="current reference internal" href="#">deeperwin.model.InputFeatures</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.model.InputPreprocessor.html">deeperwin.model.InputPreprocessor</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.model.JastrowFactor.html">deeperwin.model.JastrowFactor</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.model.MLP.html">deeperwin.model.MLP</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.model.OrbitalNet.html">deeperwin.model.OrbitalNet</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.model.PairwiseFeatures.html">deeperwin.model.PairwiseFeatures</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.model.PauliNetEmbedding.html">deeperwin.model.PauliNetEmbedding</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.model.SymmetricFeatures.html">deeperwin.model.SymmetricFeatures</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.model.Wavefunction.html">deeperwin.model.Wavefunction</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.optimization.html">deeperwin.optimization</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.optimizers.html">deeperwin.optimizers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.orbitals.html">deeperwin.orbitals</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.process_molecule.html">deeperwin.process_molecule</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.run_tools.html">deeperwin.run_tools</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.utils.html">deeperwin.utils</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../indices.html">Indices and tables</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../root.html">deeperwin</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../root.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../api.html">Full documentation for developers</a> &raquo;</li>
+          <li><a href="deeperwin.html">deeperwin</a> &raquo;</li>
+          <li><a href="deeperwin.model.html">deeperwin.model</a> &raquo;</li>
+      <li>deeperwin.model.InputFeatures</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/_autosummary/deeperwin.model.InputFeatures.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="deeperwin-model-inputfeatures">
+<h1>deeperwin.model.InputFeatures<a class="headerlink" href="#deeperwin-model-inputfeatures" title="Permalink to this headline"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="deeperwin.model.InputFeatures">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">deeperwin.model.</span></span><span class="sig-name descname"><span class="pre">InputFeatures</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">el</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ion</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">el_el</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">el_ion</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#deeperwin.model.InputFeatures" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="deeperwin.model.InputFeatures.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#deeperwin.model.InputFeatures.__init__" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+</tbody>
+</table>
+<p class="rubric">Attributes</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#deeperwin.model.InputFeatures.el" title="deeperwin.model.InputFeatures.el"><code class="xref py py-obj docutils literal notranslate"><span class="pre">el</span></code></a></p></td>
+<td><p>Alias for field number 0</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#deeperwin.model.InputFeatures.el_el" title="deeperwin.model.InputFeatures.el_el"><code class="xref py py-obj docutils literal notranslate"><span class="pre">el_el</span></code></a></p></td>
+<td><p>Alias for field number 2</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#deeperwin.model.InputFeatures.el_ion" title="deeperwin.model.InputFeatures.el_ion"><code class="xref py py-obj docutils literal notranslate"><span class="pre">el_ion</span></code></a></p></td>
+<td><p>Alias for field number 3</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#deeperwin.model.InputFeatures.ion" title="deeperwin.model.InputFeatures.ion"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ion</span></code></a></p></td>
+<td><p>Alias for field number 1</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="deeperwin.model.InputFeatures.el">
+<span class="sig-name descname"><span class="pre">el</span></span><a class="headerlink" href="#deeperwin.model.InputFeatures.el" title="Permalink to this definition"></a></dt>
+<dd><p>Alias for field number 0</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="deeperwin.model.InputFeatures.el_el">
+<span class="sig-name descname"><span class="pre">el_el</span></span><a class="headerlink" href="#deeperwin.model.InputFeatures.el_el" title="Permalink to this definition"></a></dt>
+<dd><p>Alias for field number 2</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="deeperwin.model.InputFeatures.el_ion">
+<span class="sig-name descname"><span class="pre">el_ion</span></span><a class="headerlink" href="#deeperwin.model.InputFeatures.el_ion" title="Permalink to this definition"></a></dt>
+<dd><p>Alias for field number 3</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="deeperwin.model.InputFeatures.ion">
+<span class="sig-name descname"><span class="pre">ion</span></span><a class="headerlink" href="#deeperwin.model.InputFeatures.ion" title="Permalink to this definition"></a></dt>
+<dd><p>Alias for field number 1</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="deeperwin.model.FermiNetEmbedding.html" class="btn btn-neutral float-left" title="deeperwin.model.FermiNetEmbedding" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="deeperwin.model.InputPreprocessor.html" class="btn btn-neutral float-right" title="deeperwin.model.InputPreprocessor" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Michael Scherbela, Leon Gerard, Rafael Reisenhofer.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

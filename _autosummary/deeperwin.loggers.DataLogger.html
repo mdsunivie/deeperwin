@@ -46,16 +46,13 @@
 <li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Options</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="../api.html">Full documentation for developers</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="deeperwin.html">deeperwin</a><ul class="current">
-<li class="toctree-l3"><a class="reference internal" href="deeperwin.ase_bindings.html">deeperwin.ase_bindings</a></li>
-<li class="toctree-l3"><a class="reference internal" href="deeperwin.available_gpus.html">deeperwin.available_gpus</a></li>
-<li class="toctree-l3"><a class="reference internal" href="deeperwin.bfgs.html">deeperwin.bfgs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.checkpoints.html">deeperwin.checkpoints</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.cli.html">deeperwin.cli</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.configuration.html">deeperwin.configuration</a></li>
-<li class="toctree-l3"><a class="reference internal" href="deeperwin.dispatch.html">deeperwin.dispatch</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.curvature_tags_and_blocks.html">deeperwin.curvature_tags_and_blocks</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.evaluation.html">deeperwin.evaluation</a></li>
-<li class="toctree-l3"><a class="reference internal" href="deeperwin.features.html">deeperwin.features</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.hamiltonian.html">deeperwin.hamiltonian</a></li>
-<li class="toctree-l3"><a class="reference internal" href="deeperwin.kfac.html">deeperwin.kfac</a></li>
-<li class="toctree-l3"><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.html">deeperwin.kfac_ferminet_alpha</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.local_features.html">deeperwin.local_features</a></li>
 <li class="toctree-l3 current"><a class="reference internal" href="deeperwin.loggers.html">deeperwin.loggers</a><ul class="current">
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.loggers.build_dpe_root_logger.html">deeperwin.loggers.build_dpe_root_logger</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.loggers.prepare_checkpoint_directory.html">deeperwin.loggers.prepare_checkpoint_directory</a></li>
@@ -64,17 +61,17 @@
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.loggers.LoggerCollection.html">deeperwin.loggers.LoggerCollection</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.loggers.PickleLogger.html">deeperwin.loggers.PickleLogger</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.loggers.WandBLogger.html">deeperwin.loggers.WandBLogger</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.loggers.WavefunctionLogger.html">deeperwin.loggers.WavefunctionLogger</a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="deeperwin.main.html">deeperwin.main</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.mcmc.html">deeperwin.mcmc</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.model.html">deeperwin.model</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.optimization.html">deeperwin.optimization</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.optimizers.html">deeperwin.optimizers</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.orbitals.html">deeperwin.orbitals</a></li>
-<li class="toctree-l3"><a class="reference internal" href="deeperwin.register_curvature.html">deeperwin.register_curvature</a></li>
-<li class="toctree-l3"><a class="reference internal" href="deeperwin.sweep_agent.html">deeperwin.sweep_agent</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.process_molecule.html">deeperwin.process_molecule</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.run_tools.html">deeperwin.run_tools</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.utils.html">deeperwin.utils</a></li>
-<li class="toctree-l3"><a class="reference internal" href="deeperwin.wandb_utils.html">deeperwin.wandb_utils</a></li>
 </ul>
 </li>
 </ul>
@@ -113,14 +110,14 @@
 <h1>deeperwin.loggers.DataLogger<a class="headerlink" href="#deeperwin-loggers-datalogger" title="Permalink to this headline"></a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="deeperwin.loggers.DataLogger">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">deeperwin.loggers.</span></span><span class="sig-name descname"><span class="pre">DataLogger</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../configuration.html#deeperwin.configuration.LoggerBaseConfig" title="deeperwin.configuration.LoggerBaseConfig"><span class="pre">deeperwin.configuration.LoggerBaseConfig</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'.'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/deeperwin/loggers.html#DataLogger"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.loggers.DataLogger" title="Permalink to this definition"></a></dt>
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">deeperwin.loggers.</span></span><span class="sig-name descname"><span class="pre">DataLogger</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../configuration.html#deeperwin.configuration.LoggerBaseConfig" title="deeperwin.configuration.LoggerBaseConfig"><span class="pre">deeperwin.configuration.LoggerBaseConfig</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'.'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/deeperwin/loggers.html#DataLogger"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.loggers.DataLogger" title="Permalink to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">abc.ABC</span></code></p>
 <p>Abstract class representing a generic data logger to store configs and metrics during wavefunction optimization.</p>
 <p>Specific implementations include logging to a log-file, logging a full history to a binary file,
 and logging to web-services such as Weights &amp; Biases.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="deeperwin.loggers.DataLogger.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../configuration.html#deeperwin.configuration.LoggerBaseConfig" title="deeperwin.configuration.LoggerBaseConfig"><span class="pre">deeperwin.configuration.LoggerBaseConfig</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'.'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/deeperwin/loggers.html#DataLogger.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.loggers.DataLogger.__init__" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../configuration.html#deeperwin.configuration.LoggerBaseConfig" title="deeperwin.configuration.LoggerBaseConfig"><span class="pre">deeperwin.configuration.LoggerBaseConfig</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'.'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/deeperwin/loggers.html#DataLogger.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.loggers.DataLogger.__init__" title="Permalink to this definition"></a></dt>
 <dd></dd></dl>
 
 <p class="rubric">Methods</p>
@@ -133,25 +130,25 @@ and logging to web-services such as Weights &amp; Biases.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#deeperwin.loggers.DataLogger.__init__" title="deeperwin.loggers.DataLogger.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(config, name[, save_path])</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">log_checkpoint</span></code>(chkpt_dir, n_epoch[, pretraining])</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">log_checkpoint</span></code>(n_epoch[, params, ...])</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">log_metric</span></code>(key, value[, epoch, metric_type, ...])</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">log_config</span></code>(config)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">log_metrics</span></code>(metrics[, epoch, metric_type, ...])</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">log_metric</span></code>(key, value[, epoch, metric_type, ...])</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">log_param</span></code>(key, value)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">log_metrics</span></code>(metrics[, epoch, metric_type, ...])</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">log_params</span></code>(params)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">log_param</span></code>(key, value)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">log_tags</span></code>(tags)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">log_params</span></code>(params)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">log_weights</span></code>(weight_dict)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">log_tags</span></code>(tags)</p></td>
 <td><p></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">on_run_begin</span></code>()</p></td>

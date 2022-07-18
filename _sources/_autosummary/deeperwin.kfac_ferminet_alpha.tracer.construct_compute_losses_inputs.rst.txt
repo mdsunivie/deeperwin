@@ -1,6 +1,0 @@
-deeperwin.kfac\_ferminet\_alpha.tracer.construct\_compute\_losses\_inputs
-=========================================================================
-
-.. currentmodule:: deeperwin.kfac_ferminet_alpha.tracer
-
-.. autofunction:: construct_compute_losses_inputs

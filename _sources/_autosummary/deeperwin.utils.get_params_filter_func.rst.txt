@@ -1,0 +1,6 @@
+deeperwin.utils.get\_params\_filter\_func
+=========================================
+
+.. currentmodule:: deeperwin.utils
+
+.. autofunction:: get_params_filter_func

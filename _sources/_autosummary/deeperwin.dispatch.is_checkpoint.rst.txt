@@ -1,6 +1,0 @@
-deeperwin.dispatch.is\_checkpoint
-=================================
-
-.. currentmodule:: deeperwin.dispatch
-
-.. autofunction:: is_checkpoint

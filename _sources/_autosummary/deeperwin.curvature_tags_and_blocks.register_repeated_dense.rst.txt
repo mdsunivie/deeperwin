@@ -1,0 +1,6 @@
+deeperwin.curvature\_tags\_and\_blocks.register\_repeated\_dense
+================================================================
+
+.. currentmodule:: deeperwin.curvature_tags_and_blocks
+
+.. autofunction:: register_repeated_dense

@@ -1,0 +1,6 @@
+deeperwin.orbitals.get\_hartree\_fock\_solution
+===============================================
+
+.. currentmodule:: deeperwin.orbitals
+
+.. autofunction:: get_hartree_fock_solution

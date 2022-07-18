@@ -108,41 +108,41 @@
 <p>To run a DeepErwin calculation, all configuration options must be specified in a YAML file, typically named <em>config.yml</em>.
 For all options that are not specified explicitly, sensible default values will be used. The default values are defined in :~deeperwin.configuration: and a full_config.yml will also be created for each calculation listing the full configuration.</p>
 <p>The absolute minimum that must be specified in a config-file is the physical system that one is interested in, i.e. the positions and charges of the nuclei.</p>
-<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">physical</span><span class="p">:</span><span class="w"></span>
-<span class="w">    </span><span class="nt">R</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">],</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">3.0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">]]</span><span class="w"></span>
-<span class="w">    </span><span class="nt">Z</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">3</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">1</span><span class="p p-Indicator">]</span><span class="w"></span>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">physical</span><span class="p">:</span>
+    <span class="nt">R</span><span class="p">:</span> <span class="p p-Indicator">[[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">],</span> <span class="p p-Indicator">[</span><span class="nv">3.0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">]]</span>
+    <span class="nt">Z</span><span class="p">:</span> <span class="p p-Indicator">[</span><span class="nv">3</span><span class="p p-Indicator">,</span> <span class="nv">1</span><span class="p p-Indicator">]</span>
 </pre></div>
 </div>
 <p>By default, DeepErwin assumes a neutral, closed shell calculation, i.e. the number of electrons equals the total charge of all nuclei, and the number of spin-up electrons is equal to the number of spin-down electrons.
 For a system with an uneven number of electrons, it is assumed that there is one extra spin-up electron.
 To calculate charged or spin-polarized systems, simply state the total number of electrons and the total number of spin-up electrons, e.g.</p>
-<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">physical</span><span class="p">:</span><span class="w"></span>
-<span class="w">    </span><span class="nt">R</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">],</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">3.0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">]]</span><span class="w"></span>
-<span class="w">    </span><span class="nt">Z</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">3</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">1</span><span class="p p-Indicator">]</span><span class="w"></span>
-<span class="w">    </span><span class="nt">n_electrons</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4</span><span class="w"></span>
-<span class="w">    </span><span class="nt">n_up</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span><span class="w"></span>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">physical</span><span class="p">:</span>
+    <span class="nt">R</span><span class="p">:</span> <span class="p p-Indicator">[[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">],</span> <span class="p p-Indicator">[</span><span class="nv">3.0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">]]</span>
+    <span class="nt">Z</span><span class="p">:</span> <span class="p p-Indicator">[</span><span class="nv">3</span><span class="p p-Indicator">,</span> <span class="nv">1</span><span class="p p-Indicator">]</span>
+    <span class="nt">n_electrons</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">4</span>
+    <span class="nt">n_up</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">2</span>
 </pre></div>
 </div>
 <p>Additionally, you might want to specifiy settings for the CASSCF-baseline model: The number of active electrons and active orbitals.</p>
-<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">physical</span><span class="p">:</span><span class="w"></span>
-<span class="w">    </span><span class="nt">R</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">],</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">3.0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">]]</span><span class="w"></span>
-<span class="w">    </span><span class="nt">Z</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">3</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">1</span><span class="p p-Indicator">]</span><span class="w"></span>
-<span class="w">    </span><span class="nt">n_electrons</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4</span><span class="w"></span>
-<span class="w">    </span><span class="nt">n_up</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span><span class="w"></span>
-<span class="w">    </span><span class="nt">n_cas_electrons</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span><span class="w"></span>
-<span class="w">    </span><span class="nt">n_cas_orbitals</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4</span><span class="w"></span>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">physical</span><span class="p">:</span>
+    <span class="nt">R</span><span class="p">:</span> <span class="p p-Indicator">[[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">],</span> <span class="p p-Indicator">[</span><span class="nv">3.0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">]]</span>
+    <span class="nt">Z</span><span class="p">:</span> <span class="p p-Indicator">[</span><span class="nv">3</span><span class="p p-Indicator">,</span> <span class="nv">1</span><span class="p p-Indicator">]</span>
+    <span class="nt">n_electrons</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">4</span>
+    <span class="nt">n_up</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">2</span>
+    <span class="nt">n_cas_electrons</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">2</span>
+    <span class="nt">n_cas_orbitals</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">4</span>
 </pre></div>
 </div>
 <p>For several small molecules (e.g. H2, LiH, Ethene, first and second row elements) we have predefined their geometries and spin-settings.
 Instead of setting all these parameters manually, you can just specify them using the tag <code class="code docutils literal notranslate"><span class="pre">physical:</span> <span class="pre">name</span></code>:</p>
-<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">physical</span><span class="p">:</span><span class="w"></span>
-<span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">LiH</span><span class="w"></span>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">physical</span><span class="p">:</span>
+    <span class="nt">name</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">LiH</span>
 </pre></div>
 </div>
 <p>You can also partially overwrite settings, e.g. to calculate a modified geometry of a molecule. For example to calculate a streteched LiH molecule with a bond-length of 3.5 bohr use this configuration:</p>
-<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">physical</span><span class="p">:</span><span class="w"></span>
-<span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">LiH</span><span class="w"></span>
-<span class="w">    </span><span class="nt">R</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">],[</span><span class="nv">3.5</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">]]</span><span class="w"></span>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">physical</span><span class="p">:</span>
+    <span class="nt">name</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">LiH</span>
+    <span class="nt">R</span><span class="p">:</span> <span class="p p-Indicator">[[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">],[</span><span class="nv">3.5</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">]]</span>
 </pre></div>
 </div>
 <p>To run an actual calculation, run the python package as an executable:</p>
@@ -173,72 +173,101 @@ If you run this on a SLURM-cluster, the jobs will not be executed directly, but 
 <p>To see a structure of all possible configuration options, take a look at the class <a class="reference internal" href="configuration.html#deeperwin.configuration.Configuration" title="deeperwin.configuration.Configuration"><code class="xref py py-class docutils literal notranslate"><span class="pre">Configuration</span></code></a> which contains a full tree of all possible config options.
 Alternatively you can see the full configuration tree when looking at the <em>full_config.yml</em> file that is being generated at every run.</p>
 <p>Here are some of the most important configuration options:</p>
-<table class="docutils align-default">
+<table class="colwidths-given docutils align-default" id="id3">
+<caption><span class="caption-text">Major configuration options</span><a class="headerlink" href="#id3" title="Permalink to this table"></a></caption>
 <colgroup>
-<col style="width: 4%" />
-<col style="width: 18%" />
-<col style="width: 78%" />
+<col style="width: 15%" />
+<col style="width: 25%" />
+<col style="width: 60%" />
 </colgroup>
 <thead>
-<tr class="row-odd"><th class="head"><p>Category</p></th>
-<th class="head"><p>Option</p></th>
+<tr class="row-odd"><th class="head"><p>Option</p></th>
+<th class="head"><p>Sub-options</p></th>
 <th class="head"><p>Description</p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p>optimization</p></td>
-<td><p>optimizer.name</p></td>
-<td><p>Type of optimizer, e.g. “adam”, “rmsprop”, “kfac”, “slbfgs”</p></td>
+<tr class="row-even"><td><p><strong>physical</strong></p></td>
+<td><p>name</p></td>
+<td><p>Name of the molecule to be calculated, e.g. N2, CO, etc. For several small molecules this automatically popoulates the geometry, nuclear charges, electron number and spin</p></td>
 </tr>
-<tr class="row-odd"><td><p>optimization</p></td>
+<tr class="row-odd"><td></td>
+<td><p>R, Z, n_electrons, n_up</p></td>
+<td><p>Physical properties (e.g. geometry) of your system in atomic units (bohr)</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>model</strong></p></td>
+<td><p>name</p></td>
+<td><p>Type of model to use, e.g. “dpe1” (arxiv:2105.08351), “dpe4” (arxiv:2205.09438), “ferminet”. This sets all model-related defaults and allows subsequent changes to be made from there.</p></td>
+</tr>
+<tr class="row-odd"><td></td>
+<td><p>features.use_local_coordinates</p></td>
+<td><p>Enable/disable a local coordinate system for each ion</p></td>
+</tr>
+<tr class="row-even"><td></td>
+<td><p>features.use_distance_features, features.use_el_el_differences, features.use_el_ion_differences</p></td>
+<td><p>Choose input features to be fed into embedding: Distances (scalar) and/or differences (3D vectors)</p></td>
+</tr>
+<tr class="row-odd"><td></td>
+<td><p>embedding.name</p></td>
+<td><p>Type of embedding to use to use, e.g. “dpe1”, “dpe4”, “ferminet”</p></td>
+</tr>
+<tr class="row-even"><td></td>
+<td><p>embedding.n_iterations</p></td>
+<td><p>Number of embedding iterations (=embedding network depth)</p></td>
+</tr>
+<tr class="row-odd"><td></td>
+<td><p>embedding.n_hidden_one_el, embedding.n_hidden_one_el</p></td>
+<td><p>For FermiNet, DeeepErwin: Number of hidden neurons in one-electron and two-electron streams</p></td>
+</tr>
+<tr class="row-even"><td></td>
+<td><p>orbitals.n_determinants</p></td>
+<td><p>Number of determinants to use for building the wavefunction</p></td>
+</tr>
+<tr class="row-odd"><td></td>
+<td><p>orbitals.enevelope_orbitals</p></td>
+<td><p>Config-options related to FermiNet-like exponential envelope orbitals</p></td>
+</tr>
+<tr class="row-even"><td></td>
+<td><p>orbitals.baseline_orbitals</p></td>
+<td><p>Config-options related to PauliNet-like orbitals from a baseline calculation (e.g. Hartree-Fock)</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>optimization</strong></p></td>
+<td><p>optimizer.name</p></td>
+<td><p>Type of optimizer, e.g. “adam”, “rmsprop”, “kfac”, “kfac_adam”</p></td>
+</tr>
+<tr class="row-even"><td></td>
 <td><p>learning_rate</p></td>
 <td><p>Initial learning-rate during optimization. May be modified during optimization by the LR-schedule (optimization.schedule).</p></td>
 </tr>
-<tr class="row-even"><td><p>optimization</p></td>
-<td><p>optimizer.name</p></td>
-<td><p>Type of optimizer, e.g. “adam”, “rmsprop”, “kfac”, “slbfgs”</p></td>
-</tr>
-<tr class="row-odd"><td><p>optimization</p></td>
-<td><p>batch_size</p></td>
-<td><p>Size of a single backprop batch. Use lower batch-size if GPU-memory is insufficient.</p></td>
-</tr>
-<tr class="row-even"><td><p>optimization</p></td>
+<tr class="row-odd"><td></td>
 <td><p>n_epochs</p></td>
 <td><p>Number of epochs to train the wavefunction model. In each epoch all n_walkers walkers are updated using MCMC and then optimized batch-by-batch.</p></td>
 </tr>
-<tr class="row-odd"><td><p>optimization</p></td>
-<td><p>shared_optimization.use</p></td>
-<td><p>Boolean flag to enable interdependent optimization of multiple geometries use weight-sharing between them (disabled by default). This can significantly reduce the total number of epochs required when optimizing wavefunctions for multiple geometries.</p></td>
+<tr class="row-even"><td></td>
+<td><p>mcmc.n_walkers, mcmc.n_inter_steps, mcmc. …</p></td>
+<td><p>Settings for Markov-Chain Monte Carlo (MCMC) sampling during wavefunction optimization. Analogous settings can be found within evaluation and pre_training.</p></td>
 </tr>
-<tr class="row-even"><td><p>model</p></td>
-<td><p>baseline.n_determinants</p></td>
-<td><p>Number of determinants to use for building the wavefunction</p></td>
-</tr>
-<tr class="row-odd"><td><p>model</p></td>
-<td><p>use_bf_shift, use_bf_factor, use_jastrow</p></td>
-<td><p>Boolean flags to enable/disable parts of the architecture</p></td>
-</tr>
-<tr class="row-even"><td><p>model</p></td>
-<td><p>embedding.n_iterations</p></td>
-<td><p>Number of iterations of the SchNet embedding</p></td>
-</tr>
-<tr class="row-odd"><td><p>model</p></td>
-<td><p>n_hidden_bf_factor, n_hidden_bf_shift, n_hidden_jastrow</p></td>
-<td><p>List of integers, specifiying the number of hidden units per network layer</p></td>
-</tr>
-<tr class="row-even"><td><p>evaluation</p></td>
+<tr class="row-odd"><td><p><strong>evaluation</strong></p></td>
 <td><p>n_epochs</p></td>
 <td><p>Number of evaluation steps after the wavefunction optimization</p></td>
 </tr>
-<tr class="row-odd"><td><p>mcmc</p></td>
-<td><p>n_walkers_opt, n_walkers_eval</p></td>
-<td><p>Number of MCMC-walkers to use for optimization and evaluation</p></td>
+<tr class="row-even"><td><p><strong>pre_training</strong></p></td>
+<td><p>n_epochs</p></td>
+<td><p>Number of supervised pre-training steps to take before variational optimization</p></td>
 </tr>
-<tr class="row-even"><td><p>logging</p></td>
+<tr class="row-odd"><td><p><strong>logging</strong></p></td>
 <td><p>wandb.entity, wandb.project</p></td>
 <td><p>When set, this enables logging of the experiment to Weights&amp;Biases. Set logging.wandb=None to disable W&amp;B-logging (default).</p></td>
 </tr>
-<tr class="row-odd"><td><p>restart</p></td>
+<tr class="row-even"><td><p><strong>computation</strong></p></td>
+<td><p>n_devices</p></td>
+<td><p>Number of GPUs to use for parallelization</p></td>
+</tr>
+<tr class="row-odd"><td></td>
+<td><p>require_gpu</p></td>
+<td><p>Abort computation when no GPU is found, instead of computing on CPUs</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>reuse</strong></p></td>
 <td><p>path</p></td>
 <td><p>Path to a directory containing a previously successfully finished wavefunction optimization to use as initializer for this experiment.</p></td>
 </tr>
@@ -247,36 +276,36 @@ Alternatively you can see the full configuration tree when looking at the <em>fu
 </section>
 <section id="optimization-using-weight-sharing">
 <h2>Optimization using weight-sharing<a class="headerlink" href="#optimization-using-weight-sharing" title="Permalink to this headline"></a></h2>
-<p>ATTENTION: The weight-sharing technique is currenlty not supported on the master branch. A fully functioning codebase for weight-sharing
+<p><strong>ATTENTION</strong>: The weight-sharing technique is currenlty not supported on the master branch. A fully functioning codebase for weight-sharing
 can be found under the “weight_sharing” branch.</p>
 <p>When calculating wavefunctions for multiple related wavefunctions (e.g. for different geometries of the samemolecule), the naive approach would be to conduct independent wavefuntion optimiziations for each run.
 To do this you can set <em>changes</em> to the physical-configuration, to launch multiple independent experiments with the same configuration, but different physical systems.</p>
-<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">physical</span><span class="p">:</span><span class="w"></span>
-<span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">LiH</span><span class="w"></span>
-<span class="w">    </span><span class="nt">changes</span><span class="p">:</span><span class="w"></span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">R</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">],[</span><span class="nv">3.0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">]]</span><span class="w"></span>
-<span class="w">        </span><span class="nt">comment</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Equilibrium</span><span class="nv"> </span><span class="s">bond</span><span class="nv"> </span><span class="s">length&quot;</span><span class="w"></span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">R</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">],[</span><span class="nv">2.8</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">]]</span><span class="w"></span>
-<span class="w">        </span><span class="nt">comment</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Compressed</span><span class="nv"> </span><span class="s">molecule&quot;</span><span class="w"></span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">R</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">],[</span><span class="nv">3.2</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">]]</span><span class="w"></span>
-<span class="w">        </span><span class="nt">comment</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Stretched</span><span class="nv"> </span><span class="s">molecule&quot;</span><span class="w"></span>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">physical</span><span class="p">:</span>
+    <span class="nt">name</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">LiH</span>
+    <span class="nt">changes</span><span class="p">:</span>
+      <span class="p p-Indicator">-</span> <span class="nt">R</span><span class="p">:</span> <span class="p p-Indicator">[[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">],[</span><span class="nv">3.0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">]]</span>
+        <span class="nt">comment</span><span class="p">:</span> <span class="s">&quot;Equilibrium</span><span class="nv"> </span><span class="s">bond</span><span class="nv"> </span><span class="s">length&quot;</span>
+      <span class="p p-Indicator">-</span> <span class="nt">R</span><span class="p">:</span> <span class="p p-Indicator">[[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">],[</span><span class="nv">2.8</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">]]</span>
+        <span class="nt">comment</span><span class="p">:</span> <span class="s">&quot;Compressed</span><span class="nv"> </span><span class="s">molecule&quot;</span>
+      <span class="p p-Indicator">-</span> <span class="nt">R</span><span class="p">:</span> <span class="p p-Indicator">[[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">],[</span><span class="nv">3.2</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">]]</span>
+        <span class="nt">comment</span><span class="p">:</span> <span class="s">&quot;Stretched</span><span class="nv"> </span><span class="s">molecule&quot;</span>
 </pre></div>
 </div>
 <p>As outlined in our <a class="reference external" href="https://arxiv.org/pdf/2105.08351.pdf">arxiv publication</a>, the optimization can be sped-up significantly when not optimizing all geometries independently, but sharing weights between them.
 This interdependent, weight-sharing optimization can be enabled be setting <code class="code docutils literal notranslate"><span class="pre">optimization.shared_optimization.use</span> <span class="pre">=</span> <span class="pre">True</span></code>.
 To disable weight-sharing, simply set :code:<a href="#id1"><span class="problematic" id="id2">`</span></a>optimization.shared_optimization = None`(default).</p>
-<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">physical</span><span class="p">:</span><span class="w"></span>
-<span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">LiH</span><span class="w"></span>
-<span class="w">    </span><span class="nt">changes</span><span class="p">:</span><span class="w"></span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">R</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">],[</span><span class="nv">3.0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">]]</span><span class="w"></span>
-<span class="w">        </span><span class="nt">comment</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Equilibrium</span><span class="nv"> </span><span class="s">bond</span><span class="nv"> </span><span class="s">length&quot;</span><span class="w"></span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">R</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">],[</span><span class="nv">2.8</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">]]</span><span class="w"></span>
-<span class="w">        </span><span class="nt">comment</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Compressed</span><span class="nv"> </span><span class="s">molecule&quot;</span><span class="w"></span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">R</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">],[</span><span class="nv">3.2</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">]]</span><span class="w"></span>
-<span class="w">        </span><span class="nt">comment</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Stretched</span><span class="nv"> </span><span class="s">molecule&quot;</span><span class="w"></span>
-<span class="nt">optimization</span><span class="p">:</span><span class="w"></span>
-<span class="w">    </span><span class="nt">shared_optimization</span><span class="p">:</span><span class="w"></span>
-<span class="w">        </span><span class="nt">use</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">True</span><span class="w"></span>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">physical</span><span class="p">:</span>
+    <span class="nt">name</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">LiH</span>
+    <span class="nt">changes</span><span class="p">:</span>
+      <span class="p p-Indicator">-</span> <span class="nt">R</span><span class="p">:</span> <span class="p p-Indicator">[[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">],[</span><span class="nv">3.0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">]]</span>
+        <span class="nt">comment</span><span class="p">:</span> <span class="s">&quot;Equilibrium</span><span class="nv"> </span><span class="s">bond</span><span class="nv"> </span><span class="s">length&quot;</span>
+      <span class="p p-Indicator">-</span> <span class="nt">R</span><span class="p">:</span> <span class="p p-Indicator">[[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">],[</span><span class="nv">2.8</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">]]</span>
+        <span class="nt">comment</span><span class="p">:</span> <span class="s">&quot;Compressed</span><span class="nv"> </span><span class="s">molecule&quot;</span>
+      <span class="p p-Indicator">-</span> <span class="nt">R</span><span class="p">:</span> <span class="p p-Indicator">[[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">],[</span><span class="nv">3.2</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">]]</span>
+        <span class="nt">comment</span><span class="p">:</span> <span class="s">&quot;Stretched</span><span class="nv"> </span><span class="s">molecule&quot;</span>
+<span class="nt">optimization</span><span class="p">:</span>
+    <span class="nt">shared_optimization</span><span class="p">:</span>
+        <span class="nt">use</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">True</span>
 </pre></div>
 </div>
 </section>

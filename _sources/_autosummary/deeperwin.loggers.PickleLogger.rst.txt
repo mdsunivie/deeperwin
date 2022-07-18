@@ -17,10 +17,9 @@ deeperwin.loggers.PickleLogger
    
       ~PickleLogger.__init__
       ~PickleLogger.log_checkpoint
+      ~PickleLogger.log_config
       ~PickleLogger.log_metrics
       ~PickleLogger.log_params
-      ~PickleLogger.log_weights
-      ~PickleLogger.on_run_end
    
    
 

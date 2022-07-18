@@ -46,16 +46,13 @@
 <li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Options</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="../api.html">Full documentation for developers</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="deeperwin.html">deeperwin</a><ul class="current">
-<li class="toctree-l3"><a class="reference internal" href="deeperwin.ase_bindings.html">deeperwin.ase_bindings</a></li>
-<li class="toctree-l3"><a class="reference internal" href="deeperwin.available_gpus.html">deeperwin.available_gpus</a></li>
-<li class="toctree-l3"><a class="reference internal" href="deeperwin.bfgs.html">deeperwin.bfgs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.checkpoints.html">deeperwin.checkpoints</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.cli.html">deeperwin.cli</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.configuration.html">deeperwin.configuration</a></li>
-<li class="toctree-l3"><a class="reference internal" href="deeperwin.dispatch.html">deeperwin.dispatch</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.curvature_tags_and_blocks.html">deeperwin.curvature_tags_and_blocks</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.evaluation.html">deeperwin.evaluation</a></li>
-<li class="toctree-l3"><a class="reference internal" href="deeperwin.features.html">deeperwin.features</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.hamiltonian.html">deeperwin.hamiltonian</a></li>
-<li class="toctree-l3"><a class="reference internal" href="deeperwin.kfac.html">deeperwin.kfac</a></li>
-<li class="toctree-l3"><a class="reference internal" href="deeperwin.kfac_ferminet_alpha.html">deeperwin.kfac_ferminet_alpha</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.local_features.html">deeperwin.local_features</a></li>
 <li class="toctree-l3 current"><a class="reference internal" href="deeperwin.loggers.html">deeperwin.loggers</a><ul class="current">
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.loggers.build_dpe_root_logger.html">deeperwin.loggers.build_dpe_root_logger</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.loggers.prepare_checkpoint_directory.html">deeperwin.loggers.prepare_checkpoint_directory</a></li>
@@ -64,17 +61,17 @@
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.loggers.LoggerCollection.html">deeperwin.loggers.LoggerCollection</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.loggers.PickleLogger.html">deeperwin.loggers.PickleLogger</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.loggers.WandBLogger.html">deeperwin.loggers.WandBLogger</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.loggers.WavefunctionLogger.html">deeperwin.loggers.WavefunctionLogger</a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="deeperwin.main.html">deeperwin.main</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.mcmc.html">deeperwin.mcmc</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.model.html">deeperwin.model</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.optimization.html">deeperwin.optimization</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.optimizers.html">deeperwin.optimizers</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.orbitals.html">deeperwin.orbitals</a></li>
-<li class="toctree-l3"><a class="reference internal" href="deeperwin.register_curvature.html">deeperwin.register_curvature</a></li>
-<li class="toctree-l3"><a class="reference internal" href="deeperwin.sweep_agent.html">deeperwin.sweep_agent</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.process_molecule.html">deeperwin.process_molecule</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.run_tools.html">deeperwin.run_tools</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.utils.html">deeperwin.utils</a></li>
-<li class="toctree-l3"><a class="reference internal" href="deeperwin.wandb_utils.html">deeperwin.wandb_utils</a></li>
 </ul>
 </li>
 </ul>
@@ -113,12 +110,12 @@
 <h1>deeperwin.loggers.BasicLogger<a class="headerlink" href="#deeperwin-loggers-basiclogger" title="Permalink to this headline"></a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="deeperwin.loggers.BasicLogger">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">deeperwin.loggers.</span></span><span class="sig-name descname"><span class="pre">BasicLogger</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../configuration.html#deeperwin.configuration.BasicLoggerConfig" title="deeperwin.configuration.BasicLoggerConfig"><span class="pre">deeperwin.configuration.BasicLoggerConfig</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'dpe'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'.'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prefix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/deeperwin/loggers.html#BasicLogger"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.loggers.BasicLogger" title="Permalink to this definition"></a></dt>
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">deeperwin.loggers.</span></span><span class="sig-name descname"><span class="pre">BasicLogger</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../configuration.html#deeperwin.configuration.BasicLoggerConfig" title="deeperwin.configuration.BasicLoggerConfig"><span class="pre">deeperwin.configuration.BasicLoggerConfig</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'dpe'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'.'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prefix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/deeperwin/loggers.html#BasicLogger"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.loggers.BasicLogger" title="Permalink to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="deeperwin.loggers.DataLogger.html#deeperwin.loggers.DataLogger" title="deeperwin.loggers.DataLogger"><code class="xref py py-class docutils literal notranslate"><span class="pre">deeperwin.loggers.DataLogger</span></code></a></p>
 <p>Logger using python built-ing logging module.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="deeperwin.loggers.BasicLogger.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../configuration.html#deeperwin.configuration.BasicLoggerConfig" title="deeperwin.configuration.BasicLoggerConfig"><span class="pre">deeperwin.configuration.BasicLoggerConfig</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'dpe'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'.'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prefix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/deeperwin/loggers.html#BasicLogger.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.loggers.BasicLogger.__init__" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../configuration.html#deeperwin.configuration.BasicLoggerConfig" title="deeperwin.configuration.BasicLoggerConfig"><span class="pre">deeperwin.configuration.BasicLoggerConfig</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'dpe'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'.'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prefix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/deeperwin/loggers.html#BasicLogger.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.loggers.BasicLogger.__init__" title="Permalink to this definition"></a></dt>
 <dd></dd></dl>
 
 <p class="rubric">Methods</p>

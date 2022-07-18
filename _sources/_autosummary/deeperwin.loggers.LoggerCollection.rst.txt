@@ -18,10 +18,10 @@ deeperwin.loggers.LoggerCollection
       ~LoggerCollection.__init__
       ~LoggerCollection.build_loggers
       ~LoggerCollection.log_checkpoint
+      ~LoggerCollection.log_config
       ~LoggerCollection.log_metrics
       ~LoggerCollection.log_params
       ~LoggerCollection.log_tags
-      ~LoggerCollection.log_weights
       ~LoggerCollection.on_run_begin
       ~LoggerCollection.on_run_end
    

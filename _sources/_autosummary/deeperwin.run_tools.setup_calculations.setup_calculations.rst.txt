@@ -1,0 +1,6 @@
+deeperwin.run\_tools.setup\_calculations.setup\_calculations
+============================================================
+
+.. currentmodule:: deeperwin.run_tools.setup_calculations
+
+.. autofunction:: setup_calculations

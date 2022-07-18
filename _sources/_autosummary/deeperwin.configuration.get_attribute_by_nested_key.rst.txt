@@ -1,6 +1,0 @@
-deeperwin.configuration.get\_attribute\_by\_nested\_key
-=======================================================
-
-.. currentmodule:: deeperwin.configuration
-
-.. autofunction:: get_attribute_by_nested_key

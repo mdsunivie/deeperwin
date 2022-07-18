@@ -1,6 +1,0 @@
-deeperwin.bfgs.update\_hessian\_representation
-==============================================
-
-.. currentmodule:: deeperwin.bfgs
-
-.. autofunction:: update_hessian_representation

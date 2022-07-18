@@ -1,6 +1,0 @@
-deeperwin.kfac\_ferminet\_alpha.tag\_graph\_matcher.broadcast\_merger
-=====================================================================
-
-.. currentmodule:: deeperwin.kfac_ferminet_alpha.tag_graph_matcher
-
-.. autofunction:: broadcast_merger

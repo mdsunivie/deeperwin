@@ -1,0 +1,6 @@
+deeperwin.model.init\_model\_fixed\_params
+==========================================
+
+.. currentmodule:: deeperwin.model
+
+.. autofunction:: init_model_fixed_params

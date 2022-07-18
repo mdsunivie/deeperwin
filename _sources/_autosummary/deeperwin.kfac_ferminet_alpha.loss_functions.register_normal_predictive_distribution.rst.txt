@@ -1,6 +1,0 @@
-deeperwin.kfac\_ferminet\_alpha.loss\_functions.register\_normal\_predictive\_distribution
-==========================================================================================
-
-.. currentmodule:: deeperwin.kfac_ferminet_alpha.loss_functions
-
-.. autofunction:: register_normal_predictive_distribution

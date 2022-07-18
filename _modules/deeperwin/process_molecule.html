@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>deeperwin.process_molecule &mdash; deeperwin 1.0.0 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/autodoc_pydantic.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/custom_style.css" type="text/css" />
+    <link rel="shortcut icon" href="../../_static/favicon.png"/>
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../root.html" class="icon icon-home"> deeperwin
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../index.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorial.html">DeepErwin Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../configuration.html">Configuration Options</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api.html">Full documentation for developers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../indices.html">Indices and tables</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../root.html">deeperwin</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../root.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+      <li>deeperwin.process_molecule</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for deeperwin.process_molecule</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">CLI to process a single molecule.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">from</span> <span class="nn">deeperwin.configuration</span> <span class="kn">import</span> <span class="n">Configuration</span>
+<span class="kn">import</span> <span class="nn">ruamel.yaml</span> <span class="k">as</span> <span class="nn">yaml</span>
+
+<div class="viewcode-block" id="process_molecule"><a class="viewcode-back" href="../../_autosummary/deeperwin.process_molecule.process_molecule.html#deeperwin.process_molecule.process_molecule">[docs]</a><span class="k">def</span> <span class="nf">process_molecule</span><span class="p">(</span><span class="n">config_file</span><span class="p">):</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">config_file</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">raw_config</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">YAML</span><span class="p">()</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+    <span class="n">config</span><span class="p">:</span> <span class="n">Configuration</span> <span class="o">=</span> <span class="n">Configuration</span><span class="o">.</span><span class="n">parse_obj</span><span class="p">(</span><span class="n">raw_config</span><span class="p">)</span>
+
+    <span class="c1"># Set environment variable to control jax behaviour before importing jax</span>
+    <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">computation</span><span class="o">.</span><span class="n">disable_tensor_cores</span><span class="p">:</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;NVIDIA_TF32_OVERRIDE&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;0&quot;</span>
+    <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">computation</span><span class="o">.</span><span class="n">force_device_count</span> <span class="ow">and</span> <span class="n">config</span><span class="o">.</span><span class="n">computation</span><span class="o">.</span><span class="n">n_devices</span><span class="p">:</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;XLA_FLAGS&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;--xla_force_host_platform_device_count=</span><span class="si">{</span><span class="n">config</span><span class="o">.</span><span class="n">computation</span><span class="o">.</span><span class="n">n_devices</span><span class="si">}</span><span class="s1">&#39;</span>
+
+    <span class="c1"># These imports can only take place after we have set the jax_config options</span>
+    <span class="kn">from</span> <span class="nn">jax.config</span> <span class="kn">import</span> <span class="n">config</span> <span class="k">as</span> <span class="n">jax_config</span>
+    <span class="n">jax_config</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="s2">&quot;jax_enable_x64&quot;</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">computation</span><span class="o">.</span><span class="n">float_precision</span> <span class="o">==</span> <span class="s2">&quot;float64&quot;</span><span class="p">)</span>
+    <span class="kn">import</span> <span class="nn">jax</span>
+    <span class="kn">import</span> <span class="nn">chex</span>
+    <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">computation</span><span class="o">.</span><span class="n">disable_jit</span><span class="p">:</span>
+        <span class="n">chex</span><span class="o">.</span><span class="n">fake_pmap_and_jit</span><span class="p">()</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+    <span class="kn">from</span> <span class="nn">jax.lib</span> <span class="kn">import</span> <span class="n">xla_bridge</span>
+    <span class="kn">from</span> <span class="nn">deeperwin.loggers</span> <span class="kn">import</span> <span class="n">LoggerCollection</span><span class="p">,</span> <span class="n">build_dpe_root_logger</span>
+    <span class="kn">from</span> <span class="nn">deeperwin.model</span> <span class="kn">import</span> <span class="n">build_log_psi_squared</span>
+    <span class="kn">from</span> <span class="nn">deeperwin.optimization</span> <span class="kn">import</span> <span class="n">optimize_wavefunction</span><span class="p">,</span> <span class="n">evaluate_wavefunction</span><span class="p">,</span> <span class="n">pretrain_orbitals</span>
+    <span class="kn">from</span> <span class="nn">deeperwin.utils</span> <span class="kn">import</span> <span class="n">getCodeVersion</span><span class="p">,</span> <span class="n">merge_params</span>
+    <span class="kn">from</span> <span class="nn">deeperwin.checkpoints</span> <span class="kn">import</span> <span class="n">load_data_for_reuse</span><span class="p">,</span> <span class="n">delete_obsolete_checkpoints</span>
+    <span class="kn">import</span> <span class="nn">haiku</span> <span class="k">as</span> <span class="nn">hk</span>
+
+    <span class="c1"># Initialize loggers for logging debug/info messages</span>
+    <span class="n">logger</span> <span class="o">=</span> <span class="n">build_dpe_root_logger</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">logging</span><span class="o">.</span><span class="n">basic</span><span class="p">)</span>
+    <span class="n">used_hardware</span> <span class="o">=</span> <span class="n">xla_bridge</span><span class="o">.</span><span class="n">get_backend</span><span class="p">()</span><span class="o">.</span><span class="n">platform</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;CUDA_VISIBLE_DEVICES=</span><span class="si">{</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;CUDA_VISIBLE_DEVICES&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Used hardware: </span><span class="si">{</span><span class="n">used_hardware</span><span class="si">}</span><span class="s2">; Device count: </span><span class="si">{</span><span class="n">jax</span><span class="o">.</span><span class="n">local_device_count</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">config</span><span class="o">.</span><span class="n">computation</span><span class="o">.</span><span class="n">n_devices</span><span class="p">:</span>
+        <span class="n">config</span><span class="o">.</span><span class="n">computation</span><span class="o">.</span><span class="n">n_devices</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">local_device_count</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">assert</span> <span class="n">jax</span><span class="o">.</span><span class="n">local_device_count</span><span class="p">()</span> <span class="o">&gt;=</span> <span class="n">config</span><span class="o">.</span><span class="n">computation</span><span class="o">.</span><span class="n">n_devices</span>
+    <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">computation</span><span class="o">.</span><span class="n">require_gpu</span> <span class="ow">and</span> <span class="p">(</span><span class="n">used_hardware</span> <span class="o">==</span> <span class="s2">&quot;cpu&quot;</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Required GPU, but no GPU available: Aborting.&quot;</span><span class="p">)</span>
+
+    <span class="c1"># When reusing/restarting and old run: Merge configs and load data</span>
+    <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">reuse</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">config</span><span class="p">,</span> <span class="n">params_to_reuse</span><span class="p">,</span> <span class="n">fixed_params</span><span class="p">,</span> <span class="n">mcmc_state</span><span class="p">,</span> <span class="n">opt_state</span><span class="p">,</span> <span class="n">clipping_state</span> <span class="o">=</span> <span class="n">load_data_for_reuse</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">raw_config</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">params_to_reuse</span><span class="p">,</span> <span class="n">fixed_params</span><span class="p">,</span> <span class="n">mcmc_state</span><span class="p">,</span> <span class="n">opt_state</span><span class="p">,</span> <span class="n">clipping_state</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+
+    <span class="c1"># Build wavefunction and initialize parameters</span>
+    <span class="n">log_psi_squared</span><span class="p">,</span> <span class="n">orbital_func</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">fixed_params</span> <span class="o">=</span> <span class="n">build_log_psi_squared</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">physical</span><span class="p">,</span> <span class="n">fixed_params</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">params_to_reuse</span><span class="p">:</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="n">merge_params</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">params_to_reuse</span><span class="p">)</span>
+
+    <span class="c1"># Log config and metadata of run</span>
+    <span class="n">loggers</span> <span class="o">=</span> <span class="n">LoggerCollection</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">logging</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">experiment_name</span><span class="p">)</span>
+    <span class="n">loggers</span><span class="o">.</span><span class="n">on_run_begin</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">logging</span><span class="o">.</span><span class="n">wandb</span><span class="p">:</span>
+        <span class="kn">import</span> <span class="nn">wandb</span>
+        <span class="n">config</span><span class="o">.</span><span class="n">logging</span><span class="o">.</span><span class="n">wandb</span><span class="o">.</span><span class="n">id</span> <span class="o">=</span> <span class="n">wandb</span><span class="o">.</span><span class="n">run</span><span class="o">.</span><span class="n">id</span>
+
+    <span class="n">loggers</span><span class="o">.</span><span class="n">log_config</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+    <span class="n">loggers</span><span class="o">.</span><span class="n">log_tags</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">logging</span><span class="o">.</span><span class="n">tags</span><span class="p">)</span>
+    <span class="n">loggers</span><span class="o">.</span><span class="n">log_param</span><span class="p">(</span><span class="s2">&quot;code_version&quot;</span><span class="p">,</span> <span class="n">getCodeVersion</span><span class="p">())</span>
+    <span class="n">loggers</span><span class="o">.</span><span class="n">log_param</span><span class="p">(</span><span class="s2">&quot;n_params&quot;</span><span class="p">,</span> <span class="n">hk</span><span class="o">.</span><span class="n">data_structures</span><span class="o">.</span><span class="n">tree_size</span><span class="p">(</span><span class="n">params</span><span class="p">))</span>
+    <span class="k">if</span> <span class="s2">&quot;baseline_energies&quot;</span> <span class="ow">in</span> <span class="n">fixed_params</span><span class="p">:</span>
+        <span class="n">loggers</span><span class="o">.</span><span class="n">log_metrics</span><span class="p">(</span><span class="n">fixed_params</span><span class="p">[</span><span class="s2">&quot;baseline_energies&quot;</span><span class="p">])</span>
+    <span class="n">config</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;full_config.yml&quot;</span><span class="p">)</span>
+
+    <span class="c1"># STEP 1: Supervised pre-training of wavefunction orbitals</span>
+    <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">pre_training</span> <span class="ow">and</span> <span class="n">config</span><span class="o">.</span><span class="n">pre_training</span><span class="o">.</span><span class="n">n_epochs</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Starting pre-training of orbitals...&quot;</span><span class="p">)</span>
+        <span class="n">params</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">mcmc_state</span> <span class="o">=</span> <span class="n">pretrain_orbitals</span><span class="p">(</span>
+            <span class="n">orbital_func</span><span class="p">,</span> <span class="n">mcmc_state</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">fixed_params</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">pre_training</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">physical</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">loggers</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="c1"># STEP 2: Unsupervised variational wavefunction optimization</span>
+    <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">optimization</span><span class="o">.</span><span class="n">n_epochs</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Starting optimization...&quot;</span><span class="p">)</span>
+        <span class="n">mcmc_state</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">opt_state</span><span class="p">,</span> <span class="n">clipping_state</span> <span class="o">=</span> <span class="n">optimize_wavefunction</span><span class="p">(</span>
+            <span class="n">log_psi_squared</span><span class="p">,</span>
+            <span class="n">params</span><span class="p">,</span>
+            <span class="n">fixed_params</span><span class="p">,</span>
+            <span class="n">mcmc_state</span><span class="p">,</span>
+            <span class="n">config</span><span class="o">.</span><span class="n">optimization</span><span class="p">,</span>
+            <span class="n">config</span><span class="o">.</span><span class="n">physical</span><span class="p">,</span>
+            <span class="n">loggers</span><span class="p">,</span>
+            <span class="n">opt_state</span><span class="p">,</span>
+            <span class="n">clipping_state</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="c1"># STEP 3: Wavefunction evaluationA</span>
+    <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">evaluation</span><span class="o">.</span><span class="n">n_epochs</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Starting evaluation...&quot;</span><span class="p">)</span>
+        <span class="n">eval_history</span><span class="p">,</span> <span class="n">mcmc_state</span> <span class="o">=</span> <span class="n">evaluate_wavefunction</span><span class="p">(</span>
+            <span class="n">log_psi_squared</span><span class="p">,</span>
+            <span class="n">params</span><span class="p">,</span>
+            <span class="n">fixed_params</span><span class="p">,</span>
+            <span class="n">mcmc_state</span><span class="p">,</span>
+            <span class="n">config</span><span class="o">.</span><span class="n">evaluation</span><span class="p">,</span>
+            <span class="n">config</span><span class="o">.</span><span class="n">physical</span><span class="p">,</span>
+            <span class="n">loggers</span><span class="p">,</span>
+            <span class="n">config</span><span class="o">.</span><span class="n">optimization</span><span class="o">.</span><span class="n">n_epochs_total</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="n">loggers</span><span class="o">.</span><span class="n">log_checkpoint</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">optimization</span><span class="o">.</span><span class="n">n_epochs_total</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">fixed_params</span><span class="p">,</span> <span class="n">mcmc_state</span><span class="p">,</span> <span class="n">opt_state</span><span class="p">,</span> <span class="n">clipping_state</span><span class="p">)</span>
+    <span class="n">delete_obsolete_checkpoints</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">optimization</span><span class="o">.</span><span class="n">n_epochs_total</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">optimization</span><span class="o">.</span><span class="n">checkpoints</span><span class="p">)</span>
+    <span class="n">loggers</span><span class="o">.</span><span class="n">on_run_end</span><span class="p">()</span></div>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">process_molecule</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Michael Scherbela, Leon Gerard, Rafael Reisenhofer.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

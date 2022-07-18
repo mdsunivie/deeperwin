@@ -1,0 +1,6 @@
+deeperwin.run\_tools.available\_gpus.assign\_free\_GPU\_ids
+===========================================================
+
+.. currentmodule:: deeperwin.run_tools.available_gpus
+
+.. autofunction:: assign_free_GPU_ids

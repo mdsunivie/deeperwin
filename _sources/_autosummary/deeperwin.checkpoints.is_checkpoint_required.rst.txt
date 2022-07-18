@@ -1,0 +1,6 @@
+deeperwin.checkpoints.is\_checkpoint\_required
+==============================================
+
+.. currentmodule:: deeperwin.checkpoints
+
+.. autofunction:: is_checkpoint_required

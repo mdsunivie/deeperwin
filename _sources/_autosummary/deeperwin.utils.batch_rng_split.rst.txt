@@ -1,0 +1,6 @@
+deeperwin.utils.batch\_rng\_split
+=================================
+
+.. currentmodule:: deeperwin.utils
+
+.. autofunction:: batch_rng_split

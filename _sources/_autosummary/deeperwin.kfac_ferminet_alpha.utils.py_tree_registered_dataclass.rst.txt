@@ -1,6 +1,0 @@
-deeperwin.kfac\_ferminet\_alpha.utils.py\_tree\_registered\_dataclass
-=====================================================================
-
-.. currentmodule:: deeperwin.kfac_ferminet_alpha.utils
-
-.. autofunction:: py_tree_registered_dataclass

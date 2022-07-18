@@ -1,6 +1,0 @@
-deeperwin.kfac\_ferminet\_alpha.tracer.trace\_losses\_matrix\_vector\_jvp
-=========================================================================
-
-.. currentmodule:: deeperwin.kfac_ferminet_alpha.tracer
-
-.. autofunction:: trace_losses_matrix_vector_jvp

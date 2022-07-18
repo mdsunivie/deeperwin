@@ -1,6 +1,0 @@
-deeperwin.dispatch.idx\_to\_job\_name
-=====================================
-
-.. currentmodule:: deeperwin.dispatch
-
-.. autofunction:: idx_to_job_name

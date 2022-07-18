@@ -1,6 +1,0 @@
-deeperwin.kfac\_ferminet\_alpha.tests.graph\_matcher\_test.tagged\_autoencoder
-==============================================================================
-
-.. currentmodule:: deeperwin.kfac_ferminet_alpha.tests.graph_matcher_test
-
-.. autofunction:: tagged_autoencoder

@@ -1,0 +1,24 @@
+deeperwin.model.OrbitalNet
+==========================
+
+.. currentmodule:: deeperwin.model
+
+.. autoclass:: OrbitalNet
+   :members:
+   :show-inheritance:
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~OrbitalNet.__init__
+   
+   
+
+   
+   
+   

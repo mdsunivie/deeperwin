@@ -1,6 +1,0 @@
-deeperwin.hamiltonian.log\_mcmc\_debug\_info
-============================================
-
-.. currentmodule:: deeperwin.hamiltonian
-
-.. autofunction:: log_mcmc_debug_info

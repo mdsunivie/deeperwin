@@ -1,0 +1,26 @@
+deeperwin.model.Wavefunction
+============================
+
+.. currentmodule:: deeperwin.model
+
+.. autoclass:: Wavefunction
+   :members:
+   :show-inheritance:
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Wavefunction.__init__
+      ~Wavefunction.get_slater_matrices
+      ~Wavefunction.init_for_multitransform
+   
+   
+
+   
+   
+   

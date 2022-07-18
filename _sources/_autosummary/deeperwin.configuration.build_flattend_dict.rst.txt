@@ -1,0 +1,6 @@
+deeperwin.configuration.build\_flattend\_dict
+=============================================
+
+.. currentmodule:: deeperwin.configuration
+
+.. autofunction:: build_flattend_dict

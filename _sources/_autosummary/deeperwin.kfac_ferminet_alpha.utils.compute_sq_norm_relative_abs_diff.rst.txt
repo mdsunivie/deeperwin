@@ -1,6 +1,0 @@
-deeperwin.kfac\_ferminet\_alpha.utils.compute\_sq\_norm\_relative\_abs\_diff
-============================================================================
-
-.. currentmodule:: deeperwin.kfac_ferminet_alpha.utils
-
-.. autofunction:: compute_sq_norm_relative_abs_diff

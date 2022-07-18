@@ -1,0 +1,25 @@
+deeperwin.model.BaselineOrbitals
+================================
+
+.. currentmodule:: deeperwin.model
+
+.. autoclass:: BaselineOrbitals
+   :members:
+   :show-inheritance:
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~BaselineOrbitals.__init__
+      ~BaselineOrbitals.apply_backflow_shift
+   
+   
+
+   
+   
+   

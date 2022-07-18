@@ -1,0 +1,6 @@
+deeperwin.orbitals.split\_results\_into\_spins
+==============================================
+
+.. currentmodule:: deeperwin.orbitals
+
+.. autofunction:: split_results_into_spins

@@ -1,0 +1,6 @@
+deeperwin.optimization.build\_value\_and\_grad\_func
+====================================================
+
+.. currentmodule:: deeperwin.optimization
+
+.. autofunction:: build_value_and_grad_func

@@ -16,9 +16,14 @@ deeperwin.mcmc.MCMCState
    .. autosummary::
    
       ~MCMCState.__init__
+      ~MCMCState.build_batch
+      ~MCMCState.from_tuple
       ~MCMCState.initialize_around_nuclei
-      ~MCMCState.tree_flatten
-      ~MCMCState.tree_unflatten
+      ~MCMCState.merge_devices
+      ~MCMCState.replace
+      ~MCMCState.resize_or_init
+      ~MCMCState.split_across_devices
+      ~MCMCState.to_tuple
    
    
 
@@ -30,7 +35,6 @@ deeperwin.mcmc.MCMCState
    
       ~MCMCState.acc_rate
       ~MCMCState.log_psi_sqr
-      ~MCMCState.model_args
       ~MCMCState.rng_state
       ~MCMCState.step_nr
       ~MCMCState.stepsize

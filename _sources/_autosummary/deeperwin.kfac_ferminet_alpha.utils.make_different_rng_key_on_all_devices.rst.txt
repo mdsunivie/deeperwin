@@ -1,6 +1,0 @@
-deeperwin.kfac\_ferminet\_alpha.utils.make\_different\_rng\_key\_on\_all\_devices
-=================================================================================
-
-.. currentmodule:: deeperwin.kfac_ferminet_alpha.utils
-
-.. autofunction:: make_different_rng_key_on_all_devices

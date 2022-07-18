@@ -1,0 +1,38 @@
+deeperwin.checkpoints.RunData
+=============================
+
+.. currentmodule:: deeperwin.checkpoints
+
+.. autoclass:: RunData
+   :members:
+   :show-inheritance:
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~RunData.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~RunData.clipping_state
+      ~RunData.config
+      ~RunData.fixed_params
+      ~RunData.history
+      ~RunData.mcmc_state
+      ~RunData.metadata
+      ~RunData.opt_state
+      ~RunData.params
+      ~RunData.summary
+   
+   

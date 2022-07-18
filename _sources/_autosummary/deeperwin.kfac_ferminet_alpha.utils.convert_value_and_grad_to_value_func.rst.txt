@@ -1,6 +1,0 @@
-deeperwin.kfac\_ferminet\_alpha.utils.convert\_value\_and\_grad\_to\_value\_func
-================================================================================
-
-.. currentmodule:: deeperwin.kfac_ferminet_alpha.utils
-
-.. autofunction:: convert_value_and_grad_to_value_func
