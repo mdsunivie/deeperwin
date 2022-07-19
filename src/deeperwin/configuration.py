@@ -664,7 +664,7 @@ class IntermediateEvaluationConfig(ConfigBaseclass):
 class SharedOptimizationConfig(ConfigBaseclass):
     use: bool = True
 
-    shared_modules: Optional[List[Literal["embed", "jastrow", "bf_fac_general", "bf_shift", "bf_fac_orbital"]]] = None
+    shared_modules: Optional[List[str]] = None
     """What modules/ parts of the neural network should be shared during weight-sharing"""
 
     scheduling_method: Union[Literal["round_robin", "stddev"]] = "round_robin"
@@ -949,7 +949,7 @@ class PhysicalConfig(ConfigBaseclass):
     @validator("n_electrons", always=True)
     def populate_n_electrons(cls, v, values):
         if v is None:
-            if values['name'] in cls._DEFAULT_MOLECULES:
+            if values.get('name') in cls._DEFAULT_MOLECULES:
                 charge = cls._DEFAULT_MOLECULES[values['name']].get('charge', 0)
             else:
                 charge = 0
@@ -961,10 +961,12 @@ class PhysicalConfig(ConfigBaseclass):
     @validator("n_up", always=True)
     def populate_n_up(cls, v, values):
         if v is None:
-            if values['name'] in cls._PERIODIC_TABLE:
+            if values.get('name') in cls._PERIODIC_TABLE:
                 spin = cls._get_spin_from_hunds_rule(values['Z'][0])
-            else:
+            elif (values.get('name') in cls._DEFAULT_MOLECULES):
                 spin = cls._DEFAULT_MOLECULES[values['name']].get('spin') or 0
+            else:
+                spin = 0
             return (values['n_electrons'] + spin + 1) // 2  # if there is an extra electrons, assign them to up
         else:
             return v
@@ -1016,7 +1018,7 @@ class PhysicalConfig(ConfigBaseclass):
             return [self]
         ret = []
         for change in self.changes:
-            p = PhysicalConfig.update_configdict_and_validate(self.dict(), change.as_flattened_dict().items())[1]
+            p = PhysicalConfig.update_configdict_and_validate(self.dict(), change.as_flattened_dict())[1]
             p.changes = None
             ret.append(p)
         return ret
@@ -1083,7 +1085,7 @@ class DispatchConfig(ConfigBaseclass):
 class ComputationConfig(ConfigBaseclass):
     use_gpu: bool = True
     """deprecated"""
-    require_gpu: bool = True
+    require_gpu: bool = False
     n_devices: Optional[int] = None
     force_device_count: bool = False
     disable_jit: bool = False
@@ -1143,7 +1145,7 @@ class Configuration(ConfigBaseclass):
     comment: Optional[str] = None
     """Optional coment to keep track of experiments"""
 
-    experiment_name: Optional[str] = None
+    experiment_name: Optional[str] = "deeperwin_experiment"
     """Experiment name to keep track of experiments"""
 
     @root_validator

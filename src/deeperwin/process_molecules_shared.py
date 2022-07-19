@@ -7,7 +7,7 @@ import logging
 import os
 import time
 from dataclasses import dataclass
-from typing import Tuple
+from typing import Tuple, Optional
 
 import jax.numpy as jnp
 import numpy as np
@@ -15,26 +15,22 @@ from jax.config import config as jax_config
 from jax.lib import xla_bridge
 
 from deeperwin.configuration import Configuration, SharedOptimizationConfig, OptimizationConfig, LoggingConfig
-from deeperwin.run_tools.dispatch import idx_to_job_name, setup_job_dir, prepare_checkpoints
-from deeperwin.evaluation import evaluate_wavefunction, build_evaluation_step
-from deeperwin.kfac import build_grad_loss_kfac
+from deeperwin.run_tools.dispatch import idx_to_job_name
+from deeperwin.evaluation import evaluate_wavefunction
 from deeperwin.loggers import LoggerCollection, build_dpe_root_logger
 from deeperwin.mcmc import MCMCState, MetropolisHastingsMonteCarlo, resize_nr_of_walkers
 from deeperwin.model import build_log_psi_squared
 from deeperwin.optimization import build_value_and_grad_func, build_optimizer
-from deeperwin.utils import getCodeVersion, prepare_data_for_logging, get_number_of_params, merge_trainable_params, split_trainable_params, \
-    calculate_metrics
-
+from deeperwin.utils import getCodeVersion, split_params, setup_job_dir, get_number_of_params
 logger = logging.getLogger("dpe")
-
 
 @dataclass
 class WaveFunctionData:
     physical = None
     fixed_params = None
     unique_trainable_params = None
-    mcmc_state = None
-    clipping_params: Tuple[float] = (jnp.array([0.0]).squeeze(), jnp.array([1000.0]).squeeze())
+    mcmc_state: MCMCState = None
+    clipping_params: Optional[Tuple[float]] = None
     checkpoints = {}
     loggers = None
     current_metrics = {}
@@ -44,7 +40,6 @@ class WaveFunctionData:
 
 def init_wfs(config: Configuration):
     wfs = []
-    mcmc = MetropolisHastingsMonteCarlo(config.mcmc)
     physical_configs = config.physical.set_from_changes()
     for i, p in enumerate(physical_configs):  # self.shared_opt_config.config_changes):
         logger.info(f"Init wavefunction {i}...")
@@ -53,21 +48,18 @@ def init_wfs(config: Configuration):
         wf.physical = p
 
         # init parameters
-        new_log_psi_squared, new_trainable_params, wf.fixed_params = build_log_psi_squared(config.model, p)
-        new_shared_params, wf.unique_trainable_params = split_trainable_params(new_trainable_params,
-                                                                               config.optimization.shared_optimization.shared_modules)
+        new_log_psi_squared, new_orbitals_func, new_trainable_params, wf.fixed_params = build_log_psi_squared(config.model, p)
+        new_shared_params, wf.unique_trainable_params = split_params(new_trainable_params, config.optimization.shared_optimization.shared_modules)
         # in case of first WF, set shared_params and log_psi_squared for all WFs
         if i == 0:
             shared_params = new_shared_params
             log_psi_squared = new_log_psi_squared
+            orbitals_func = new_orbitals_func
 
         # initialize and warm up MCMC state of WF
         logger.info(f"Starting warm-up for wf {i}...")
-        wf.mcmc_state = MCMCState.initialize_around_nuclei(config.mcmc.n_walkers_opt, p)
-        wf.mcmc_state.log_psi_sqr = log_psi_squared(*wf.mcmc_state.model_args,
-                                                    new_trainable_params,
-                                                    wf.fixed_params)
-        wf.mcmc_state = mcmc.run_burn_in_opt(log_psi_squared, (new_trainable_params, wf.fixed_params), wf.mcmc_state)
+        # wf.mcmc_state.log_psi_sqr = log_psi_squared(new_trainable_params, *wf.mcmc_state.build_batch(wf.fixed_params))
+        # wf.mcmc_state = mcmc.run_burn_in_opt(log_psi_squared, (new_trainable_params, wf.fixed_params), wf.mcmc_state)
 
         # make folder for single WF (stores adjusted config and logger data)
         job_name = idx_to_job_name(i)
@@ -78,13 +70,13 @@ def init_wfs(config: Configuration):
                                    prefix=job_name)
         loggers.on_run_begin()
         loggers.log_tags(config.logging.tags)
-        loggers.log_metrics(dict(E_hf=wf.fixed_params["E_hf"], E_casscf=wf.fixed_params["E_casscf"]))
+        if 'baseline_energies' in wf.fixed_params:
+            loggers.log_metrics(wf.fixed_params['baseline_energies'])
         loggers.log_param("n_params", get_number_of_params(new_trainable_params))
         loggers.log_param("n_params_shared", get_number_of_params(shared_params))
         loggers.log_param("n_params_unique", get_number_of_params(wf.unique_trainable_params))
 
         wf.loggers = loggers
-
         # save full config for single wavefunction
         config_wf = copy.deepcopy(config)
         config_wf.physical = p
@@ -92,25 +84,23 @@ def init_wfs(config: Configuration):
         config_wf.save(os.path.join(job_dir, "full_config.yml"))
 
         # prepare checkpoints
-        wf.checkpoints = prepare_checkpoints(job_dir, config.optimization.checkpoints, config_wf) if len(
-            config.optimization.checkpoints) > 0 else {}
         wfs.append(wf)
 
-    # build optimizer
-    if config.optimization.optimizer.name == 'kfac':
-        grad_loss_func = build_grad_loss_kfac(log_psi_squared, config.optimization.clipping)
-    else:
-        grad_loss_func = build_value_and_grad_func(log_psi_squared, config.optimization.clipping)
+    # # build optimizer
+    # if config.optimization.optimizer.name == 'kfac':
+    #     grad_loss_func = build_grad_loss_kfac(log_psi_squared, config.optimization.clipping)
+    # else:
+    #     grad_loss_func = build_value_and_grad_func(log_psi_squared, config.optimization.clipping)
+    #
+    # trainable_params = merge_trainable_params(shared_params, wfs[0].unique_trainable_params)
+    # opt_get_params, optimize_epoch, opt_state, opt_set_params = build_optimizer(log_psi_squared, grad_loss_func,
+    #                                                                             mcmc, trainable_params,
+    #                                                                             wfs[0].fixed_params,
+    #                                                                             config.optimization,
+    #                                                                             config.mcmc.n_walkers_opt,
+    #                                                                             mcmc_state=wfs[0].mcmc_state)
 
-    trainable_params = merge_trainable_params(shared_params, wfs[0].unique_trainable_params)
-    opt_get_params, optimize_epoch, opt_state, opt_set_params = build_optimizer(log_psi_squared, grad_loss_func,
-                                                                                mcmc, trainable_params,
-                                                                                wfs[0].fixed_params,
-                                                                                config.optimization,
-                                                                                config.mcmc.n_walkers_opt,
-                                                                                mcmc_state=wfs[0].mcmc_state)
-
-    return log_psi_squared, mcmc, wfs, shared_params, optimize_epoch, opt_state, opt_get_params, opt_set_params
+    return log_psi_squared, orbitals_func, wfs, shared_params
 
 
 def update_opt_state(opt_state_old, get_params_func, opt_set_params, unique_trainable_params, shared_modules):
@@ -218,8 +208,7 @@ def process_molecule_shared(config_file):
     loggers_set.log_param("code_version", getCodeVersion())
 
     # Initialization of model, MCMC states and optimizer TODO restart and reload
-    log_psi_squared, mcmc, wfs, init_shared_params, optimize_epoch, opt_state, opt_get_params, opt_set_params = init_wfs(
-        config)
+    log_psi_squared, orbitals_func, wfs, shared_params = init_wfs(config)
 
     # Wavefunction optimization
     if config.optimization.n_epochs > 0:
@@ -278,5 +267,6 @@ def process_molecule_shared(config_file):
     loggers_set.on_run_end()
 
 if __name__ == '__main__':
+    import sys
     process_molecule_shared(sys.argv[1])
 

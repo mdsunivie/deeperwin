@@ -1,0 +1,27 @@
+physical:
+  name: LiH
+  changes:
+    - R: [[0,0,0], [3.0,0,0]]
+      comment: d_3.0
+    - R: [[0,0,0], [4.0,0,0]]
+      comment: d_4.0
+
+optimization:
+  shared_optimization:
+    shared_modules:
+      - features
+      - embedding
+
+model:
+  name: dpe4
+  embedding:
+    n_hidden_two_el: 5
+    n_hidden_one_el: 10
+    n_iterations: 2
+
+  orbitals:
+    n_determinants: 2
+
+computation:
+  require_gpu: false
+

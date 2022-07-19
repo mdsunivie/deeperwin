@@ -7,3 +7,4 @@
 /full_config.yml
 /wandb
 /src/deeperwin.egg-info
+/doc/build/

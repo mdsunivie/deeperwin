@@ -34,9 +34,6 @@ model:
     n_hidden_one_el: 10
     n_hidden_two_el: 5
   orbitals:
-    baseline_orbitals:
-      use_bf_shift: true
-  jastrow:
     n_determinants: 2
 
 #logging:

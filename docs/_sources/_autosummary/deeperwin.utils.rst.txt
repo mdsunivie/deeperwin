@@ -1,0 +1,46 @@
+deeperwin.utils
+===============
+
+.. automodule:: deeperwin.utils
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+   
+      batch_rng_split
+      fit_morse_potential
+      getCodeVersion
+      get_distance_matrix
+      get_el_ion_distance_matrix
+      get_extent_for_imshow
+      get_full_distance_matrix
+      get_ion_pos_string
+      get_number_of_params
+      get_params_filter_func
+      merge_from_devices
+      merge_params
+      morse_potential
+      replicate_across_devices
+      save_xyz_file
+      setup_job_dir
+      split_params
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+

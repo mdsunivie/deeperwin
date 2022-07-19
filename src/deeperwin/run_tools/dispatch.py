@@ -32,17 +32,8 @@ def setup_experiment_dir(directory, force=False):
     return directory
 
 
-def setup_job_dir(parent_dir, name):
-    job_dir = os.path.join(parent_dir, name)
-    if os.path.exists(job_dir):
-        logging.warning(f"Directory {job_dir} already exists. Results might be overwritten.")
-    else:
-        os.makedirs(job_dir)
-    return job_dir
-
-
 def build_experiment_name(parameters, basename=""):
-    s = [basename] if len(basename) > 0 else []
+    s = [basename] if basename else []
     for name, value in parameters.items():
         if name == 'experiment_name' or name == 'reuse.path':
             continue
@@ -188,7 +179,7 @@ export XLA_FLAGS=--xla_gpu_force_compilation_parallelism=1
 {command}"""
 
 
-def dispatch_job(fname, job_dir, config, sleep_in_sec):
+def dispatch_job(command, job_dir, config, sleep_in_sec):
     dispatch_to = config.dispatch.system
     if dispatch_to == "auto":
         dispatch_to = "local"
@@ -201,10 +192,10 @@ def dispatch_job(fname, job_dir, config, sleep_in_sec):
                     dispatch_to = "dgx"
         if 'HPC_SYSTEM' in os.environ:
             dispatch_to = os.environ["HPC_SYSTEM"].lower()  # vsc3 or vsc4
-    logging.info(f"Dispatching command {' '.join(fname)} to: {dispatch_to}")
+    logging.info(f"Dispatching command {' '.join(command)} to: {dispatch_to}")
     dispatch_func = dict(local=dispatch_to_local,
                          local_background=dispatch_to_local_background,
                          vsc3=dispatch_to_vsc3,
                          vsc4=dispatch_to_vsc4,
                          dgx=dispatch_to_dgx)[dispatch_to]
-    dispatch_func(fname, job_dir, config, sleep_in_sec)
+    dispatch_func(command, job_dir, config, sleep_in_sec)

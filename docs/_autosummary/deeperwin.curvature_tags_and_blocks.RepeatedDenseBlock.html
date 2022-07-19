@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>deeperwin.curvature_tags_and_blocks.RepeatedDenseBlock &mdash; deeperwin 1.0.0 documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/autodoc_pydantic.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/custom_style.css" type="text/css" />
+    <link rel="shortcut icon" href="../_static/favicon.png"/>
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="deeperwin.evaluation" href="deeperwin.evaluation.html" />
+    <link rel="prev" title="deeperwin.curvature_tags_and_blocks.register_repeated_dense" href="deeperwin.curvature_tags_and_blocks.register_repeated_dense.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../root.html" class="icon icon-home"> deeperwin
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../index.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorial.html">DeepErwin Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Options</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../api.html">Full documentation for developers</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="deeperwin.html">deeperwin</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.checkpoints.html">deeperwin.checkpoints</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.cli.html">deeperwin.cli</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.configuration.html">deeperwin.configuration</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="deeperwin.curvature_tags_and_blocks.html">deeperwin.curvature_tags_and_blocks</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.curvature_tags_and_blocks.register_repeated_dense.html">deeperwin.curvature_tags_and_blocks.register_repeated_dense</a></li>
+<li class="toctree-l4 current"><a class="current reference internal" href="#">deeperwin.curvature_tags_and_blocks.RepeatedDenseBlock</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.evaluation.html">deeperwin.evaluation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.hamiltonian.html">deeperwin.hamiltonian</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.local_features.html">deeperwin.local_features</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.loggers.html">deeperwin.loggers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.mcmc.html">deeperwin.mcmc</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.model.html">deeperwin.model</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.optimization.html">deeperwin.optimization</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.optimizers.html">deeperwin.optimizers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.orbitals.html">deeperwin.orbitals</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.process_molecule.html">deeperwin.process_molecule</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.process_molecules_shared.html">deeperwin.process_molecules_shared</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.run_tools.html">deeperwin.run_tools</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.utils.html">deeperwin.utils</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../indices.html">Indices and tables</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../root.html">deeperwin</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../root.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../api.html">Full documentation for developers</a> &raquo;</li>
+          <li><a href="deeperwin.html">deeperwin</a> &raquo;</li>
+          <li><a href="deeperwin.curvature_tags_and_blocks.html">deeperwin.curvature_tags_and_blocks</a> &raquo;</li>
+      <li>deeperwin.curvature_tags_and_blocks.RepeatedDenseBlock</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/_autosummary/deeperwin.curvature_tags_and_blocks.RepeatedDenseBlock.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="deeperwin-curvature-tags-and-blocks-repeateddenseblock">
+<h1>deeperwin.curvature_tags_and_blocks.RepeatedDenseBlock<a class="headerlink" href="#deeperwin-curvature-tags-and-blocks-repeateddenseblock" title="Permalink to this headline"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="deeperwin.curvature_tags_and_blocks.RepeatedDenseBlock">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">deeperwin.curvature_tags_and_blocks.</span></span><span class="sig-name descname"><span class="pre">RepeatedDenseBlock</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">layer_tag_eq</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">kfac_jax._src.layers_and_loss_tags.LayerTagEqn</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/deeperwin/curvature_tags_and_blocks.html#RepeatedDenseBlock"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.curvature_tags_and_blocks.RepeatedDenseBlock" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">kfac_jax._src.curvature_blocks.DenseTwoKroneckerFactored</span></code></p>
+<p>Dense block that is repeatedly applied to multiple inputs (e.g. vmap).</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="deeperwin.curvature_tags_and_blocks.RepeatedDenseBlock.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">layer_tag_eq</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">kfac_jax._src.layers_and_loss_tags.LayerTagEqn</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#deeperwin.curvature_tags_and_blocks.RepeatedDenseBlock.__init__" title="Permalink to this definition"></a></dt>
+<dd><p>Initializes the block.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>layer_tag_eq</strong> – The Jax equation corresponding to the layer tag that this
+block will approximate the curvature to.</p></li>
+<li><p><strong>name</strong> – The name of this block.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#deeperwin.curvature_tags_and_blocks.RepeatedDenseBlock.update_curvature_matrix_estimate" title="deeperwin.curvature_tags_and_blocks.RepeatedDenseBlock.update_curvature_matrix_estimate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_curvature_matrix_estimate</span></code></a>(state, ...)</p></td>
+<td><p>Updates the block's curvature estimates using the <code class="docutils literal notranslate"><span class="pre">info</span></code> provided.</p></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Attributes</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#deeperwin.curvature_tags_and_blocks.RepeatedDenseBlock.scale" title="deeperwin.curvature_tags_and_blocks.RepeatedDenseBlock.scale"><code class="xref py py-obj docutils literal notranslate"><span class="pre">scale</span></code></a></p></td>
+<td><p>Any additional scaling factor, not present in the Jax equation.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py property">
+<dt class="sig sig-object py" id="deeperwin.curvature_tags_and_blocks.RepeatedDenseBlock.scale">
+<em class="property"><span class="pre">property</span> </em><span class="sig-name descname"><span class="pre">scale</span></span><em class="property"><span class="pre">:</span> <span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span> </span><span class="pre">jax._src.numpy.ndarray.ndarray</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#deeperwin.curvature_tags_and_blocks.RepeatedDenseBlock.scale" title="Permalink to this definition"></a></dt>
+<dd><p>Any additional scaling factor, not present in the Jax equation.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="deeperwin.curvature_tags_and_blocks.RepeatedDenseBlock.update_curvature_matrix_estimate">
+<span class="sig-name descname"><span class="pre">update_curvature_matrix_estimate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">state</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">kfac_jax._src.curvature_blocks.TwoKroneckerFactored.State</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">estimation_data</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Mapping</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">jax._src.numpy.ndarray.ndarray</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ema_old</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">jax._src.numpy.ndarray.ndarray</span><span class="p"><span class="pre">,</span> </span><span class="pre">float</span><span class="p"><span class="pre">,</span> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ema_new</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">jax._src.numpy.ndarray.ndarray</span><span class="p"><span class="pre">,</span> </span><span class="pre">float</span><span class="p"><span class="pre">,</span> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pmap_axis_name</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">kfac_jax._src.curvature_blocks.TwoKroneckerFactored.State</span></span></span><a class="reference internal" href="../_modules/deeperwin/curvature_tags_and_blocks.html#RepeatedDenseBlock.update_curvature_matrix_estimate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.curvature_tags_and_blocks.RepeatedDenseBlock.update_curvature_matrix_estimate" title="Permalink to this definition"></a></dt>
+<dd><p>Updates the block’s curvature estimates using the <code class="docutils literal notranslate"><span class="pre">info</span></code> provided.</p>
+<p>Each block <em>in general</em> estimates a moving average of its associated
+curvature matrix. If you don’t want a moving average you can set
+<code class="docutils literal notranslate"><span class="pre">ema_old=0</span></code> and <code class="docutils literal notranslate"><span class="pre">ema_new=1</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>state</strong> – The state dict for this block to update.</p></li>
+<li><p><strong>estimation_data</strong> – A map containing data used for updating the curvature
+matrix estimate for this block. This can be computed by calling the
+function returned from <code class="xref py py-func docutils literal notranslate"><span class="pre">layer_tags_vjp()</span></code>. Please see its
+implementation for more details on the name of the fields and how they
+are constructed.</p></li>
+<li><p><strong>ema_old</strong> – Specifies the weight of the old value when computing the updated
+estimate in the moving average.</p></li>
+<li><p><strong>ema_new</strong> – Specifies the weight of the new value when computing the updated
+estimate in the moving average.</p></li>
+<li><p><strong>batch_size</strong> – The batch size used in computing the values in <code class="docutils literal notranslate"><span class="pre">info</span></code>.</p></li>
+<li><p><strong>pmap_axis_name</strong> – The name of any pmap axis, which might be needed for
+computing the updates.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="deeperwin.curvature_tags_and_blocks.register_repeated_dense.html" class="btn btn-neutral float-left" title="deeperwin.curvature_tags_and_blocks.register_repeated_dense" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="deeperwin.evaluation.html" class="btn btn-neutral float-right" title="deeperwin.evaluation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Michael Scherbela, Leon Gerard, Rafael Reisenhofer.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

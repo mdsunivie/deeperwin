@@ -1,0 +1,6 @@
+deeperwin.process\_molecules\_shared.get\_index
+===============================================
+
+.. currentmodule:: deeperwin.process_molecules_shared
+
+.. autofunction:: get_index

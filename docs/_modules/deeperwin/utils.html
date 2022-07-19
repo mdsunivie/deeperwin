@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>deeperwin.utils &mdash; deeperwin 1.0.0 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/autodoc_pydantic.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/custom_style.css" type="text/css" />
+    <link rel="shortcut icon" href="../../_static/favicon.png"/>
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../root.html" class="icon icon-home"> deeperwin
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../index.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorial.html">DeepErwin Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../configuration.html">Configuration Options</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api.html">Full documentation for developers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../indices.html">Indices and tables</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../root.html">deeperwin</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../root.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+      <li>deeperwin.utils</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for deeperwin.utils</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Helper functions.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">functools</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">subprocess</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">jax</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">scipy.optimize</span>
+<span class="kn">from</span> <span class="nn">jax</span> <span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">jnp</span>
+<span class="kn">from</span> <span class="nn">deeperwin.configuration</span> <span class="kn">import</span> <span class="n">ClippingConfig</span>
+<span class="kn">import</span> <span class="nn">haiku</span> <span class="k">as</span> <span class="nn">hk</span>
+
+<span class="n">LOGGER</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;dpe&quot;</span><span class="p">)</span>
+
+<span class="c1">###############################################################################</span>
+<span class="c1">############################# Parallelization  ################################</span>
+<span class="c1">###############################################################################</span>
+
+<span class="n">pmap</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">jax</span><span class="o">.</span><span class="n">pmap</span><span class="p">,</span> <span class="n">axis_name</span><span class="o">=</span><span class="s2">&quot;devices&quot;</span><span class="p">)</span>
+<span class="n">pmean</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">jax</span><span class="o">.</span><span class="n">lax</span><span class="o">.</span><span class="n">pmean</span><span class="p">,</span> <span class="n">axis_name</span><span class="o">=</span><span class="s2">&quot;devices&quot;</span><span class="p">)</span>
+<span class="n">psum</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">jax</span><span class="o">.</span><span class="n">lax</span><span class="o">.</span><span class="n">psum</span><span class="p">,</span> <span class="n">axis_name</span><span class="o">=</span><span class="s2">&quot;devices&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="replicate_across_devices"><a class="viewcode-back" href="../../_autosummary/deeperwin.utils.replicate_across_devices.html#deeperwin.utils.replicate_across_devices">[docs]</a><span class="k">def</span> <span class="nf">replicate_across_devices</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">n_devices</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">jax</span><span class="o">.</span><span class="n">tree_map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="p">[</span><span class="n">n_devices</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">x</span><span class="o">.</span><span class="n">ndim</span><span class="p">),</span> <span class="n">data</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="merge_from_devices"><a class="viewcode-back" href="../../_autosummary/deeperwin.utils.merge_from_devices.html#deeperwin.utils.merge_from_devices">[docs]</a><span class="k">def</span> <span class="nf">merge_from_devices</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">jax</span><span class="o">.</span><span class="n">tree_map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">data</span><span class="p">)</span></div>
+
+
+<span class="n">batch_rng_split</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">vmap</span><span class="p">(</span><span class="k">lambda</span> <span class="n">k</span><span class="p">:</span> <span class="n">jax</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">k</span><span class="p">,</span><span class="mi">2</span><span class="p">),</span> <span class="n">in_axes</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">out_axes</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="c1">###############################################################################</span>
+<span class="c1">##################################### Logging  ################################</span>
+<span class="c1">###############################################################################</span>
+
+<div class="viewcode-block" id="getCodeVersion"><a class="viewcode-back" href="../../_autosummary/deeperwin.utils.getCodeVersion.html#deeperwin.utils.getCodeVersion">[docs]</a><span class="k">def</span> <span class="nf">getCodeVersion</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Determine the current git commit by calling &#39;git log -1&#39;.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">         (str): Git commit hash and latest commit message</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">check_output</span><span class="p">([</span><span class="s2">&quot;git&quot;</span><span class="p">,</span> <span class="s2">&quot;log&quot;</span><span class="p">,</span> <span class="s2">&quot;-1&quot;</span><span class="p">],</span> <span class="n">cwd</span><span class="o">=</span><span class="n">path</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">msg</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;; &quot;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="setup_job_dir"><a class="viewcode-back" href="../../_autosummary/deeperwin.utils.setup_job_dir.html#deeperwin.utils.setup_job_dir">[docs]</a><span class="k">def</span> <span class="nf">setup_job_dir</span><span class="p">(</span><span class="n">parent_dir</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+    <span class="n">job_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">parent_dir</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">job_dir</span><span class="p">):</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Directory </span><span class="si">{</span><span class="n">job_dir</span><span class="si">}</span><span class="s2"> already exists. Results might be overwritten.&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">job_dir</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">job_dir</span></div>
+
+<span class="c1">###############################################################################</span>
+<span class="c1">############################# Model / physics / hamiltonian ###################</span>
+<span class="c1">###############################################################################</span>
+
+
+<div class="viewcode-block" id="get_el_ion_distance_matrix"><a class="viewcode-back" href="../../_autosummary/deeperwin.utils.get_el_ion_distance_matrix.html#deeperwin.utils.get_el_ion_distance_matrix">[docs]</a><span class="k">def</span> <span class="nf">get_el_ion_distance_matrix</span><span class="p">(</span><span class="n">r_el</span><span class="p">,</span> <span class="n">R_ion</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Args:</span>
+<span class="sd">        r_el: shape [N_batch x n_el x 3]</span>
+<span class="sd">        R_ion: shape [N_ion x 3]</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        diff: shape [N_batch x n_el x N_ion x 3]</span>
+<span class="sd">        dist: shape [N_batch x n_el x N_ion]</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">diff</span> <span class="o">=</span> <span class="n">r_el</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:]</span> <span class="o">-</span> <span class="n">R_ion</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span>
+    <span class="n">dist</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">diff</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">diff</span><span class="p">,</span> <span class="n">dist</span></div>
+
+
+<div class="viewcode-block" id="get_full_distance_matrix"><a class="viewcode-back" href="../../_autosummary/deeperwin.utils.get_full_distance_matrix.html#deeperwin.utils.get_full_distance_matrix">[docs]</a><span class="k">def</span> <span class="nf">get_full_distance_matrix</span><span class="p">(</span><span class="n">r_el</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Args:</span>
+<span class="sd">        r_el: shape [n_el x 3]</span>
+<span class="sd">    Returns:</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">diff</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">r_el</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">)</span> <span class="o">-</span> <span class="n">jnp</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">r_el</span><span class="p">,</span> <span class="o">-</span><span class="mi">3</span><span class="p">)</span>
+    <span class="n">dist</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">diff</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">dist</span></div>
+
+
+<div class="viewcode-block" id="get_distance_matrix"><a class="viewcode-back" href="../../_autosummary/deeperwin.utils.get_distance_matrix.html#deeperwin.utils.get_distance_matrix">[docs]</a><span class="k">def</span> <span class="nf">get_distance_matrix</span><span class="p">(</span><span class="n">r_el</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compute distance matrix omitting the main diagonal (i.e. distance to the particle itself)</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        r_el: [batch_dims x n_electrons x 3]</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        tuple: differences [batch_dims x n_el x n_el x 3], distances [batch_dims x n_el x n_el]</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">n_el</span> <span class="o">=</span> <span class="n">r_el</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">diff</span> <span class="o">=</span> <span class="n">r_el</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">:,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:]</span> <span class="o">-</span> <span class="n">r_el</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span>
+    <span class="n">diff_padded</span> <span class="o">=</span> <span class="n">diff</span> <span class="o">+</span> <span class="n">jnp</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="n">n_el</span><span class="p">)[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
+    <span class="n">dist</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">diff_padded</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">jnp</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="n">n_el</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">diff</span><span class="p">,</span> <span class="n">dist</span></div>
+
+<span class="c1">###############################################################################</span>
+<span class="c1">########################### Post-processing / analysis ########################</span>
+<span class="c1">###############################################################################</span>
+<span class="n">ANGSTROM_IN_BOHR</span> <span class="o">=</span> <span class="mf">1.88973</span>
+
+
+<div class="viewcode-block" id="morse_potential"><a class="viewcode-back" href="../../_autosummary/deeperwin.utils.morse_potential.html#deeperwin.utils.morse_potential">[docs]</a><span class="k">def</span> <span class="nf">morse_potential</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">E</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">Rb</span><span class="p">,</span> <span class="n">E0</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns the Morse potential :math:`E_0 + E (exp{-2x} - 2exp{-x})` where :math:`x = a (r-R_b)`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">a</span> <span class="o">*</span> <span class="p">(</span><span class="n">r</span> <span class="o">-</span> <span class="n">Rb</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">E</span> <span class="o">*</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span> <span class="o">*</span> <span class="n">x</span><span class="p">)</span> <span class="o">-</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">x</span><span class="p">))</span> <span class="o">+</span> <span class="n">E0</span></div>
+
+
+<div class="viewcode-block" id="fit_morse_potential"><a class="viewcode-back" href="../../_autosummary/deeperwin.utils.fit_morse_potential.html#deeperwin.utils.fit_morse_potential">[docs]</a><span class="k">def</span> <span class="nf">fit_morse_potential</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">E</span><span class="p">,</span> <span class="n">p0</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Fits a morse potential to given energy data.</span>
+<span class="sd">    Args:</span>
+<span class="sd">        d (list, np.array): array-like list of bondlengths</span>
+<span class="sd">        E (list, np.array): array-like list of energies for each bond-length</span>
+<span class="sd">        p0 (tuple): Initial guess for parameters of morse potential. If set to None, parameters will be guessed based on data.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        (tuple): Fit parameters for Morse potential. Can be evaluated using morsePotential(r, *params)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">p0</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">p0</span> <span class="o">=</span> <span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">d</span><span class="p">),</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">E</span><span class="p">)</span> <span class="o">+</span> <span class="mf">0.1</span><span class="p">)</span>
+    <span class="n">morse_params</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">optimize</span><span class="o">.</span><span class="n">curve_fit</span><span class="p">(</span><span class="n">morse_potential</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">E</span><span class="p">,</span> <span class="n">p0</span><span class="o">=</span><span class="n">p0</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">morse_params</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="save_xyz_file"><a class="viewcode-back" href="../../_autosummary/deeperwin.utils.save_xyz_file.html#deeperwin.utils.save_xyz_file">[docs]</a><span class="k">def</span> <span class="nf">save_xyz_file</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">R</span><span class="p">,</span> <span class="n">Z</span><span class="p">,</span> <span class="n">comment</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Units for R are expected to be Bohr and will be translated to Angstrom in output&quot;&quot;&quot;</span>
+    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">R</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">Z</span><span class="p">)</span>
+    <span class="n">PERIODIC_TABLE</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;H&#39;</span><span class="p">,</span> <span class="s1">&#39;He&#39;</span><span class="p">,</span> <span class="s1">&#39;Li&#39;</span><span class="p">,</span> <span class="s1">&#39;Be&#39;</span><span class="p">,</span> <span class="s1">&#39;B&#39;</span><span class="p">,</span> <span class="s1">&#39;C&#39;</span><span class="p">,</span> <span class="s1">&#39;N&#39;</span><span class="p">,</span> <span class="s1">&#39;O&#39;</span><span class="p">,</span> <span class="s1">&#39;F&#39;</span><span class="p">,</span> <span class="s1">&#39;Ne&#39;</span><span class="p">,</span> <span class="s1">&#39;Na&#39;</span><span class="p">,</span> <span class="s1">&#39;Mg&#39;</span><span class="p">,</span> <span class="s1">&#39;Al&#39;</span><span class="p">,</span> <span class="s1">&#39;Si&#39;</span><span class="p">,</span> <span class="s1">&#39;P&#39;</span><span class="p">,</span> <span class="s1">&#39;S&#39;</span><span class="p">,</span>
+         <span class="s1">&#39;Cl&#39;</span><span class="p">,</span> <span class="s1">&#39;Ar&#39;</span><span class="p">,</span> <span class="s1">&#39;K&#39;</span><span class="p">,</span> <span class="s1">&#39;Ca&#39;</span><span class="p">,</span> <span class="s1">&#39;Sc&#39;</span><span class="p">,</span> <span class="s1">&#39;Ti&#39;</span><span class="p">,</span> <span class="s1">&#39;V&#39;</span><span class="p">,</span> <span class="s1">&#39;Cr&#39;</span><span class="p">,</span> <span class="s1">&#39;Mn&#39;</span><span class="p">,</span> <span class="s1">&#39;Fe&#39;</span><span class="p">,</span> <span class="s1">&#39;Co&#39;</span><span class="p">,</span> <span class="s1">&#39;Ni&#39;</span><span class="p">,</span> <span class="s1">&#39;Cu&#39;</span><span class="p">,</span> <span class="s1">&#39;Zn&#39;</span><span class="p">,</span> <span class="s1">&#39;Ga&#39;</span><span class="p">,</span> <span class="s1">&#39;Ge&#39;</span><span class="p">,</span> <span class="s1">&#39;As&#39;</span><span class="p">,</span> <span class="s1">&#39;Se&#39;</span><span class="p">,</span> <span class="s1">&#39;Br&#39;</span><span class="p">,</span> <span class="s1">&#39;Kr&#39;</span><span class="p">]</span>
+
+    <span class="n">ANGSTROM_IN_BOHR</span> <span class="o">=</span> <span class="mf">1.88973</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">R</span><span class="p">))</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">comment</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">Z_</span><span class="p">,</span> <span class="n">R_</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">Z</span><span class="p">,</span> <span class="n">R</span><span class="p">):</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">PERIODIC_TABLE</span><span class="p">[</span><span class="n">Z_</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="si">:</span><span class="s2">3&gt;</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">R_</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">/</span><span class="n">ANGSTROM_IN_BOHR</span><span class="si">:</span><span class="s2">-.10f</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">R_</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">/</span><span class="n">ANGSTROM_IN_BOHR</span><span class="si">:</span><span class="s2">-.10f</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">R_</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">/</span><span class="n">ANGSTROM_IN_BOHR</span><span class="si">:</span><span class="s2">-.10f</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="get_extent_for_imshow"><a class="viewcode-back" href="../../_autosummary/deeperwin.utils.get_extent_for_imshow.html#deeperwin.utils.get_extent_for_imshow">[docs]</a><span class="k">def</span> <span class="nf">get_extent_for_imshow</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+    <span class="n">dx</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">dy</span> <span class="o">=</span> <span class="n">y</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">dx</span><span class="p">,</span> <span class="n">x</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">dx</span><span class="p">,</span> <span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">dy</span><span class="p">,</span> <span class="n">y</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">dy</span></div>
+
+
+<div class="viewcode-block" id="get_ion_pos_string"><a class="viewcode-back" href="../../_autosummary/deeperwin.utils.get_ion_pos_string.html#deeperwin.utils.get_ion_pos_string">[docs]</a><span class="k">def</span> <span class="nf">get_ion_pos_string</span><span class="p">(</span><span class="n">R</span><span class="p">):</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;,&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s2">&quot;[&quot;</span> <span class="o">+</span> <span class="s2">&quot;,&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">x</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">R_</span><span class="p">])</span> <span class="o">+</span> <span class="s2">&quot;]&quot;</span> <span class="k">for</span> <span class="n">R_</span> <span class="ow">in</span> <span class="n">R</span><span class="p">])</span>
+    <span class="k">return</span> <span class="s2">&quot;[&quot;</span> <span class="o">+</span> <span class="n">s</span> <span class="o">+</span> <span class="s2">&quot;]&quot;</span></div>
+
+
+<span class="c1">###############################################################################</span>
+<span class="c1">##################### Shared optimization / split model #######################</span>
+<span class="c1">###############################################################################</span>
+
+<div class="viewcode-block" id="get_params_filter_func"><a class="viewcode-back" href="../../_autosummary/deeperwin.utils.get_params_filter_func.html#deeperwin.utils.get_params_filter_func">[docs]</a><span class="k">def</span> <span class="nf">get_params_filter_func</span><span class="p">(</span><span class="n">module_names</span><span class="p">):</span>
+    <span class="n">regex</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s2">&quot;(&quot;</span> <span class="o">+</span> <span class="s2">&quot;|&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">module_names</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;)&quot;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">filter_func</span><span class="p">(</span><span class="n">module_name</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">regex</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">module_name</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">0</span>
+    <span class="k">return</span> <span class="n">filter_func</span></div>
+
+<div class="viewcode-block" id="split_params"><a class="viewcode-back" href="../../_autosummary/deeperwin.utils.split_params.html#deeperwin.utils.split_params">[docs]</a><span class="k">def</span> <span class="nf">split_params</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">module_names</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">hk</span><span class="o">.</span><span class="n">data_structures</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="n">get_params_filter_func</span><span class="p">(</span><span class="n">module_names</span><span class="p">),</span> <span class="n">params</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="merge_params"><a class="viewcode-back" href="../../_autosummary/deeperwin.utils.merge_params.html#deeperwin.utils.merge_params">[docs]</a><span class="k">def</span> <span class="nf">merge_params</span><span class="p">(</span><span class="n">params_old</span><span class="p">,</span> <span class="n">params_new</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">hk</span><span class="o">.</span><span class="n">data_structures</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">params_old</span><span class="p">,</span> <span class="n">params_new</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="get_number_of_params"><a class="viewcode-back" href="../../_autosummary/deeperwin.utils.get_number_of_params.html#deeperwin.utils.get_number_of_params">[docs]</a><span class="k">def</span> <span class="nf">get_number_of_params</span><span class="p">(</span><span class="n">params</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">hk</span><span class="o">.</span><span class="n">data_structures</span><span class="o">.</span><span class="n">tree_size</span><span class="p">(</span><span class="n">params</span><span class="p">)</span></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Michael Scherbela, Leon Gerard, Rafael Reisenhofer.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

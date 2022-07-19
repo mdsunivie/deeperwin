@@ -50,6 +50,13 @@ def getCodeVersion():
         print(e)
         return None
 
+def setup_job_dir(parent_dir, name):
+    job_dir = os.path.join(parent_dir, name)
+    if os.path.exists(job_dir):
+        logging.warning(f"Directory {job_dir} already exists. Results might be overwritten.")
+    else:
+        os.makedirs(job_dir)
+    return job_dir
 
 ###############################################################################
 ############################# Model / physics / hamiltonian ###################
@@ -96,25 +103,6 @@ def get_distance_matrix(r_el):
     diff_padded = diff + jnp.eye(n_el)[..., None]
     dist = jnp.linalg.norm(diff_padded, axis=-1) * (1 - jnp.eye(n_el))
     return diff, dist
-
-
-
-def calculate_clipping_state(E, config: ClippingConfig):
-    if config.center == "mean":
-        center = jnp.nanmean(E)
-    elif config.center == "median":
-        center = jnp.nanmedian(E)
-    else:
-        raise ValueError(f"Unsupported config-value for optimization.clipping.center: {config.center}")
-
-    if config.width_metric == "std":
-        width = jnp.nanstd(E) * config.clip_by
-    elif config.width_metric == "mae":
-        width = jnp.nanmean(jnp.abs(E - center)) * config.clip_by
-    else:
-        raise ValueError(f"Unsupported config-value for optimization.clipping.width_metric: {config.width_metric}")
-    return center, width
-
 
 ###############################################################################
 ########################### Post-processing / analysis ########################
@@ -188,3 +176,6 @@ def split_params(params, module_names):
 
 def merge_params(params_old, params_new):
     return hk.data_structures.merge(params_old, params_new)
+
+def get_number_of_params(params):
+    return hk.data_structures.tree_size(params)

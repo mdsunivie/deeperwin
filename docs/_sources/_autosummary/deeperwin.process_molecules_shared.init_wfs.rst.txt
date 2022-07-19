@@ -1,0 +1,6 @@
+deeperwin.process\_molecules\_shared.init\_wfs
+==============================================
+
+.. currentmodule:: deeperwin.process_molecules_shared
+
+.. autofunction:: init_wfs

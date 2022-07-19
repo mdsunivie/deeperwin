@@ -1,0 +1,6 @@
+deeperwin.utils.setup\_job\_dir
+===============================
+
+.. currentmodule:: deeperwin.utils
+
+.. autofunction:: setup_job_dir

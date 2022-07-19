@@ -1,6 +1,0 @@
-deeperwin.utils.calculate\_clipping\_state
-==========================================
-
-.. currentmodule:: deeperwin.utils
-
-.. autofunction:: calculate_clipping_state

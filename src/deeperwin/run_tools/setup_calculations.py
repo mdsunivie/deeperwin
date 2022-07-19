@@ -2,7 +2,8 @@ import itertools
 import warnings
 from deeperwin.configuration import set_with_flattened_key, Configuration
 import copy
-from deeperwin.run_tools.dispatch import dispatch_job, build_experiment_name, setup_experiment_dir, dump_config_dict, idx_to_job_name, setup_job_dir
+from deeperwin.run_tools.dispatch import dispatch_job, build_experiment_name, setup_experiment_dir, dump_config_dict, idx_to_job_name
+from deeperwin.utils import setup_job_dir
 import ruamel.yaml as yaml
 
 def setup_calculations(args):

@@ -1,0 +1,39 @@
+deeperwin.process\_molecules\_shared.WaveFunctionData
+=====================================================
+
+.. currentmodule:: deeperwin.process_molecules_shared
+
+.. autoclass:: WaveFunctionData
+   :members:
+   :show-inheritance:
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~WaveFunctionData.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~WaveFunctionData.checkpoints
+      ~WaveFunctionData.clipping_params
+      ~WaveFunctionData.current_metrics
+      ~WaveFunctionData.fixed_params
+      ~WaveFunctionData.last_epoch_optimized
+      ~WaveFunctionData.loggers
+      ~WaveFunctionData.mcmc_state
+      ~WaveFunctionData.n_opt_epochs
+      ~WaveFunctionData.physical
+      ~WaveFunctionData.unique_trainable_params
+   
+   
