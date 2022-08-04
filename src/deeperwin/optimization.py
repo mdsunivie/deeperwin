@@ -122,7 +122,7 @@ def optimize_wavefunction(
 
     # Run burn-in of monte carlo chain
     LOGGER.debug(f"Starting burn-in for optimization: {opt_config.mcmc.n_burn_in} steps")
-    n_devices = jax.device_count()
+    n_devices = jax.local_device_count()
     log_psi_squared_pmapped = jax.pmap(log_psi_squared)
 
     mcmc = MetropolisHastingsMonteCarlo(opt_config.mcmc)
@@ -216,7 +216,7 @@ def pretrain_orbitals(orbital_func, mcmc_state: MCMCState, params, fixed_params,
 
     # Init MCMC
     logging.debug(f"Starting pretraining...")
-    n_devices = jax.device_count()
+    n_devices = jax.local_device_count()
     mcmc = MetropolisHastingsMonteCarlo(config.mcmc)
     mcmc_state = MCMCState.resize_or_init(mcmc_state, config.mcmc.n_walkers, phys_config, n_devices)
 

@@ -18,6 +18,10 @@ def process_molecule(config_file):
     if config.computation.force_device_count and config.computation.n_devices:
         os.environ['XLA_FLAGS'] = f'--xla_force_host_platform_device_count={config.computation.n_devices}'
 
+    from jax import distributed
+    process_id = int(os.environ['CUDA_VISIBLE_DEVICES'])
+    distributed.initialize('0.0.0.0:8888', 2, process_id)
+   
     # These imports can only take place after we have set the jax_config options
     from jax.config import config as jax_config
     jax_config.update("jax_enable_x64", config.computation.float_precision == "float64")
@@ -38,6 +42,7 @@ def process_molecule(config_file):
     used_hardware = xla_bridge.get_backend().platform
     logger.debug(f"CUDA_VISIBLE_DEVICES={os.environ.get('CUDA_VISIBLE_DEVICES')}")
     logger.debug(f"Used hardware: {used_hardware}; Device count: {jax.local_device_count()}")
+    logger.debug(f"Used hardware in total: {used_hardware}; Device count: {jax.device_count()}")
     if not config.computation.n_devices:
         config.computation.n_devices = jax.local_device_count()
     else:
