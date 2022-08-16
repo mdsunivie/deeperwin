@@ -55,8 +55,8 @@ def load_run(fname):
             with zip.open("config.yml", "r") as f:
                 data.config = Configuration.load(f)
         for field in fnames:
-            key = field[:-4] # remove file ending
-            if key != "config":
+            key, extension = os.path.splitext(field)
+            if extension == '.pkl':
                 with zip.open(field, "r") as f:
                     setattr(data, key, pickle.load(f))
     return data
@@ -68,7 +68,7 @@ def load_data_for_reuse(config: Configuration, raw_config):
     reuse_data = load_run(config.reuse.path)
 
     if config.reuse.reuse_config:
-        config = config.update_configdict_and_validate(config.dict(), build_flattend_dict(raw_config))
+        _, config = config.update_configdict_and_validate(config.dict(), build_flattend_dict(raw_config))
     if config.reuse.continue_n_epochs:
         if reuse_data.metadata:
             config.optimization.n_epochs_prev = reuse_data.metadata.get('n_epochs', 0)
