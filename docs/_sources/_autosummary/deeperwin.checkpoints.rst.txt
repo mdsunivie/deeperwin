@@ -19,6 +19,7 @@ deeperwin.checkpoints
       load_data_for_reuse
       load_run
       save_run
+      write_history
    
    
 

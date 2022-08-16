@@ -37,6 +37,7 @@ class OptaxWrapper:
             value_func_has_rng: bool,
             optax_optimizer: optax.GradientTransformation,
             multi_device: bool = False,
+            pmap_axis_name="devices",
            batch_process_func: Optional[Callable[[Any], Any]] = lambda x: x,
     ):
         """Initializes the Optax wrapper.
@@ -69,8 +70,9 @@ class OptaxWrapper:
         self._optax_optimizer = optax_optimizer
         self._batch_process_func = batch_process_func or (lambda x: x)
         self._multi_device = multi_device
+        self._pmap_axis_name = pmap_axis_name
         if self._multi_device:
-            self._jit_step = jax.pmap(self._step, axis_name="optax_axis", donate_argnums=[0, 1, 2, 3, 5])
+            self._jit_step = jax.pmap(self._step, axis_name=self._pmap_axis_name, donate_argnums=[0, 1, 2, 3, 5])
         else:
             self._jit_step = jax.jit(self._step)
 
@@ -117,7 +119,7 @@ class OptaxWrapper:
                 new_func_state, aux = other, {}
         stats = dict(loss=loss, aux=aux)
         if self._multi_device:
-            stats, grads = jax.lax.pmean((stats, grads), axis_name="optax_axis")
+            stats, grads = jax.lax.pmean((stats, grads), axis_name=self._pmap_axis_name)
         # Compute and apply updates via our optimizer.
         updates, new_state = self._optax_optimizer.update(grads, state, params)
         new_params = optax.apply_updates(params, updates)
@@ -214,7 +216,8 @@ def build_optimizer(value_and_grad_func,
                             value_func_has_state=value_func_has_state,
                             value_func_has_rng=False,
                             optax_optimizer=build_optax_optimizer(opt_config),
-                            multi_device=True)
+                            multi_device=True,
+                            pmap_axis_name="devices")
     elif opt_config.name == 'slbfgs':
         raise NotImplementedError("BFGS currently not yet implemented")
     else:

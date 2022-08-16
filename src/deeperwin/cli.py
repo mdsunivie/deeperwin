@@ -51,8 +51,8 @@ def main():
         from deeperwin.process_molecule import process_molecule
         process_molecule(args.config_file)
     elif args.command == "run-shared":
-        from deeperwin.process_molecules_shared import process_molecules_shared
-        process_molecules_shared(args.config_file)
+        from deeperwin.process_molecules_shared import process_molecule_shared
+        process_molecule_shared(args.config_file)
     elif args.command == "select-gpus":
         from deeperwin.run_tools.available_gpus import assign_free_GPU_ids
         print(assign_free_GPU_ids(n_gpus=args.n_gpus, sleep_seconds=args.sleep))

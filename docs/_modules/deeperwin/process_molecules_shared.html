@@ -79,9 +79,10 @@
 <span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">import</span> <span class="nn">time</span>
 <span class="kn">from</span> <span class="nn">dataclasses</span> <span class="kn">import</span> <span class="n">dataclass</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Optional</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">List</span>
 
 <span class="kn">import</span> <span class="nn">jax.numpy</span> <span class="k">as</span> <span class="nn">jnp</span>
+<span class="kn">import</span> <span class="nn">jax.random</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">from</span> <span class="nn">jax.config</span> <span class="kn">import</span> <span class="n">config</span> <span class="k">as</span> <span class="n">jax_config</span>
 <span class="kn">from</span> <span class="nn">jax.lib</span> <span class="kn">import</span> <span class="n">xla_bridge</span>
@@ -89,11 +90,11 @@
 <span class="kn">from</span> <span class="nn">deeperwin.configuration</span> <span class="kn">import</span> <span class="n">Configuration</span><span class="p">,</span> <span class="n">SharedOptimizationConfig</span><span class="p">,</span> <span class="n">OptimizationConfig</span><span class="p">,</span> <span class="n">LoggingConfig</span>
 <span class="kn">from</span> <span class="nn">deeperwin.run_tools.dispatch</span> <span class="kn">import</span> <span class="n">idx_to_job_name</span>
 <span class="kn">from</span> <span class="nn">deeperwin.evaluation</span> <span class="kn">import</span> <span class="n">evaluate_wavefunction</span>
-<span class="kn">from</span> <span class="nn">deeperwin.loggers</span> <span class="kn">import</span> <span class="n">LoggerCollection</span><span class="p">,</span> <span class="n">build_dpe_root_logger</span>
+<span class="kn">from</span> <span class="nn">deeperwin.loggers</span> <span class="kn">import</span> <span class="n">LoggerCollection</span><span class="p">,</span> <span class="n">build_dpe_root_logger</span><span class="p">,</span> <span class="n">WavefunctionLogger</span>
 <span class="kn">from</span> <span class="nn">deeperwin.mcmc</span> <span class="kn">import</span> <span class="n">MCMCState</span><span class="p">,</span> <span class="n">MetropolisHastingsMonteCarlo</span><span class="p">,</span> <span class="n">resize_nr_of_walkers</span>
 <span class="kn">from</span> <span class="nn">deeperwin.model</span> <span class="kn">import</span> <span class="n">build_log_psi_squared</span>
-<span class="kn">from</span> <span class="nn">deeperwin.optimization</span> <span class="kn">import</span> <span class="n">build_value_and_grad_func</span><span class="p">,</span> <span class="n">build_optimizer</span>
-<span class="kn">from</span> <span class="nn">deeperwin.utils</span> <span class="kn">import</span> <span class="n">getCodeVersion</span><span class="p">,</span> <span class="n">split_params</span><span class="p">,</span> <span class="n">setup_job_dir</span><span class="p">,</span> <span class="n">get_number_of_params</span>
+<span class="kn">from</span> <span class="nn">deeperwin.optimization</span> <span class="kn">import</span> <span class="n">build_value_and_grad_func</span><span class="p">,</span> <span class="n">build_optimizer</span><span class="p">,</span> <span class="n">init_clipping_state</span>
+<span class="kn">from</span> <span class="nn">deeperwin.utils</span> <span class="kn">import</span> <span class="n">getCodeVersion</span><span class="p">,</span> <span class="n">split_params</span><span class="p">,</span> <span class="n">merge_params</span><span class="p">,</span> <span class="n">setup_job_dir</span><span class="p">,</span> <span class="n">get_number_of_params</span><span class="p">,</span> <span class="n">replicate_across_devices</span><span class="p">,</span> <span class="n">get_from_devices</span>
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;dpe&quot;</span><span class="p">)</span>
 
 <div class="viewcode-block" id="WaveFunctionData"><a class="viewcode-back" href="../../_autosummary/deeperwin.process_molecules_shared.WaveFunctionData.html#deeperwin.process_molecules_shared.WaveFunctionData">[docs]</a><span class="nd">@dataclass</span>
@@ -175,10 +176,10 @@
     <span class="k">return</span> <span class="n">log_psi_squared</span><span class="p">,</span> <span class="n">orbitals_func</span><span class="p">,</span> <span class="n">wfs</span><span class="p">,</span> <span class="n">shared_params</span></div>
 
 
-<div class="viewcode-block" id="update_opt_state"><a class="viewcode-back" href="../../_autosummary/deeperwin.process_molecules_shared.update_opt_state.html#deeperwin.process_molecules_shared.update_opt_state">[docs]</a><span class="k">def</span> <span class="nf">update_opt_state</span><span class="p">(</span><span class="n">opt_state_old</span><span class="p">,</span> <span class="n">get_params_func</span><span class="p">,</span> <span class="n">opt_set_params</span><span class="p">,</span> <span class="n">unique_trainable_params</span><span class="p">,</span> <span class="n">shared_modules</span><span class="p">):</span>
-    <span class="n">shared_params</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">split_trainable_params</span><span class="p">(</span><span class="n">get_params_func</span><span class="p">(</span><span class="n">opt_state_old</span><span class="p">),</span> <span class="n">shared_modules</span><span class="p">)</span>
-    <span class="n">new_params</span> <span class="o">=</span> <span class="n">merge_trainable_params</span><span class="p">(</span><span class="n">shared_params</span><span class="p">,</span> <span class="n">unique_trainable_params</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">opt_set_params</span><span class="p">(</span><span class="n">opt_state_old</span><span class="p">,</span> <span class="n">new_params</span><span class="p">)</span></div>
+<span class="c1"># def update_opt_state(opt_state_old, get_params_func, opt_set_params, unique_trainable_params, shared_modules):</span>
+<span class="c1">#     shared_params, _ = split_trainable_params(get_params_func(opt_state_old), shared_modules)</span>
+<span class="c1">#     new_params = merge_trainable_params(shared_params, unique_trainable_params)</span>
+<span class="c1">#     return opt_set_params(opt_state_old, new_params)</span>
 
 
 <div class="viewcode-block" id="get_index"><a class="viewcode-back" href="../../_autosummary/deeperwin.process_molecules_shared.get_index.html#deeperwin.process_molecules_shared.get_index">[docs]</a><span class="k">def</span> <span class="nf">get_index</span><span class="p">(</span><span class="n">n_epoch</span><span class="p">,</span> <span class="n">wfs</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">SharedOptimizationConfig</span><span class="p">):</span>
@@ -199,19 +200,49 @@
         <span class="k">raise</span> <span class="p">(</span><span class="s2">&quot;Wavefunction scheduler currently not supported.&quot;</span><span class="p">)</span></div>
 
 
-<span class="k">def</span> <span class="nf">_log_weights</span><span class="p">(</span><span class="n">wf</span><span class="p">:</span> <span class="n">WaveFunctionData</span><span class="p">,</span> <span class="n">shared_params</span><span class="p">,</span> <span class="n">opt_state</span><span class="p">,</span> <span class="n">opt_get_params</span><span class="p">,</span> <span class="n">opt_set_params</span><span class="p">,</span> <span class="n">shared_modules</span><span class="p">):</span>
-    <span class="n">wf_params</span> <span class="o">=</span> <span class="n">merge_trainable_params</span><span class="p">(</span><span class="n">shared_params</span><span class="p">,</span> <span class="n">wf</span><span class="o">.</span><span class="n">unique_trainable_params</span><span class="p">)</span>
-    <span class="n">wf_opt_state</span> <span class="o">=</span> <span class="n">update_opt_state</span><span class="p">(</span><span class="n">opt_state</span><span class="p">,</span> <span class="n">opt_get_params</span><span class="p">,</span> <span class="n">opt_set_params</span><span class="p">,</span> <span class="n">wf</span><span class="o">.</span><span class="n">unique_trainable_params</span><span class="p">,</span>
-                                    <span class="n">shared_modules</span><span class="p">)</span>
-    <span class="n">full_data</span> <span class="o">=</span> <span class="n">prepare_data_for_logging</span><span class="p">(</span><span class="n">wf_params</span><span class="p">,</span> <span class="n">wf</span><span class="o">.</span><span class="n">fixed_params</span><span class="p">,</span> <span class="n">wf</span><span class="o">.</span><span class="n">mcmc_state</span><span class="p">,</span> <span class="n">wf_opt_state</span><span class="p">)</span>
-    <span class="n">wf</span><span class="o">.</span><span class="n">loggers</span><span class="o">.</span><span class="n">log_weights</span><span class="p">(</span><span class="n">full_data</span><span class="p">)</span>
+<span class="c1"># def _log_weights(wf: WaveFunctionData, shared_params, opt_state, opt_get_params, opt_set_params, shared_modules):</span>
+<span class="c1">#     wf_params = merge_trainable_params(shared_params, wf.unique_trainable_params)</span>
+<span class="c1">#     wf_opt_state = update_opt_state(opt_state, opt_get_params, opt_set_params, wf.unique_trainable_params,</span>
+<span class="c1">#                                     shared_modules)</span>
+<span class="c1">#     full_data = prepare_data_for_logging(wf_params, wf.fixed_params, wf.mcmc_state, wf_opt_state)</span>
+<span class="c1">#     wf.loggers.log_weights(full_data)</span>
 
 
-<div class="viewcode-block" id="optimize_shared"><a class="viewcode-back" href="../../_autosummary/deeperwin.process_molecules_shared.optimize_shared.html#deeperwin.process_molecules_shared.optimize_shared">[docs]</a><span class="k">def</span> <span class="nf">optimize_shared</span><span class="p">(</span><span class="n">opt_config</span><span class="p">:</span> <span class="n">OptimizationConfig</span><span class="p">,</span> <span class="n">wfs</span><span class="p">,</span> <span class="n">shared_params</span><span class="p">,</span> <span class="n">optimize_epoch</span><span class="p">,</span> <span class="n">opt_state</span><span class="p">,</span> <span class="n">opt_get_params</span><span class="p">,</span>
-                    <span class="n">opt_set_params</span><span class="p">,</span> <span class="n">log_config</span><span class="p">:</span> <span class="n">LoggingConfig</span><span class="p">):</span>
+<span class="c1"># optimize_wavefunction(</span>
+<span class="c1">#             log_psi_squared,</span>
+<span class="c1">#             params,</span>
+<span class="c1">#             fixed_params,</span>
+<span class="c1">#             mcmc_state,</span>
+<span class="c1">#             config.optimization,</span>
+<span class="c1">#             config.physical,</span>
+<span class="c1">#             loggers,</span>
+<span class="c1">#             opt_state,</span>
+<span class="c1">#             clipping_state,</span>
+<span class="c1">#         )</span>
+
+<div class="viewcode-block" id="optimize_shared"><a class="viewcode-back" href="../../_autosummary/deeperwin.process_molecules_shared.optimize_shared.html#deeperwin.process_molecules_shared.optimize_shared">[docs]</a><span class="k">def</span> <span class="nf">optimize_shared</span><span class="p">(</span><span class="n">log_psi_squared</span><span class="p">,</span> <span class="n">shared_params</span><span class="p">,</span> <span class="n">wfs</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">WaveFunctionData</span><span class="p">],</span> <span class="n">opt_config</span><span class="p">:</span> <span class="n">OptimizationConfig</span><span class="p">,</span> <span class="n">initial_opt_state</span><span class="p">):</span>
     <span class="n">shared_modules</span> <span class="o">=</span> <span class="n">opt_config</span><span class="o">.</span><span class="n">shared_optimization</span><span class="o">.</span><span class="n">shared_modules</span>
     <span class="n">n_wfs</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">wfs</span><span class="p">)</span>
-    <span class="n">t_start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    <span class="n">n_devices</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">device_count</span><span class="p">()</span>
+    <span class="n">log_psi_squared_pmapped</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">pmap</span><span class="p">(</span><span class="n">log_psi_squared</span><span class="p">)</span>
+
+    <span class="c1"># Run burn-in of MCMC states</span>
+    <span class="n">mcmc</span> <span class="o">=</span> <span class="n">MetropolisHastingsMonteCarlo</span><span class="p">(</span><span class="n">opt_config</span><span class="o">.</span><span class="n">mcmc</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">wf</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">wfs</span><span class="p">):</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Running burn-in for wavefunction </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">wf</span><span class="o">.</span><span class="n">mcmc_state</span> <span class="o">=</span> <span class="n">MCMCState</span><span class="o">.</span><span class="n">resize_or_init</span><span class="p">(</span><span class="n">wf</span><span class="o">.</span><span class="n">mcmc_state</span><span class="p">,</span> <span class="n">opt_config</span><span class="o">.</span><span class="n">mcmc</span><span class="o">.</span><span class="n">n_walkers</span><span class="p">,</span> <span class="n">wf</span><span class="o">.</span><span class="n">physical</span><span class="p">,</span> <span class="n">n_devices</span><span class="p">)</span>
+        <span class="n">wf</span><span class="o">.</span><span class="n">clipping_params</span> <span class="o">=</span> <span class="n">wf</span><span class="o">.</span><span class="n">clipping_params</span> <span class="ow">or</span> <span class="n">init_clipping_state</span><span class="p">()</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="n">merge_params</span><span class="p">(</span><span class="n">shared_params</span><span class="p">,</span> <span class="n">wf</span><span class="o">.</span><span class="n">unique_trainable_params</span><span class="p">)</span>
+        <span class="n">params</span><span class="p">,</span> <span class="n">wf</span><span class="o">.</span><span class="n">fixed_params</span><span class="p">,</span> <span class="n">wf</span><span class="o">.</span><span class="n">clipping_params</span> <span class="o">=</span> <span class="n">replicate_across_devices</span><span class="p">((</span><span class="n">params</span><span class="p">,</span> <span class="n">wf</span><span class="o">.</span><span class="n">fixed_params</span><span class="p">,</span> <span class="n">wf</span><span class="o">.</span><span class="n">clipping_params</span><span class="p">))</span>
+        <span class="n">wf</span><span class="o">.</span><span class="n">mcmc_state</span> <span class="o">=</span> <span class="n">mcmc</span><span class="o">.</span><span class="n">run_burn_in</span><span class="p">(</span><span class="n">log_psi_squared</span><span class="p">,</span> <span class="n">wf</span><span class="o">.</span><span class="n">mcmc_state</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">wf</span><span class="o">.</span><span class="n">fixed_params</span><span class="p">)</span>
+    <span class="n">wf_loggers</span> <span class="o">=</span> <span class="p">[</span><span class="n">WavefunctionLogger</span><span class="p">(</span><span class="n">wf</span><span class="o">.</span><span class="n">loggers</span><span class="p">)</span> <span class="k">for</span> <span class="n">wf</span> <span class="ow">in</span> <span class="n">wfs</span><span class="p">]</span>
+
+    <span class="c1"># Initialize variational optimization</span>
+    <span class="n">rng</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">jax</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">PRNGKey</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">n_devices</span><span class="p">)</span>
+    <span class="n">value_and_grad_func</span> <span class="o">=</span> <span class="n">build_value_and_grad_func</span><span class="p">(</span><span class="n">log_psi_squared</span><span class="p">,</span> <span class="n">opt_config</span><span class="o">.</span><span class="n">clipping</span><span class="p">)</span>
+    <span class="n">optimizer</span> <span class="o">=</span> <span class="n">build_optimizer</span><span class="p">(</span><span class="n">value_and_grad_func</span><span class="p">,</span> <span class="n">opt_config</span><span class="o">.</span><span class="n">optimizer</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+    <span class="n">opt_state</span> <span class="o">=</span> <span class="n">optimizer</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">rng</span><span class="p">,</span> <span class="n">wf</span><span class="o">.</span><span class="n">mcmc_state</span><span class="o">.</span><span class="n">build_batch</span><span class="p">(</span><span class="n">wf</span><span class="o">.</span><span class="n">fixed_params</span><span class="p">),</span> <span class="n">wf</span><span class="o">.</span><span class="n">clipping_params</span><span class="p">)</span>
+    <span class="n">opt_state</span> <span class="o">=</span> <span class="n">initial_opt_state</span> <span class="ow">or</span> <span class="n">opt_state</span>
 
     <span class="k">for</span> <span class="n">n_epoch</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">opt_config</span><span class="o">.</span><span class="n">n_epochs</span> <span class="o">*</span> <span class="n">n_wfs</span><span class="p">):</span>
         <span class="n">n_epochs_geom</span> <span class="o">=</span> <span class="n">n_epoch</span> <span class="o">//</span> <span class="n">n_wfs</span>
@@ -221,47 +252,50 @@
         <span class="n">wf</span> <span class="o">=</span> <span class="n">wfs</span><span class="p">[</span><span class="n">index_next</span><span class="p">]</span>
 
         <span class="c1"># optimize wf[index] for one eppoch</span>
-        <span class="n">opt_state</span> <span class="o">=</span> <span class="n">update_opt_state</span><span class="p">(</span><span class="n">opt_state</span><span class="p">,</span> <span class="n">opt_get_params</span><span class="p">,</span> <span class="n">opt_set_params</span><span class="p">,</span> <span class="n">wf</span><span class="o">.</span><span class="n">unique_trainable_params</span><span class="p">,</span>
-                                     <span class="n">shared_modules</span><span class="p">)</span>
-        <span class="n">E_epoch</span><span class="p">,</span> <span class="n">E_epoch_unclipped</span><span class="p">,</span> <span class="n">wf</span><span class="o">.</span><span class="n">mcmc_state</span><span class="p">,</span> <span class="n">opt_state</span><span class="p">,</span> <span class="n">wf</span><span class="o">.</span><span class="n">clipping_params</span> <span class="o">=</span> <span class="n">optimize_epoch</span><span class="p">(</span><span class="n">n_epoch</span><span class="p">,</span> <span class="n">wf</span><span class="o">.</span><span class="n">mcmc_state</span><span class="p">,</span>
-                                                                               <span class="n">opt_state</span><span class="p">,</span>
-                                                                               <span class="n">wf</span><span class="o">.</span><span class="n">clipping_params</span><span class="p">,</span>
-                                                                               <span class="n">wf</span><span class="o">.</span><span class="n">fixed_params</span><span class="p">)</span>
-        <span class="n">_</span><span class="p">,</span> <span class="n">wf</span><span class="o">.</span><span class="n">unique_trainable_params</span> <span class="o">=</span> <span class="n">split_trainable_params</span><span class="p">(</span><span class="n">opt_get_params</span><span class="p">(</span><span class="n">opt_state</span><span class="p">),</span> <span class="n">shared_modules</span><span class="p">)</span>
-
+        <span class="n">params</span> <span class="o">=</span> <span class="n">merge_params</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">wf</span><span class="o">.</span><span class="n">unique_trainable_params</span><span class="p">)</span>
+        <span class="n">wf</span><span class="o">.</span><span class="n">mcmc_state</span><span class="o">.</span><span class="n">log_psi_sqr</span> <span class="o">=</span> <span class="n">log_psi_squared_pmapped</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="o">*</span><span class="n">wf</span><span class="o">.</span><span class="n">mcmc_state</span><span class="o">.</span><span class="n">build_batch</span><span class="p">(</span><span class="n">wf</span><span class="o">.</span><span class="n">fixed_params</span><span class="p">))</span>
+        <span class="n">wf</span><span class="o">.</span><span class="n">mcmc_state</span> <span class="o">=</span> <span class="n">mcmc</span><span class="o">.</span><span class="n">run_inter_steps</span><span class="p">(</span><span class="n">log_psi_squared</span><span class="p">,</span> <span class="n">wf</span><span class="o">.</span><span class="n">mcmc_state</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">wf</span><span class="o">.</span><span class="n">fixed_params</span><span class="p">)</span>
+        <span class="n">params</span><span class="p">,</span> <span class="n">opt_state</span><span class="p">,</span> <span class="n">wf</span><span class="o">.</span><span class="n">clipping_params</span><span class="p">,</span> <span class="n">stats</span> <span class="o">=</span> <span class="n">optimizer</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">params</span><span class="p">,</span>
+                                                                      <span class="n">opt_state</span><span class="p">,</span>
+                                                                      <span class="n">rng</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                                                                      <span class="n">batch</span><span class="o">=</span><span class="n">wf</span><span class="o">.</span><span class="n">mcmc_state</span><span class="o">.</span><span class="n">build_batch</span><span class="p">(</span><span class="n">wf</span><span class="o">.</span><span class="n">fixed_params</span><span class="p">),</span>
+                                                                      <span class="n">func_state</span><span class="o">=</span><span class="n">wf</span><span class="o">.</span><span class="n">clipping_params</span><span class="p">)</span>
+        <span class="n">shared_params</span><span class="p">,</span> <span class="n">wf</span><span class="o">.</span><span class="n">unique_trainable_params</span> <span class="o">=</span> <span class="n">split_params</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">shared_modules</span><span class="p">)</span>
+        <span class="n">wf_loggers</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">log_step</span><span class="p">(</span><span class="n">E_loc_unclipped</span><span class="o">=</span><span class="n">stats</span><span class="p">[</span><span class="s2">&quot;aux&quot;</span><span class="p">][</span><span class="s2">&quot;E_loc_unclipped&quot;</span><span class="p">],</span> <span class="n">E_loc_clipped</span><span class="o">=</span><span class="n">stats</span><span class="p">[</span><span class="s2">&quot;aux&quot;</span><span class="p">][</span><span class="s2">&quot;E_loc_clipped&quot;</span><span class="p">],</span>
+                               <span class="n">E_ref</span><span class="o">=</span><span class="n">wf</span><span class="o">.</span><span class="n">physical</span><span class="o">.</span><span class="n">E_ref</span><span class="p">,</span> <span class="n">mcmc_state</span><span class="o">=</span><span class="n">wf</span><span class="o">.</span><span class="n">mcmc_state</span><span class="p">,</span> <span class="n">opt_stats</span><span class="o">=</span><span class="n">get_from_devices</span><span class="p">(</span><span class="n">stats</span><span class="p">))</span>
 
         <span class="c1"># update metrics + epoch counter</span>
-        <span class="n">wf</span><span class="o">.</span><span class="n">current_metrics</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;E_mean&#39;</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">nanmean</span><span class="p">(</span><span class="n">E_epoch</span><span class="p">),</span> <span class="s1">&#39;E_std&#39;</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">nanstd</span><span class="p">(</span><span class="n">E_epoch</span><span class="p">)}</span>
+        <span class="n">wf</span><span class="o">.</span><span class="n">current_metrics</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">E_mean</span><span class="o">=</span><span class="n">stats</span><span class="p">[</span><span class="s2">&quot;aux&quot;</span><span class="p">][</span><span class="s2">&quot;E_loc_clipped&quot;</span><span class="p">],</span> <span class="n">E_std</span><span class="o">=</span><span class="n">jnp</span><span class="o">.</span><span class="n">nanstd</span><span class="p">(</span><span class="n">stats</span><span class="p">[</span><span class="s2">&quot;aux&quot;</span><span class="p">][</span><span class="s2">&quot;E_loc_clipped&quot;</span><span class="p">]))</span>
         <span class="n">wf</span><span class="o">.</span><span class="n">n_opt_epochs</span> <span class="o">+=</span> <span class="mi">1</span>
         <span class="n">wf</span><span class="o">.</span><span class="n">last_epoch_optimized</span> <span class="o">=</span> <span class="n">n_epoch</span>
 
-        <span class="c1"># collect epoch time</span>
-        <span class="n">t_end</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
-
-        <span class="c1"># log metrics</span>
-        <span class="k">if</span> <span class="n">wf</span><span class="o">.</span><span class="n">loggers</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">E_ref</span> <span class="o">=</span> <span class="n">wf</span><span class="o">.</span><span class="n">fixed_params</span><span class="p">[</span><span class="s1">&#39;baseline_energies&#39;</span><span class="p">][</span><span class="s1">&#39;E_ref&#39;</span><span class="p">]</span>
-            <span class="c1"># Will not work right now: must include energy history in logging</span>
-            <span class="n">metrics</span> <span class="o">=</span> <span class="n">calculate_metrics</span><span class="p">(</span><span class="n">n_epoch</span><span class="p">,</span> <span class="n">E_epoch</span><span class="p">,</span> <span class="n">E_epoch_unclipped</span><span class="p">,</span> <span class="n">wf</span><span class="o">.</span><span class="n">mcmc_state</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">t_end</span> <span class="o">-</span> <span class="n">t_start</span><span class="p">,</span> <span class="s2">&quot;opt&quot;</span><span class="p">,</span> <span class="n">wf</span><span class="o">.</span><span class="n">n_opt_epochs</span><span class="p">,</span> <span class="n">E_ref</span><span class="p">)</span>
-            <span class="n">wf</span><span class="o">.</span><span class="n">loggers</span><span class="o">.</span><span class="n">log_metrics</span><span class="p">(</span><span class="o">*</span><span class="n">metrics</span><span class="p">)</span>
-
-        <span class="c1"># check for checkpoints. if any, all wfs have the same checkpoints.</span>
-        <span class="k">if</span> <span class="n">n_epochs_geom</span> <span class="ow">in</span> <span class="n">wf</span><span class="o">.</span><span class="n">checkpoints</span> <span class="ow">and</span> <span class="n">n_epoch</span> <span class="o">%</span> <span class="n">n_wfs</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="n">trainable_params</span> <span class="o">=</span> <span class="n">opt_get_params</span><span class="p">(</span><span class="n">opt_state</span><span class="p">)</span>
-            <span class="n">shared_params</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">split_trainable_params</span><span class="p">(</span><span class="n">trainable_params</span><span class="p">,</span>
-                                                      <span class="n">config</span><span class="o">.</span><span class="n">optimization</span><span class="o">.</span><span class="n">shared_optimization</span><span class="o">.</span><span class="n">shared_modules</span><span class="p">)</span>
-            <span class="k">for</span> <span class="n">wf</span> <span class="ow">in</span> <span class="n">wfs</span><span class="p">:</span>
-                <span class="k">if</span> <span class="n">wf</span><span class="o">.</span><span class="n">loggers</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="c1"># log weights</span>
-                    <span class="n">_log_weights</span><span class="p">(</span><span class="n">wf</span><span class="p">,</span> <span class="n">shared_params</span><span class="p">,</span> <span class="n">opt_state</span><span class="p">,</span> <span class="n">opt_get_params</span><span class="p">,</span> <span class="n">opt_set_params</span><span class="p">,</span> <span class="n">shared_modules</span><span class="p">)</span>
-
-                    <span class="c1"># log checkpoint</span>
-                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Logging checkpoint to folder </span><span class="si">{</span><span class="n">wf</span><span class="o">.</span><span class="n">checkpoints</span><span class="p">[</span><span class="n">n_epochs_geom</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-                    <span class="n">wf</span><span class="o">.</span><span class="n">loggers</span><span class="o">.</span><span class="n">log_checkpoint</span><span class="p">(</span><span class="n">wf</span><span class="o">.</span><span class="n">checkpoints</span><span class="p">[</span><span class="n">n_epochs_geom</span><span class="p">])</span>
-
-        <span class="c1"># reset clock and update index</span>
-        <span class="n">t_start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
-    <span class="k">return</span> <span class="n">wfs</span><span class="p">,</span> <span class="n">opt_get_params</span><span class="p">,</span> <span class="n">opt_set_params</span><span class="p">,</span> <span class="n">opt_state</span></div>
+        <span class="c1"># # collect epoch time</span>
+        <span class="c1"># t_end = time.time()</span>
+        <span class="c1">#</span>
+        <span class="c1"># # log metrics</span>
+        <span class="c1"># if wf.loggers is not None:</span>
+        <span class="c1">#     E_ref = wf.fixed_params[&#39;baseline_energies&#39;][&#39;E_ref&#39;]</span>
+        <span class="c1">#     # Will not work right now: must include energy history in logging</span>
+        <span class="c1">#     metrics = calculate_metrics(n_epoch, E_epoch, E_epoch_unclipped, wf.mcmc_state, None, t_end - t_start, &quot;opt&quot;, wf.n_opt_epochs, E_ref)</span>
+        <span class="c1">#     wf.loggers.log_metrics(*metrics)</span>
+        <span class="c1">#</span>
+        <span class="c1"># # check for checkpoints. if any, all wfs have the same checkpoints.</span>
+        <span class="c1"># if n_epochs_geom in wf.checkpoints and n_epoch % n_wfs == 0:</span>
+        <span class="c1">#     trainable_params = opt_get_params(opt_state)</span>
+        <span class="c1">#     shared_params, _ = split_trainable_params(trainable_params,</span>
+        <span class="c1">#                                               config.optimization.shared_optimization.shared_modules)</span>
+        <span class="c1">#     for wf in wfs:</span>
+        <span class="c1">#         if wf.loggers is not None:</span>
+        <span class="c1">#             # log weights</span>
+        <span class="c1">#             _log_weights(wf, shared_params, opt_state, opt_get_params, opt_set_params, shared_modules)</span>
+        <span class="c1">#</span>
+        <span class="c1">#             # log checkpoint</span>
+        <span class="c1">#             logger.info(f&quot;Logging checkpoint to folder {wf.checkpoints[n_epochs_geom]}&quot;)</span>
+        <span class="c1">#             wf.loggers.log_checkpoint(wf.checkpoints[n_epochs_geom])</span>
+        <span class="c1">#</span>
+        <span class="c1"># # reset clock and update index</span>
+        <span class="c1"># t_start = time.time()</span>
+    <span class="k">return</span> <span class="n">wfs</span><span class="p">,</span> <span class="n">shared_params</span><span class="p">,</span> <span class="n">opt_state</span></div>
 
 
 <div class="viewcode-block" id="process_molecule_shared"><a class="viewcode-back" href="../../_autosummary/deeperwin.process_molecules_shared.process_molecule_shared.html#deeperwin.process_molecules_shared.process_molecule_shared">[docs]</a><span class="k">def</span> <span class="nf">process_molecule_shared</span><span class="p">(</span><span class="n">config_file</span><span class="p">):</span>
@@ -281,13 +315,13 @@
 
     <span class="c1"># Initialization of model, MCMC states and optimizer TODO restart and reload</span>
     <span class="n">log_psi_squared</span><span class="p">,</span> <span class="n">orbitals_func</span><span class="p">,</span> <span class="n">wfs</span><span class="p">,</span> <span class="n">shared_params</span> <span class="o">=</span> <span class="n">init_wfs</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+    <span class="n">opt_state</span> <span class="o">=</span> <span class="kc">None</span>
 
     <span class="c1"># Wavefunction optimization</span>
     <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">optimization</span><span class="o">.</span><span class="n">n_epochs</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Starting optimization...&quot;</span><span class="p">)</span>
-        <span class="n">wfs</span><span class="p">,</span> <span class="n">opt_get_params</span><span class="p">,</span> <span class="n">opt_set_params</span><span class="p">,</span> <span class="n">opt_state</span> <span class="o">=</span> <span class="n">optimize_shared</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">optimization</span><span class="p">,</span> <span class="n">wfs</span><span class="p">,</span> <span class="n">init_shared_params</span><span class="p">,</span>
-                                                                         <span class="n">optimize_epoch</span><span class="p">,</span> <span class="n">opt_state</span><span class="p">,</span> <span class="n">opt_get_params</span><span class="p">,</span>
-                                                                         <span class="n">opt_set_params</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">logging</span><span class="p">)</span>
+        <span class="n">wfs</span><span class="p">,</span> <span class="n">opt_get_params</span><span class="p">,</span> <span class="n">opt_set_params</span><span class="p">,</span> <span class="n">opt_state</span> <span class="o">=</span> <span class="n">optimize_shared</span><span class="p">(</span><span class="n">log_psi_squared</span><span class="p">,</span> <span class="n">shared_params</span><span class="p">,</span> <span class="n">wfs</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">optimization</span><span class="p">,</span>
+                                                                         <span class="n">opt_state</span><span class="p">)</span>
         <span class="n">trainable_params</span> <span class="o">=</span> <span class="n">opt_get_params</span><span class="p">(</span><span class="n">opt_state</span><span class="p">)</span>
         <span class="n">shared_params</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">split_trainable_params</span><span class="p">(</span><span class="n">trainable_params</span><span class="p">,</span>
                                                   <span class="n">config</span><span class="o">.</span><span class="n">optimization</span><span class="o">.</span><span class="n">shared_optimization</span><span class="o">.</span><span class="n">shared_modules</span><span class="p">)</span>

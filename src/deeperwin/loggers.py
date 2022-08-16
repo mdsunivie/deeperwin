@@ -9,6 +9,7 @@ import sys
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Literal
 
+import jax
 import numpy as np
 import wandb
 
@@ -273,7 +274,7 @@ class PickleLogger(DataLogger):
                        metadata=dict(n_epochs=n_epoch, **self.meta_data),
                        history=self.history,
                        summary=self.summary,
-                       params=params,
+                       params=jax.tree_util.tree_map(np.array, params),
                        fixed_params=fixed_params,
                        opt_state=opt_state,
                        mcmc_state=mcmc_state,
@@ -303,23 +304,27 @@ class WavefunctionLogger:
         if len(samples_for_averaging) > 0:
             return np.nanmean(samples_for_averaging, axis=0)
 
-    def log_step(self, E_loc_unclipped, E_loc_clipped=None, forces=None, E_ref=None, mcmc_state:'MCMCState' =None, opt_stats=None,
+    def log_step(self, metrics, E_ref=None, mcmc_state:'MCMCState'=None, opt_stats=None,
                  extra_metrics=None):
         if self.loggers is None:
             return
-        metrics = dict()
-        metrics["E_mean"] = np.nanmean(E_loc_unclipped)
-        metrics["E_std"] = np.nanstd(E_loc_unclipped)
 
-        if E_loc_clipped is not None:
-            metrics["E_mean_clipped"] = np.nanmean(E_loc_clipped)
-            metrics["E_std_clipped"] = np.nanstd(E_loc_clipped)
+        # metrics = dict()
+        # if 'E_mean_unclipped' in aux_stats:
+        #     metrics["E_mean"] = 'E_mean_unclipped'
+        # if 'E_mean_clipped' in aux_stats:
+        #     metrics['E_mean']
+
+        # metrics["E_std"] = np.nanstd(E_loc_unclipped)
+
+        # if E_loc_clipped is not None:
+        #     metrics["E_mean_clipped"] = np.nanmean(E_loc_clipped)
+        #     metrics["E_std_clipped"] = np.nanstd(E_loc_clipped)
 
         if E_ref is not None:
             metrics["error_E_mean"] = (metrics["E_mean"] - E_ref) * 1e3
 
         if mcmc_state is not None:
-            mcmc_state = mcmc_state.merge_devices()
             metrics["mcmc_stepsize"] = float(mcmc_state.stepsize)
             metrics["mcmc_acc_rate"] = float(mcmc_state.acc_rate)
             metrics["mcmc_max_age"] = np.max(mcmc_state.walker_age)
@@ -328,11 +333,6 @@ class WavefunctionLogger:
                 metrics["mcmc_delta_r_mean"] = np.mean(delta_r)
                 metrics["mcmc_delta_r_median"] = np.median(delta_r)
             self._mcmc_state_old = mcmc_state
-
-        if forces is not None:
-            if forces.ndim == 3:
-                forces = np.mean(forces, axis=0) # average over devices
-            metrics["forces"] = forces
 
         if opt_stats is not None:
             for key in ['param_norm', 'grad_norm', 'precon_grad_norm', 'norm_constraint_factor']:
@@ -366,8 +366,8 @@ class WavefunctionLogger:
                 metrics["error_eval"] = 1e3 * (metrics["E_mean"] - E_ref)
                 metrics["sigma_error_eval"] = 1e3 * metrics["E_mean_sigma"]
                 metrics["error_plus_2_stdev"] = metrics["error_eval"] + 2 * metrics["sigma_error_eval"]
-        if "forces" in self.history:
-            metrics["forces_mean"] = np.nanmean(self.history["forces"], axis=0)
+        if "forces_mean" in self.history:
+            metrics["forces_mean"] = np.nanmean(self.history["forces_mean"], axis=0)
         if len(metrics) > 0:
             self.loggers.log_metrics(metrics, epoch_nr, "opt", force_log=True)
 

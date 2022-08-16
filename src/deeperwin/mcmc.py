@@ -11,7 +11,7 @@ import numpy as np
 import chex
 
 from deeperwin.configuration import MCMCConfig, MCMCLangevinProposalConfig, PhysicalConfig, LocalStepsizeProposalConfig
-from deeperwin.utils import get_el_ion_distance_matrix, pmap, pmean, batch_rng_split
+from deeperwin.utils import get_el_ion_distance_matrix, pmap, pmean, batch_rng_split, merge_from_devices
 
 @chex.dataclass
 class MCMCState:
@@ -23,7 +23,7 @@ class MCMCState:
     Z: jnp.array  # [n_ions]
     log_psi_sqr: jnp.array = None
     walker_age: jnp.array = None  # [batch-size]; dtype=int
-    rng_state: Tuple[jnp.array] = jax.random.PRNGKey(0)
+    rng_state: jnp.array = None
     stepsize: jnp.array = jnp.array(1e-2)
     step_nr: jnp.array = jnp.array(0, dtype=int)
     acc_rate: jnp.array = jnp.array(0.0)
@@ -32,8 +32,10 @@ class MCMCState:
         return self.r, self.R, self.Z, fixed_params
 
     @classmethod
-    def initialize_around_nuclei(cls, n_walkers, physical_config: PhysicalConfig):
-        r0 = np.random.normal(size=[n_walkers, physical_config.n_electrons, 3])
+    def initialize_around_nuclei(cls, n_walkers, physical_config: PhysicalConfig, rng):
+        # TODO: add element specific density electron density as initial guess
+        rng1, rng2 = jax.random.split(rng)
+        r0 = np.array(jax.random.normal(rng1, [n_walkers, physical_config.n_electrons, 3]))
         for i_el, i_nuc in enumerate(physical_config.el_ion_mapping):
             r0[:, i_el, :] += np.array(physical_config.R[i_nuc])
         return cls(r=jnp.array(r0),
@@ -41,32 +43,29 @@ class MCMCState:
                    Z=jnp.array(physical_config.Z),
                    log_psi_sqr=-jnp.ones(n_walkers) * 1000, # initialize walkers with very low probability; will always be accepted in first MCMC move,
                    walker_age=jnp.zeros(n_walkers, dtype=int),
-                   rng_state=jax.random.split(jax.random.PRNGKey(0), n_walkers))
+                   rng_state=jax.random.split(rng2, n_walkers))
 
     @classmethod
-    def resize_or_init(cls, mcmc_state, n_walkers, physical_config: PhysicalConfig, n_devices=None):
+    def resize_or_init(cls, mcmc_state, n_walkers, physical_config: PhysicalConfig, rng):
         if mcmc_state:
             if mcmc_state.r.ndim == 4:
                 mcmc_state = mcmc_state.merge_devices()
             mcmc_state = resize_nr_of_walkers(mcmc_state, n_walkers)
         else:
-            mcmc_state = cls.initialize_around_nuclei(n_walkers, physical_config)
-
-        if n_devices:
-            mcmc_state = mcmc_state.split_across_devices(n_devices)
+            mcmc_state = cls.initialize_around_nuclei(n_walkers, physical_config, rng)
         return mcmc_state
 
-    def split_across_devices(self, n_devices):
+    def split_across_devices(self):
         assert self.r.ndim == 3, "State is already split across devices"
-        n_samples_total = self.r.shape[0]
-        assert n_samples_total % n_devices == 0, f"Number of samples ({n_samples_total}) is not evenly divisible acros devices ({n_devices}"
-        batch_dims = (n_devices, n_samples_total // n_devices)
+        assert len(self.r) % jax.device_count() == 0, f"Number of samples ({len(self.r)}) is not evenly divisible across devices ({jax.device_count()})"
+        n_samples_per_device = len(self.r) // jax.device_count()
 
         def _split(x):
-            return x.reshape(batch_dims + x.shape[1:])
+            x = x.reshape((jax.process_count(), jax.local_device_count(), n_samples_per_device, *x.shape[1:]))
+            return x[jax.process_index()]
 
         def _tile(x):
-            return jnp.tile(x, [n_devices] + [1] * x.ndim)
+            return jnp.tile(x, [jax.local_device_count()] + [1] * x.ndim)
 
         return MCMCState(r=_split(self.r),
                          log_psi_sqr=_split(self.log_psi_sqr),
@@ -84,13 +83,10 @@ class MCMCState:
             return self   # already merged
         assert self.r.ndim == 4, "State is not split across devices"
 
-        def _reshape(x):
-            return x.reshape((-1,) + x.shape[2:])
-
-        return MCMCState(r=_reshape(self.r),
-                         log_psi_sqr=_reshape(self.log_psi_sqr),
-                         walker_age=_reshape(self.walker_age),
-                         rng_state=_reshape(self.rng_state),
+        return MCMCState(r=merge_from_devices(self.r),
+                         log_psi_sqr=merge_from_devices(self.log_psi_sqr),
+                         walker_age=merge_from_devices(self.walker_age),
+                         rng_state=merge_from_devices(self.rng_state),
                          R=self.R[0],
                          Z=self.Z[0],
                          stepsize=self.stepsize[0],
@@ -98,11 +94,7 @@ class MCMCState:
                          acc_rate=self.acc_rate[0]
                          )
 
-
-# MCMC_PMAP_AXES = MCMCState(r=0, R=None, Z=None, log_psi_sqr=0, walker_age=0, rng_state=0, stepsize=None, step_nr=None, acc_rate=None)
 MCMC_BATCH_AXES = MCMCState(r=0, R=None, Z=None, log_psi_sqr=0, walker_age=0, rng_state=0, stepsize=None, step_nr=None, acc_rate=None)
-
-
 
 def _resize_array(x, new_length):
     old_length = x.shape[0]

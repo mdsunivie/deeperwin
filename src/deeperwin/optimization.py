@@ -15,10 +15,13 @@ from deeperwin.utils import get_el_ion_distance_matrix
 from deeperwin.model import evaluate_sum_of_determinants, get_baseline_slater_matrices
 from deeperwin.orbitals import get_baseline_solution
 from deeperwin.optimizers import build_optimizer
-from deeperwin.utils import pmap, replicate_across_devices, merge_from_devices, pmean
+from deeperwin.utils import pmap, replicate_across_devices, get_from_devices, pmean, merge_from_devices, is_equal_across_devices
 import functools
 
 LOGGER = logging.getLogger("dpe")
+
+def init_clipping_state():
+    return jnp.array([0.0]).squeeze(), jnp.array([1e5]).squeeze()
 
 def _update_clipping_state(E, clipping_state, clipping_config: ClippingConfig):
     del clipping_state
@@ -62,14 +65,20 @@ def build_value_and_grad_func(log_psi_sqr_func, clipping_config: ClippingConfig)
     @jax.custom_jvp
     def total_energy(params, state, batch):
         clipping_state = state
-        E_loc_unclipped = get_local_energy(log_psi_sqr_func, params, *batch)
-        E_loc_clipped, clipping_state = _clip_energies(E_loc_unclipped, clipping_state, clipping_config)
+        E_loc = get_local_energy(log_psi_sqr_func, params, *batch)
+        E_mean = pmean(jnp.nanmean(E_loc))
+        E_var = pmean(jnp.nanmean((E_loc - E_mean) ** 2))
+
+        E_loc_clipped, clipping_state = _clip_energies(E_loc, clipping_state, clipping_config)
         E_mean_clipped = pmean(jnp.nanmean(E_loc_clipped))
-        stats = dict(E_mean_clipped=E_mean_clipped,
-                     E_loc_clipped=E_loc_clipped,
-                     E_loc_unclipped=E_loc_unclipped)
+        E_var_clipped = pmean(jnp.nanmean((E_loc_clipped - E_mean_clipped) ** 2))
+        aux = dict(E_mean=E_mean,
+                   E_var=E_var,
+                   E_mean_clipped=E_mean_clipped,
+                   E_var_clipped=E_var_clipped,
+                   E_loc_clipped=E_loc_clipped)
         loss = E_mean_clipped
-        return loss, (clipping_state, stats)
+        return loss, (clipping_state, aux)
 
     @total_energy.defjvp
     def total_energy_jvp(primals, tangents):
@@ -96,6 +105,7 @@ def optimize_wavefunction(
         mcmc_state: MCMCState,
         opt_config: OptimizationConfig,
         phys_config: PhysicalConfig,
+        rng_seed: int,
         logger: DataLogger = None,
         initial_opt_state=None,
         initial_clipping_state=None,
@@ -122,22 +132,24 @@ def optimize_wavefunction(
 
     # Run burn-in of monte carlo chain
     LOGGER.debug(f"Starting burn-in for optimization: {opt_config.mcmc.n_burn_in} steps")
-    n_devices = jax.device_count()
     log_psi_squared_pmapped = jax.pmap(log_psi_squared)
 
+    rng_mcmc, rng_opt = jax.random.split(jax.random.PRNGKey(rng_seed), 2)
     mcmc = MetropolisHastingsMonteCarlo(opt_config.mcmc)
-    mcmc_state = MCMCState.resize_or_init(mcmc_state, opt_config.mcmc.n_walkers, phys_config, n_devices)
-    clipping_state = initial_clipping_state or (jnp.array([0.0]).squeeze(), jnp.array([1e5]).squeeze())  # do not clip at first epoch, then adjust
-    params, fixed_params, initial_opt_state, clipping_state = replicate_across_devices(
-        (params, fixed_params, initial_opt_state, clipping_state), n_devices)
+    mcmc_state = MCMCState.resize_or_init(mcmc_state, opt_config.mcmc.n_walkers, phys_config, rng_mcmc)
+    clipping_state = initial_clipping_state or init_clipping_state() # do not clip at first epoch, then adjust
+
+    params, fixed_params, initial_opt_state, clipping_state, rng_opt = replicate_across_devices(
+        (params, fixed_params, initial_opt_state, clipping_state, rng_opt))
+    mcmc_state = mcmc_state.split_across_devices()
     mcmc_state.log_psi_sqr = log_psi_squared_pmapped(params, *mcmc_state.build_batch(fixed_params))
     mcmc_state = mcmc.run_burn_in(log_psi_squared, mcmc_state, params, fixed_params)
 
     # Initialize loss and optimizer
-    rng = jax.random.split(jax.random.PRNGKey(0), n_devices)
     value_and_grad_func = build_value_and_grad_func(log_psi_squared, opt_config.clipping)
     optimizer = build_optimizer(value_and_grad_func, opt_config.optimizer, True, True)
-    opt_state = optimizer.init(params, rng, mcmc_state.build_batch(fixed_params), clipping_state)
+
+    opt_state = optimizer.init(params, rng_opt, mcmc_state.build_batch(fixed_params), clipping_state)
     opt_state = initial_opt_state or opt_state
 
     # Set-up check-points
@@ -152,28 +164,32 @@ def optimize_wavefunction(
                                                                   batch=mcmc_state.build_batch(fixed_params),
                                                                   func_state=clipping_state)
         mcmc_state.log_psi_sqr = log_psi_squared_pmapped(params, *mcmc_state.build_batch(fixed_params))
-        wf_logger.log_step(E_loc_unclipped=stats["aux"]["E_loc_unclipped"], E_loc_clipped=stats["aux"]["E_loc_clipped"],
-                           E_ref=phys_config.E_ref, mcmc_state=mcmc_state, opt_stats=merge_from_devices(stats))
+        mcmc_state_merged = mcmc_state.merge_devices()
+
+        metrics = {k: float(v[0]) for k,v in stats['aux'].items() if not k.startswith('E_loc')}
+        wf_logger.log_step(metrics,
+                           E_ref=phys_config.E_ref,
+                           mcmc_state=mcmc_state_merged,
+                           opt_stats=get_from_devices(stats))
 
         if is_checkpoint_required(n_epoch, opt_config.checkpoints) and (logger is not None):
             LOGGER.debug(f"Saving checkpoint n_epoch={n_epoch}")
-            params_merged, fixed_params_merged, opt_state_merged, clipping_state_merged = merge_from_devices(
+            params_merged, fixed_params_merged, opt_state_merged, clipping_state_merged = get_from_devices(
                 (params, fixed_params, opt_state, clipping_state))
-            mcmc_state_merged = mcmc_state.merge_devices()
             logger.log_checkpoint(n_epoch, params_merged, fixed_params_merged, mcmc_state_merged, opt_state_merged, clipping_state_merged)
             delete_obsolete_checkpoints(n_epoch, opt_config.checkpoints)
 
         if (n_epoch+1) in eval_checkpoints:
             LOGGER.debug(f"opt epoch {n_epoch:5d}: Running intermediate evaluation...")
             eval_config = EvaluationConfig(n_epochs=opt_config.intermediate_eval.n_epochs)
-            params_merged, fixed_params_merged = merge_from_devices((params_merged, fixed_params_merged))
+            params_merged, fixed_params_merged = get_from_devices((params_merged, fixed_params_merged))
             mcmc_state_merged = mcmc_state.merge_devices()
             evaluate_wavefunction(
                 log_psi_squared, params_merged, fixed_params_merged, mcmc_state_merged, eval_config, phys_config, logger, n_epoch,
             )
 
     LOGGER.debug("Finished wavefunction optimization...")
-    params, opt_state, clipping_state = merge_from_devices((params, opt_state, clipping_state))
+    params, opt_state, clipping_state = get_from_devices((params, opt_state, clipping_state))
     return mcmc_state, params, opt_state, clipping_state
 
 
@@ -181,21 +197,23 @@ def pretrain_orbitals(orbital_func, mcmc_state: MCMCState, params, fixed_params,
                       config: PreTrainingConfig,
                       phys_config: PhysicalConfig,
                       model_config: ModelConfig,
+                      rng_seed: int,
                       loggers: DataLogger = None, opt_state=None):
     if model_config.orbitals.baseline_orbitals and (model_config.orbitals.baseline_orbitals.baseline == config.baseline):
-        baseline_orbitals = fixed_params['orbitals']
+        fixed_params['pretrain_orbitals'] = fixed_params['orbitals']
         LOGGER.debug("Identical CASSCF-config for pre-training and baseline model: Reusing baseline calculation")
     else:
         LOGGER.warning("Using different baseline pySCF settings for pre-training and the baked-in baseline model. Calculating new orbitals...")
         n_determinants = 1 if config.use_only_leading_determinant else model_config.orbitals.n_determinants
-        baseline_orbitals, (E_hf, E_casscf) = get_baseline_solution(phys_config, config.baseline, n_determinants)
+        fixed_params['pretrain_orbitals'] , (E_hf, E_casscf) = get_baseline_solution(phys_config, config.baseline, n_determinants)
         LOGGER.debug(f"Finished baseline calculation for pretraining: E_HF = {E_hf:.6f}, E_casscf={E_casscf:.6f}")
 
     def loss_func(params, batch):
         r, R, Z, fixed_params = batch
         # Calculate HF / CASSCF reference orbitals
         diff_el_ion, dist_el_ion = get_el_ion_distance_matrix(r, R)
-        mo_up_ref, mo_dn_ref = get_baseline_slater_matrices(diff_el_ion, dist_el_ion, baseline_orbitals,
+        mo_up_ref, mo_dn_ref = get_baseline_slater_matrices(diff_el_ion, dist_el_ion,
+                                                            fixed_params["pretrain_orbitals"],
                                                             model_config.orbitals.use_full_det)
 
         if config.use_only_leading_determinant:
@@ -215,37 +233,38 @@ def pretrain_orbitals(orbital_func, mcmc_state: MCMCState, params, fixed_params,
 
 
     # Init MCMC
+    rng_mcmc, rng_opt = jax.random.split(jax.random.PRNGKey(rng_seed),2)
     logging.debug(f"Starting pretraining...")
-    n_devices = jax.device_count()
     mcmc = MetropolisHastingsMonteCarlo(config.mcmc)
-    mcmc_state = MCMCState.resize_or_init(mcmc_state, config.mcmc.n_walkers, phys_config, n_devices)
+    mcmc_state = MCMCState.resize_or_init(mcmc_state, config.mcmc.n_walkers, phys_config, rng_mcmc)
 
-    # Split(Replicate data across devices
-    params, fixed_params, opt_state = replicate_across_devices((params, fixed_params, opt_state), n_devices)
+    # Split/Replicate data across devices
+    mcmc_state = mcmc_state.split_across_devices()
+    params, fixed_params, opt_state = replicate_across_devices((params, fixed_params, opt_state))
     mcmc_state.log_psi_sqr = log_psi_sqr_pmapped(params, *mcmc_state.build_batch(fixed_params))
 
     # MCMC burn-in
     mcmc_state = mcmc.run_burn_in(log_psi_squared_func, mcmc_state, params, fixed_params)
 
     # Init optimizer
-    rng = jax.random.PRNGKey(0)
     optimizer = build_optimizer(jax.value_and_grad(loss_func), config.optimizer, False, False)
-    opt_state = opt_state or optimizer.init(params, rng, mcmc_state.build_batch(fixed_params))
+    opt_state = opt_state or optimizer.init(params, rng_opt, mcmc_state.build_batch(fixed_params))
 
     # Pre-training optimization loop
     for n in range(config.n_epochs):
         mcmc_state = mcmc.run_inter_steps(log_psi_squared_func, mcmc_state, params, fixed_params)
         params, opt_state, stats = optimizer.step(params, opt_state, None, batch=mcmc_state.build_batch(fixed_params))
         mcmc_state.log_psi_sqr = log_psi_sqr_pmapped(params, *mcmc_state.build_batch(fixed_params))
+        mcmc_state_merged = mcmc_state.merge_devices()
 
         if loggers is not None:
             loggers.log_metrics(dict(loss=float(stats['loss'].mean()),
-                                     mcmc_stepsize=float(mcmc_state.stepsize.mean()),
-                                     mcmc_step_nr=int(mcmc_state.step_nr.mean())
+                                     mcmc_stepsize=float(mcmc_state_merged.stepsize.mean()),
+                                     mcmc_step_nr=int(mcmc_state_merged.step_nr.mean())
                                      ),
                                 epoch=n,
                                 metric_type="pre")
 
-    params, opt_state = merge_from_devices((params, opt_state))
-    return params, opt_state, mcmc_state
+    params, opt_state = get_from_devices((params, opt_state))
+    return params, opt_state, mcmc_state_merged
 

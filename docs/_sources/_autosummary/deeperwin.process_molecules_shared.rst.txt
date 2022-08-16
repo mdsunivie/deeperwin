@@ -18,7 +18,6 @@ deeperwin.process\_molecules\_shared
       init_wfs
       optimize_shared
       process_molecule_shared
-      update_opt_state
    
    
 

@@ -7,9 +7,10 @@ import logging
 import os
 import time
 from dataclasses import dataclass
-from typing import Tuple, Optional
+from typing import Tuple, Optional, List
 
 import jax.numpy as jnp
+import jax.random
 import numpy as np
 from jax.config import config as jax_config
 from jax.lib import xla_bridge
@@ -17,11 +18,11 @@ from jax.lib import xla_bridge
 from deeperwin.configuration import Configuration, SharedOptimizationConfig, OptimizationConfig, LoggingConfig
 from deeperwin.run_tools.dispatch import idx_to_job_name
 from deeperwin.evaluation import evaluate_wavefunction
-from deeperwin.loggers import LoggerCollection, build_dpe_root_logger
+from deeperwin.loggers import LoggerCollection, build_dpe_root_logger, WavefunctionLogger
 from deeperwin.mcmc import MCMCState, MetropolisHastingsMonteCarlo, resize_nr_of_walkers
 from deeperwin.model import build_log_psi_squared
-from deeperwin.optimization import build_value_and_grad_func, build_optimizer
-from deeperwin.utils import getCodeVersion, split_params, setup_job_dir, get_number_of_params
+from deeperwin.optimization import build_value_and_grad_func, build_optimizer, init_clipping_state
+from deeperwin.utils import getCodeVersion, split_params, merge_params, setup_job_dir, get_number_of_params, replicate_across_devices, get_from_devices
 logger = logging.getLogger("dpe")
 
 @dataclass
@@ -103,10 +104,10 @@ def init_wfs(config: Configuration):
     return log_psi_squared, orbitals_func, wfs, shared_params
 
 
-def update_opt_state(opt_state_old, get_params_func, opt_set_params, unique_trainable_params, shared_modules):
-    shared_params, _ = split_trainable_params(get_params_func(opt_state_old), shared_modules)
-    new_params = merge_trainable_params(shared_params, unique_trainable_params)
-    return opt_set_params(opt_state_old, new_params)
+# def update_opt_state(opt_state_old, get_params_func, opt_set_params, unique_trainable_params, shared_modules):
+#     shared_params, _ = split_trainable_params(get_params_func(opt_state_old), shared_modules)
+#     new_params = merge_trainable_params(shared_params, unique_trainable_params)
+#     return opt_set_params(opt_state_old, new_params)
 
 
 def get_index(n_epoch, wfs, config: SharedOptimizationConfig):
@@ -127,19 +128,49 @@ def get_index(n_epoch, wfs, config: SharedOptimizationConfig):
         raise ("Wavefunction scheduler currently not supported.")
 
 
-def _log_weights(wf: WaveFunctionData, shared_params, opt_state, opt_get_params, opt_set_params, shared_modules):
-    wf_params = merge_trainable_params(shared_params, wf.unique_trainable_params)
-    wf_opt_state = update_opt_state(opt_state, opt_get_params, opt_set_params, wf.unique_trainable_params,
-                                    shared_modules)
-    full_data = prepare_data_for_logging(wf_params, wf.fixed_params, wf.mcmc_state, wf_opt_state)
-    wf.loggers.log_weights(full_data)
+# def _log_weights(wf: WaveFunctionData, shared_params, opt_state, opt_get_params, opt_set_params, shared_modules):
+#     wf_params = merge_trainable_params(shared_params, wf.unique_trainable_params)
+#     wf_opt_state = update_opt_state(opt_state, opt_get_params, opt_set_params, wf.unique_trainable_params,
+#                                     shared_modules)
+#     full_data = prepare_data_for_logging(wf_params, wf.fixed_params, wf.mcmc_state, wf_opt_state)
+#     wf.loggers.log_weights(full_data)
 
 
-def optimize_shared(opt_config: OptimizationConfig, wfs, shared_params, optimize_epoch, opt_state, opt_get_params,
-                    opt_set_params, log_config: LoggingConfig):
+# optimize_wavefunction(
+#             log_psi_squared,
+#             params,
+#             fixed_params,
+#             mcmc_state,
+#             config.optimization,
+#             config.physical,
+#             loggers,
+#             opt_state,
+#             clipping_state,
+#         )
+
+def optimize_shared(log_psi_squared, shared_params, wfs: List[WaveFunctionData], opt_config: OptimizationConfig, initial_opt_state):
     shared_modules = opt_config.shared_optimization.shared_modules
     n_wfs = len(wfs)
-    t_start = time.time()
+    n_devices = jax.device_count()
+    log_psi_squared_pmapped = jax.pmap(log_psi_squared)
+
+    # Run burn-in of MCMC states
+    mcmc = MetropolisHastingsMonteCarlo(opt_config.mcmc)
+    for i,wf in enumerate(wfs):
+        logging.info(f"Running burn-in for wavefunction {i}")
+        wf.mcmc_state = MCMCState.resize_or_init(wf.mcmc_state, opt_config.mcmc.n_walkers, wf.physical, n_devices)
+        wf.clipping_params = wf.clipping_params or init_clipping_state()
+        params = merge_params(shared_params, wf.unique_trainable_params)
+        params, wf.fixed_params, wf.clipping_params = replicate_across_devices((params, wf.fixed_params, wf.clipping_params))
+        wf.mcmc_state = mcmc.run_burn_in(log_psi_squared, wf.mcmc_state, params, wf.fixed_params)
+    wf_loggers = [WavefunctionLogger(wf.loggers) for wf in wfs]
+
+    # Initialize variational optimization
+    rng = jax.random.split(jax.random.PRNGKey(0), n_devices)
+    value_and_grad_func = build_value_and_grad_func(log_psi_squared, opt_config.clipping)
+    optimizer = build_optimizer(value_and_grad_func, opt_config.optimizer, True, True)
+    opt_state = optimizer.init(params, rng, wf.mcmc_state.build_batch(wf.fixed_params), wf.clipping_params)
+    opt_state = initial_opt_state or opt_state
 
     for n_epoch in range(opt_config.n_epochs * n_wfs):
         n_epochs_geom = n_epoch // n_wfs
@@ -149,47 +180,50 @@ def optimize_shared(opt_config: OptimizationConfig, wfs, shared_params, optimize
         wf = wfs[index_next]
 
         # optimize wf[index] for one eppoch
-        opt_state = update_opt_state(opt_state, opt_get_params, opt_set_params, wf.unique_trainable_params,
-                                     shared_modules)
-        E_epoch, E_epoch_unclipped, wf.mcmc_state, opt_state, wf.clipping_params = optimize_epoch(n_epoch, wf.mcmc_state,
-                                                                               opt_state,
-                                                                               wf.clipping_params,
-                                                                               wf.fixed_params)
-        _, wf.unique_trainable_params = split_trainable_params(opt_get_params(opt_state), shared_modules)
-
+        params = merge_params(params, wf.unique_trainable_params)
+        wf.mcmc_state.log_psi_sqr = log_psi_squared_pmapped(params, *wf.mcmc_state.build_batch(wf.fixed_params))
+        wf.mcmc_state = mcmc.run_inter_steps(log_psi_squared, wf.mcmc_state, params, wf.fixed_params)
+        params, opt_state, wf.clipping_params, stats = optimizer.step(params,
+                                                                      opt_state,
+                                                                      rng=None,
+                                                                      batch=wf.mcmc_state.build_batch(wf.fixed_params),
+                                                                      func_state=wf.clipping_params)
+        shared_params, wf.unique_trainable_params = split_params(params, shared_modules)
+        wf_loggers[i].log_step(E_loc_unclipped=stats["aux"]["E_loc_unclipped"], E_loc_clipped=stats["aux"]["E_loc_clipped"],
+                               E_ref=wf.physical.E_ref, mcmc_state=wf.mcmc_state, opt_stats=get_from_devices(stats))
 
         # update metrics + epoch counter
-        wf.current_metrics = {'E_mean': jnp.nanmean(E_epoch), 'E_std': jnp.nanstd(E_epoch)}
+        wf.current_metrics = dict(E_mean=stats["aux"]["E_loc_clipped"], E_std=jnp.nanstd(stats["aux"]["E_loc_clipped"]))
         wf.n_opt_epochs += 1
         wf.last_epoch_optimized = n_epoch
 
-        # collect epoch time
-        t_end = time.time()
-
-        # log metrics
-        if wf.loggers is not None:
-            E_ref = wf.fixed_params['baseline_energies']['E_ref']
-            # Will not work right now: must include energy history in logging
-            metrics = calculate_metrics(n_epoch, E_epoch, E_epoch_unclipped, wf.mcmc_state, None, t_end - t_start, "opt", wf.n_opt_epochs, E_ref)
-            wf.loggers.log_metrics(*metrics)
-
-        # check for checkpoints. if any, all wfs have the same checkpoints.
-        if n_epochs_geom in wf.checkpoints and n_epoch % n_wfs == 0:
-            trainable_params = opt_get_params(opt_state)
-            shared_params, _ = split_trainable_params(trainable_params,
-                                                      config.optimization.shared_optimization.shared_modules)
-            for wf in wfs:
-                if wf.loggers is not None:
-                    # log weights
-                    _log_weights(wf, shared_params, opt_state, opt_get_params, opt_set_params, shared_modules)
-
-                    # log checkpoint
-                    logger.info(f"Logging checkpoint to folder {wf.checkpoints[n_epochs_geom]}")
-                    wf.loggers.log_checkpoint(wf.checkpoints[n_epochs_geom])
-
-        # reset clock and update index
-        t_start = time.time()
-    return wfs, opt_get_params, opt_set_params, opt_state
+        # # collect epoch time
+        # t_end = time.time()
+        #
+        # # log metrics
+        # if wf.loggers is not None:
+        #     E_ref = wf.fixed_params['baseline_energies']['E_ref']
+        #     # Will not work right now: must include energy history in logging
+        #     metrics = calculate_metrics(n_epoch, E_epoch, E_epoch_unclipped, wf.mcmc_state, None, t_end - t_start, "opt", wf.n_opt_epochs, E_ref)
+        #     wf.loggers.log_metrics(*metrics)
+        #
+        # # check for checkpoints. if any, all wfs have the same checkpoints.
+        # if n_epochs_geom in wf.checkpoints and n_epoch % n_wfs == 0:
+        #     trainable_params = opt_get_params(opt_state)
+        #     shared_params, _ = split_trainable_params(trainable_params,
+        #                                               config.optimization.shared_optimization.shared_modules)
+        #     for wf in wfs:
+        #         if wf.loggers is not None:
+        #             # log weights
+        #             _log_weights(wf, shared_params, opt_state, opt_get_params, opt_set_params, shared_modules)
+        #
+        #             # log checkpoint
+        #             logger.info(f"Logging checkpoint to folder {wf.checkpoints[n_epochs_geom]}")
+        #             wf.loggers.log_checkpoint(wf.checkpoints[n_epochs_geom])
+        #
+        # # reset clock and update index
+        # t_start = time.time()
+    return wfs, shared_params, opt_state
 
 
 def process_molecule_shared(config_file):
@@ -209,13 +243,13 @@ def process_molecule_shared(config_file):
 
     # Initialization of model, MCMC states and optimizer TODO restart and reload
     log_psi_squared, orbitals_func, wfs, shared_params = init_wfs(config)
+    opt_state = None
 
     # Wavefunction optimization
     if config.optimization.n_epochs > 0:
         logger.info("Starting optimization...")
-        wfs, opt_get_params, opt_set_params, opt_state = optimize_shared(config.optimization, wfs, init_shared_params,
-                                                                         optimize_epoch, opt_state, opt_get_params,
-                                                                         opt_set_params, config.logging)
+        wfs, opt_get_params, opt_set_params, opt_state = optimize_shared(log_psi_squared, shared_params, wfs, config.optimization,
+                                                                         opt_state)
         trainable_params = opt_get_params(opt_state)
         shared_params, _ = split_trainable_params(trainable_params,
                                                   config.optimization.shared_optimization.shared_modules)

@@ -115,8 +115,19 @@
 <h1>deeperwin.orbitals.get_envelope_exponents_from_atomic_orbitals<a class="headerlink" href="#deeperwin-orbitals-get-envelope-exponents-from-atomic-orbitals" title="Permalink to this headline"></a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="deeperwin.orbitals.get_envelope_exponents_from_atomic_orbitals">
-<span class="sig-prename descclassname"><span class="pre">deeperwin.orbitals.</span></span><span class="sig-name descname"><span class="pre">get_envelope_exponents_from_atomic_orbitals</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">physical_config</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../configuration.html#deeperwin.configuration.PhysicalConfig" title="deeperwin.configuration.PhysicalConfig"><span class="pre">deeperwin.configuration.PhysicalConfig</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">basis_set</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'6-31G'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pad_full_det</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">leading_dims</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/deeperwin/orbitals.html#get_envelope_exponents_from_atomic_orbitals"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.orbitals.get_envelope_exponents_from_atomic_orbitals" title="Permalink to this definition"></a></dt>
-<dd></dd></dl>
+<span class="sig-prename descclassname"><span class="pre">deeperwin.orbitals.</span></span><span class="sig-name descname"><span class="pre">get_envelope_exponents_from_atomic_orbitals</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">physical_config</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../configuration.html#deeperwin.configuration.PhysicalConfig" title="deeperwin.configuration.PhysicalConfig"><span class="pre">deeperwin.configuration.PhysicalConfig</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">basis_set</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'6-31G'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pad_full_det</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/deeperwin/orbitals.html#get_envelope_exponents_from_atomic_orbitals"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.orbitals.get_envelope_exponents_from_atomic_orbitals" title="Permalink to this definition"></a></dt>
+<dd><p>Calculate an initial guess for the envelope parameters using a baseline calculation.</p>
+<p>Envelopes have the form coeff_I exp(-alpha_I * r).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Tuple of len 2; for each spin has shape [n_ions x n_orb]
+alpha_values: Tuple of len 2; for each spin has shape [n_ions x n_orb]</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>coeff_values</p>
+</dd>
+</dl>
+</dd></dl>
 
 </section>
 

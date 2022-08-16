@@ -58,6 +58,7 @@
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.model.html">deeperwin.model</a></li>
 <li class="toctree-l3 current"><a class="current reference internal" href="#">deeperwin.optimization</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.optimization.build_value_and_grad_func.html">deeperwin.optimization.build_value_and_grad_func</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.optimization.init_clipping_state.html">deeperwin.optimization.init_clipping_state</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.optimization.optimize_wavefunction.html">deeperwin.optimization.optimize_wavefunction</a></li>
 <li class="toctree-l4"><a class="reference internal" href="deeperwin.optimization.pretrain_orbitals.html">deeperwin.optimization.pretrain_orbitals</a></li>
 </ul>
@@ -114,10 +115,13 @@
 <tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.optimization.build_value_and_grad_func.html#deeperwin.optimization.build_value_and_grad_func" title="deeperwin.optimization.build_value_and_grad_func"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_value_and_grad_func</span></code></a>(log_psi_sqr_func, ...)</p></td>
 <td><p>Returns a callable that computes the gradient of the mean local energy for a given set of MCMC walkers with respect to the model defined by <cite>log_psi_func</cite>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.optimization.optimize_wavefunction.html#deeperwin.optimization.optimize_wavefunction" title="deeperwin.optimization.optimize_wavefunction"><code class="xref py py-obj docutils literal notranslate"><span class="pre">optimize_wavefunction</span></code></a>(log_psi_squared, ...)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.optimization.init_clipping_state.html#deeperwin.optimization.init_clipping_state" title="deeperwin.optimization.init_clipping_state"><code class="xref py py-obj docutils literal notranslate"><span class="pre">init_clipping_state</span></code></a>()</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.optimization.optimize_wavefunction.html#deeperwin.optimization.optimize_wavefunction" title="deeperwin.optimization.optimize_wavefunction"><code class="xref py py-obj docutils literal notranslate"><span class="pre">optimize_wavefunction</span></code></a>(log_psi_squared, ...)</p></td>
 <td><p>Minimizes the energy of the wavefunction defined by the callable <cite>log_psi_squared</cite> by adjusting the trainable parameters.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="deeperwin.optimization.pretrain_orbitals.html#deeperwin.optimization.pretrain_orbitals" title="deeperwin.optimization.pretrain_orbitals"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pretrain_orbitals</span></code></a>(orbital_func, mcmc_state, ...)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="deeperwin.optimization.pretrain_orbitals.html#deeperwin.optimization.pretrain_orbitals" title="deeperwin.optimization.pretrain_orbitals"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pretrain_orbitals</span></code></a>(orbital_func, mcmc_state, ...)</p></td>
 <td><p></p></td>
 </tr>
 </tbody>

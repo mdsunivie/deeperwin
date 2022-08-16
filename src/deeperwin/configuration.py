@@ -230,7 +230,7 @@ class CASSCFConfig(ConfigBaseclass):
     basis_set: str = "6-311G"
     """Basis set to use for the Hartree-Fock / CASSCF calculation. See the documentation of pySCF for all available basis-sets."""
 
-    cusps: CuspCorrectionConfig = CuspCorrectionConfig()
+    cusps: Optional[CuspCorrectionConfig] = CuspCorrectionConfig()
     """Settings for the correction of wavefunction cusps when particles come close to each other"""
 
     only_hf: bool = False
@@ -607,7 +607,7 @@ class OptimizerConfigKFAC(ConfigBaseclass):
     """Schedule for the learning rate decay"""
 
     momentum: float = 0.0
-    norm_constraint: float = 1e-3
+    norm_constraint: float = 3e-3
     damping: float = 1e-3
     damping_scheduler: bool = False
     estimation_mode: Literal['fisher_gradients', 'fisher_exact'] = 'fisher_exact'
@@ -1069,7 +1069,7 @@ class DispatchConfig(ConfigBaseclass):
     """Which compute-cluster to use for this experiment. 'auto' detects whether the code is running on a known compute-cluster and selects the corresponding profile, or otherwise defaults to local execution"""
 
     queue: Literal[
-        "default", "vsc3plus_0064", "devel_0128", "gpu_a40dual", "gpu_gtx1080amd", "gpu_gtx1080multi", "gpu_gtx1080single", "gpu_v100", "gpu_k20m", "gpu_rtx2080ti", "jupyter", "normal_binf", "vsc3plus_0256", "mem_0096", "devel_0096", "jupyter", "mem_0096", "mem_0384", "mem_0768"] = "default"
+        "default", "vsc3plus_0064", "devel_0128", "gpu_a40dual", "gpu_gtx1080amd", "gpu_gtx1080multi", "gpu_gtx1080single", "gpu_v100", "gpu_k20m", "gpu_rtx2080ti", "jupyter", "normal_binf", "vsc3plus_0256", "mem_0096", "devel_0096", "jupyter", "mem_0096", "mem_0384", "mem_0768", "gpu_a100_dual"] = "default"
     """SLURM queue to use for job submission on compute clusters. Not relevant for local execution"""
 
     time: str = "3day"
@@ -1086,7 +1086,9 @@ class ComputationConfig(ConfigBaseclass):
     use_gpu: bool = True
     """deprecated"""
     require_gpu: bool = False
-    n_devices: Optional[int] = None
+    n_local_devices: Optional[int] = None
+    n_nodes: int = 1
+    rng_seed: Optional[int] = None
     force_device_count: bool = False
     disable_jit: bool = False
     float_precision: Literal["float32", "float64"] = "float32"

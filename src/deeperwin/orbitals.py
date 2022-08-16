@@ -162,7 +162,7 @@ def _get_atomic_orbital_basis_functions(molecule):
                     shape_string = ao_labels[ind_basis][3]  # string of the form 'xxy' or 'zz'
                     angular_momenta = np.array([shape_string.count(x) for x in ['x', 'y', 'z']], dtype=int)
                     normalization = _get_gto_normalization_factor(alpha, angular_momenta)
-                    atomic_orbitals.append([ind_nuc,
+                    atomic_orbitals.append([np.array(ind_nuc, int),
                                             alpha,
                                             weights[:, ind_contraction] * normalization,
                                             angular_momenta])
@@ -221,17 +221,17 @@ def get_baseline_solution(physical_config: PhysicalConfig, casscf_config: CASSCF
             ind_orbitals = ind_orbitals[0][ind_largest], ind_orbitals[1][ind_largest]
 
     # Calculate cusp-correction-parameters for molecular orbitals
-    if casscf_config.cusps.cusp_type == "mo":
-        ao_cusp_params = None
+    ao_cusp_params = None
+    mo_cusp_params = [None, None]
+    if casscf_config.cusps and (casscf_config.cusps.cusp_type == "mo"):
         mo_cusp_params = [calculate_molecular_orbital_cusp_params(atomic_orbitals, mo_coeff[i], R, Z, casscf_config.cusps.r_cusp_el_ion_scale) for i in range(2)]
-    else:
+    elif casscf_config.cusps and (casscf_config.cusps.cusp_type == 'ao'):
         ao_cusp_params = [_calculate_ao_cusp_params(*ao, physical_config.Z[ao[0]]) for ao in atomic_orbitals]
-        mo_cusp_params = [None, None]
 
     return (atomic_orbitals, ao_cusp_params, mo_cusp_params, mo_coeff, ind_orbitals, ci_weights), (E_hf, E_casscf)
 
 
-def _get_effective_charge(Z: int, n: int):
+def _get_effective_charge(Z: int, n: int, s_lower_shell=0.85, s_same_shell=0.35):
     """
     Calculates the approximate effective charge for an electron, using Slater's Rule of shielding.
 
@@ -250,9 +250,9 @@ def _get_effective_charge(Z: int, n: int):
             n_electrons_in_shell = min(Z - n_el_in_lower_shells, n_electrons_in_shell) - 1
 
         if n_shell == n:
-            shielding += n_electrons_in_shell * 0.35
+            shielding += n_electrons_in_shell * s_same_shell
         elif n_shell == (n-1):
-            shielding += n_electrons_in_shell * 0.85
+            shielding += n_electrons_in_shell * s_lower_shell
         else:
             shielding += n_electrons_in_shell
     return max(Z - shielding, 1)
@@ -283,39 +283,46 @@ def _get_atomic_orbital_envelope_exponents(physical_config: PhysicalConfig, basi
     return alpha_ao
 
 
-def get_envelope_exponents_from_atomic_orbitals(physical_config: PhysicalConfig, basis_set='6-31G', pad_full_det=False, leading_dims=None):
+def get_envelope_exponents_from_atomic_orbitals(physical_config: PhysicalConfig, basis_set='6-31G', pad_full_det=False):
+    """
+    Calculate an initial guess for the envelope parameters using a baseline calculation.
+
+    Envelopes have the form coeff_I exp(-alpha_I * r).
+
+    Returns:
+         coeff_values: Tuple of len 2; for each spin has shape [n_ions x n_orb]
+         alpha_values: Tuple of len 2; for each spin has shape [n_ions x n_orb]
+    """
     n_up, n_dn, n_ions = physical_config.n_up, physical_config.n_dn, physical_config.n_ions
-    (atomic_orbitals, _, _, mo_coeff, _, _), _ = get_baseline_solution(physical_config, CASSCFConfig(basis_set=basis_set), n_dets=1)
+    (atomic_orbitals, _, _, mo_coeff, _, _), _ = get_baseline_solution(physical_config,
+                                                                       CASSCFConfig(basis_set=basis_set, cusps=None),
+                                                                       n_dets=1)
     mo_coeff = mo_coeff[0][:, :n_up], mo_coeff[1][:, :n_dn] # keep only occupied orbitals
     alpha_ao = _get_atomic_orbital_envelope_exponents(physical_config, basis_set)
 
     ind_nuc_ao = np.array([ao[0] for ao in atomic_orbitals], dtype=int)
-    c_values = [np.zeros([n_up, n_ions]), np.zeros([n_dn, n_ions])]
-    alpha_values = [np.zeros([n_up, n_ions]), np.zeros([n_dn, n_ions])]
+    coeff_values = [np.zeros([n_ions, n_up]), np.zeros([n_ions, n_dn])]
+    alpha_values = [np.zeros([n_ions, n_up]), np.zeros([n_ions, n_dn])]
     for spin in range(2):
         mo_weights = mo_coeff[spin] ** 2 / np.sum(mo_coeff[spin] ** 2, axis=0) # relative contribution of each ao
         for ind_mo in range([n_up, n_dn][spin]):
             for ind_nuc in range(n_ions):
                 index_nuc = (ind_nuc_ao == ind_nuc)
                 mo_weights_nuc = mo_weights[:, ind_mo][index_nuc]
-                c_values[spin][ind_mo, ind_nuc] = np.sum(mo_weights_nuc) + 1e-3
-                alpha_values[spin][ind_mo, ind_nuc] = (np.dot(mo_weights_nuc, alpha_ao[index_nuc]) + 1e-6) / (np.sum(mo_weights_nuc) + 1e-6)
+                coeff_values[spin][ind_nuc, ind_mo] = np.sum(mo_weights_nuc) + 1e-3
+                alpha_values[spin][ind_nuc, ind_mo] = (np.dot(mo_weights_nuc, alpha_ao[index_nuc]) + 1e-6) / (np.sum(mo_weights_nuc) + 1e-6)
 
     for spin in range(2):
         # undo softplus which will be applied in network
         alpha_values[spin] = np.log(np.exp(alpha_values[spin] - 1))
 
     if pad_full_det:
-        c_values[0] = np.concatenate([c_values[0], np.ones([n_dn, n_ions])], axis=0)
-        alpha_values[0] = np.concatenate([alpha_values[0], np.ones([n_dn, n_ions])], axis=0)
-        c_values[1] = np.concatenate([np.ones([n_up, n_ions]), c_values[1]], axis=0)
-        alpha_values[1] = np.concatenate([np.ones([n_up, n_ions]), alpha_values[1]], axis=0)
-    
-    if leading_dims:
-        c_values = [np.tile(x, tuple(leading_dims) + (1,1)) for x in c_values]
-        alpha_values = [np.tile(x, tuple(leading_dims) + (1,1)) for x in alpha_values]
+        coeff_values[0] = np.concatenate([coeff_values[0], np.ones([n_ions, n_dn])], axis=1)
+        alpha_values[0] = np.concatenate([alpha_values[0], np.ones([n_ions, n_dn])], axis=1)
+        coeff_values[1] = np.concatenate([np.ones([n_ions, n_up]), coeff_values[1]], axis=1)
+        alpha_values[1] = np.concatenate([np.ones([n_ions, n_up]), alpha_values[1]], axis=1)
 
-    return c_values, alpha_values
+    return coeff_values, alpha_values
 
 def _int_to_spin_tuple(x):
     if type(x) == int:
@@ -481,7 +488,7 @@ def _calculate_ao_cusp_params(ind_nuc, alpha, gto_coeffs, angular_momenta, Z):
 
 def calculate_molecular_orbital_cusp_params(atomic_orbitals, mo_coeff, R, Z, r_cusp_scale):
     n_molecular_orbitals, n_nuclei, n_atomic_orbitals = mo_coeff.shape[1], len(R), len(atomic_orbitals)
-    cusp_rc = jnp.minimum(r_cusp_scale / Z, 0.5)
+    cusp_rc = np.minimum(r_cusp_scale / Z, 0.5)
     cusp_offset = np.zeros([n_nuclei, n_molecular_orbitals])
     cusp_sign = np.zeros([n_nuclei, n_molecular_orbitals])
     cusp_poly = np.zeros([n_nuclei, n_molecular_orbitals, 5])
@@ -497,9 +504,9 @@ def calculate_molecular_orbital_cusp_params(atomic_orbitals, mo_coeff, R, Z, r_c
             r_c = cusp_rc[nuc_idx]
             for i, (_, alpha, weights, _) in enumerate(atomic_orbitals):
                 if is_centered_1s[i]:
-                    phi_rc_0 += jnp.sum(weights * np.exp(-alpha * r_c ** 2)) * mo_coeff[i, mo_idx]
-                    phi_rc_1 += jnp.sum(weights * (-2 * alpha * r_c) * np.exp(-alpha * r_c ** 2)) * mo_coeff[i, mo_idx]
-                    phi_rc_2 += jnp.sum(weights * (-2 * alpha + 4 * (alpha * r_c) ** 2) * np.exp(-alpha * r_c ** 2)) * mo_coeff[i, mo_idx]
+                    phi_rc_0 += np.sum(weights * np.exp(-alpha * r_c ** 2)) * mo_coeff[i, mo_idx]
+                    phi_rc_1 += np.sum(weights * (-2 * alpha * r_c) * np.exp(-alpha * r_c ** 2)) * mo_coeff[i, mo_idx]
+                    phi_rc_2 += np.sum(weights * (-2 * alpha + 4 * (alpha * r_c) ** 2) * np.exp(-alpha * r_c ** 2)) * mo_coeff[i, mo_idx]
             cusp_1s_coeffs[nuc_idx, :, mo_idx] = is_centered_1s * mo_coeff[:, mo_idx] # n_nuc x n_atomic_orbitals x n_molec_orbitals
             cusp_offset[nuc_idx, mo_idx], cusp_sign[nuc_idx, mo_idx], cusp_poly[nuc_idx, mo_idx] = _calculate_mo_cusp_params(phi_rc_0,
                                                                                                                              phi_rc_1,

@@ -1,0 +1,6 @@
+deeperwin.optimization.init\_clipping\_state
+============================================
+
+.. currentmodule:: deeperwin.optimization
+
+.. autofunction:: init_clipping_state

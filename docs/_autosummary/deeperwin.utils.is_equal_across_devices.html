@@ -4,7 +4,7 @@
   <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>deeperwin.process_molecules_shared.update_opt_state &mdash; deeperwin 1.0.0 documentation</title>
+  <title>deeperwin.utils.is_equal_across_devices &mdash; deeperwin 1.0.0 documentation</title>
       <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
       <link rel="stylesheet" href="../_static/autodoc_pydantic.css" type="text/css" />
@@ -21,8 +21,8 @@
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="deeperwin.process_molecules_shared.WaveFunctionData" href="deeperwin.process_molecules_shared.WaveFunctionData.html" />
-    <link rel="prev" title="deeperwin.process_molecules_shared.process_molecule_shared" href="deeperwin.process_molecules_shared.process_molecule_shared.html" /> 
+    <link rel="next" title="deeperwin.utils.merge_from_devices" href="deeperwin.utils.merge_from_devices.html" />
+    <link rel="prev" title="deeperwin.utils.init_multi_host_on_slurm" href="deeperwin.utils.init_multi_host_on_slurm.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -60,17 +60,31 @@
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.optimizers.html">deeperwin.optimizers</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.orbitals.html">deeperwin.orbitals</a></li>
 <li class="toctree-l3"><a class="reference internal" href="deeperwin.process_molecule.html">deeperwin.process_molecule</a></li>
-<li class="toctree-l3 current"><a class="reference internal" href="deeperwin.process_molecules_shared.html">deeperwin.process_molecules_shared</a><ul class="current">
-<li class="toctree-l4"><a class="reference internal" href="deeperwin.process_molecules_shared.get_index.html">deeperwin.process_molecules_shared.get_index</a></li>
-<li class="toctree-l4"><a class="reference internal" href="deeperwin.process_molecules_shared.init_wfs.html">deeperwin.process_molecules_shared.init_wfs</a></li>
-<li class="toctree-l4"><a class="reference internal" href="deeperwin.process_molecules_shared.optimize_shared.html">deeperwin.process_molecules_shared.optimize_shared</a></li>
-<li class="toctree-l4"><a class="reference internal" href="deeperwin.process_molecules_shared.process_molecule_shared.html">deeperwin.process_molecules_shared.process_molecule_shared</a></li>
-<li class="toctree-l4 current"><a class="current reference internal" href="#">deeperwin.process_molecules_shared.update_opt_state</a></li>
-<li class="toctree-l4"><a class="reference internal" href="deeperwin.process_molecules_shared.WaveFunctionData.html">deeperwin.process_molecules_shared.WaveFunctionData</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.process_molecules_shared.html">deeperwin.process_molecules_shared</a></li>
+<li class="toctree-l3"><a class="reference internal" href="deeperwin.run_tools.html">deeperwin.run_tools</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="deeperwin.utils.html">deeperwin.utils</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.batch_rng_split.html">deeperwin.utils.batch_rng_split</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.fit_morse_potential.html">deeperwin.utils.fit_morse_potential</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.getCodeVersion.html">deeperwin.utils.getCodeVersion</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.get_distance_matrix.html">deeperwin.utils.get_distance_matrix</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.get_el_ion_distance_matrix.html">deeperwin.utils.get_el_ion_distance_matrix</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.get_extent_for_imshow.html">deeperwin.utils.get_extent_for_imshow</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.get_from_devices.html">deeperwin.utils.get_from_devices</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.get_full_distance_matrix.html">deeperwin.utils.get_full_distance_matrix</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.get_ion_pos_string.html">deeperwin.utils.get_ion_pos_string</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.get_number_of_params.html">deeperwin.utils.get_number_of_params</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.get_params_filter_func.html">deeperwin.utils.get_params_filter_func</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.init_multi_host_on_slurm.html">deeperwin.utils.init_multi_host_on_slurm</a></li>
+<li class="toctree-l4 current"><a class="current reference internal" href="#">deeperwin.utils.is_equal_across_devices</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.merge_from_devices.html">deeperwin.utils.merge_from_devices</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.merge_params.html">deeperwin.utils.merge_params</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.morse_potential.html">deeperwin.utils.morse_potential</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.replicate_across_devices.html">deeperwin.utils.replicate_across_devices</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.save_xyz_file.html">deeperwin.utils.save_xyz_file</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.setup_job_dir.html">deeperwin.utils.setup_job_dir</a></li>
+<li class="toctree-l4"><a class="reference internal" href="deeperwin.utils.split_params.html">deeperwin.utils.split_params</a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="deeperwin.run_tools.html">deeperwin.run_tools</a></li>
-<li class="toctree-l3"><a class="reference internal" href="deeperwin.utils.html">deeperwin.utils</a></li>
 </ul>
 </li>
 </ul>
@@ -94,10 +108,10 @@
       <li><a href="../root.html" class="icon icon-home"></a> &raquo;</li>
           <li><a href="../api.html">Full documentation for developers</a> &raquo;</li>
           <li><a href="deeperwin.html">deeperwin</a> &raquo;</li>
-          <li><a href="deeperwin.process_molecules_shared.html">deeperwin.process_molecules_shared</a> &raquo;</li>
-      <li>deeperwin.process_molecules_shared.update_opt_state</li>
+          <li><a href="deeperwin.utils.html">deeperwin.utils</a> &raquo;</li>
+      <li>deeperwin.utils.is_equal_across_devices</li>
       <li class="wy-breadcrumbs-aside">
-            <a href="../_sources/_autosummary/deeperwin.process_molecules_shared.update_opt_state.rst.txt" rel="nofollow"> View page source</a>
+            <a href="../_sources/_autosummary/deeperwin.utils.is_equal_across_devices.rst.txt" rel="nofollow"> View page source</a>
       </li>
   </ul>
   <hr/>
@@ -105,11 +119,11 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="deeperwin-process-molecules-shared-update-opt-state">
-<h1>deeperwin.process_molecules_shared.update_opt_state<a class="headerlink" href="#deeperwin-process-molecules-shared-update-opt-state" title="Permalink to this headline"></a></h1>
+  <section id="deeperwin-utils-is-equal-across-devices">
+<h1>deeperwin.utils.is_equal_across_devices<a class="headerlink" href="#deeperwin-utils-is-equal-across-devices" title="Permalink to this headline"></a></h1>
 <dl class="py function">
-<dt class="sig sig-object py" id="deeperwin.process_molecules_shared.update_opt_state">
-<span class="sig-prename descclassname"><span class="pre">deeperwin.process_molecules_shared.</span></span><span class="sig-name descname"><span class="pre">update_opt_state</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">opt_state_old</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">get_params_func</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">opt_set_params</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unique_trainable_params</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shared_modules</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/deeperwin/process_molecules_shared.html#update_opt_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.process_molecules_shared.update_opt_state" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="deeperwin.utils.is_equal_across_devices">
+<span class="sig-prename descclassname"><span class="pre">deeperwin.utils.</span></span><span class="sig-name descname"><span class="pre">is_equal_across_devices</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/deeperwin/utils.html#is_equal_across_devices"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#deeperwin.utils.is_equal_across_devices" title="Permalink to this definition"></a></dt>
 <dd></dd></dl>
 
 </section>
@@ -118,8 +132,8 @@
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="deeperwin.process_molecules_shared.process_molecule_shared.html" class="btn btn-neutral float-left" title="deeperwin.process_molecules_shared.process_molecule_shared" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="deeperwin.process_molecules_shared.WaveFunctionData.html" class="btn btn-neutral float-right" title="deeperwin.process_molecules_shared.WaveFunctionData" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="deeperwin.utils.init_multi_host_on_slurm.html" class="btn btn-neutral float-left" title="deeperwin.utils.init_multi_host_on_slurm" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="deeperwin.utils.merge_from_devices.html" class="btn btn-neutral float-right" title="deeperwin.utils.merge_from_devices" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

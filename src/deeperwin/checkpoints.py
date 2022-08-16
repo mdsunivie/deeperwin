@@ -2,7 +2,6 @@ import logging
 import os
 import pickle
 import re
-import pandas as pd
 from deeperwin.configuration import Configuration, build_flattend_dict, CheckpointConfig
 from deeperwin.mcmc import MCMCState
 import jax
@@ -26,6 +25,14 @@ class RunData:
     mcmc_state: Optional[MCMCState] = None
     clipping_state: Optional[Any] = None
 
+def write_history(f, history, delim=';'):
+    keys = set()
+    for h in history:
+        keys.update(h.keys())
+    f.write((delim.join([str(k) for k in keys]) + "\n").encode("utf-8"))
+    for h in history:
+        line = delim.join([str(h.get(k, "")) for k in keys])
+        f.write((line + "\n").encode("utf-8"))
 
 def save_run(fname, data: RunData):
     with zipfile.ZipFile(fname, "w", zipfile.ZIP_BZIP2) as zf:
@@ -33,9 +40,8 @@ def save_run(fname, data: RunData):
             with zf.open("config.yml", "w") as f:
                 data.config.save(f)
         if data.history is not None:
-            df = pd.DataFrame(data.history)
             with zf.open("history.csv", "w") as f:
-                df.to_csv(f, sep=";", index=False)
+                write_history(f, data.history)
         if data.summary is not None:
             with zf.open("summary.csv", "w") as f:
                 lines = [f"{k};{v}" for k,v in data.summary.items()]
@@ -69,6 +75,7 @@ def load_data_for_reuse(config: Configuration, raw_config):
 
     if config.reuse.reuse_config:
         _, config = config.update_configdict_and_validate(config.dict(), build_flattend_dict(raw_config))
+
     if config.reuse.continue_n_epochs:
         if reuse_data.metadata:
             config.optimization.n_epochs_prev = reuse_data.metadata.get('n_epochs', 0)
@@ -83,7 +90,7 @@ def load_data_for_reuse(config: Configuration, raw_config):
     if config.reuse.reuse_mcmc_state:
         mcmc_state = reuse_data.mcmc_state
         if config.reuse.randomize_mcmc_rng:
-            new_seed = np.random.randint(2**16)
+            new_seed = np.random.randint(2**31)
             logger.debug(f"Selecting new seed for MCMC rng_state: {new_seed}")
             mcmc_state.rng_state = jax.random.PRNGKey(new_seed)
     if config.reuse.reuse_fixed_params:

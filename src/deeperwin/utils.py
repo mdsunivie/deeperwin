@@ -10,7 +10,6 @@ import jax
 import numpy as np
 import scipy.optimize
 from jax import numpy as jnp
-from deeperwin.configuration import ClippingConfig
 import haiku as hk
 
 LOGGER = logging.getLogger("dpe")
@@ -23,14 +22,58 @@ pmap = functools.partial(jax.pmap, axis_name="devices")
 pmean = functools.partial(jax.lax.pmean, axis_name="devices")
 psum = functools.partial(jax.lax.psum, axis_name="devices")
 
-def replicate_across_devices(data, n_devices):
-    return jax.tree_map(lambda x: jnp.tile(x, [n_devices] + [1] * x.ndim), data)
+def replicate_across_devices(data):
+    # Step 1: Tile data across local devices
+    data = jax.tree_util.tree_map(lambda x: jnp.tile(x, [jax.local_device_count()] + [1] * x.ndim), data)
 
-def merge_from_devices(data):
-    return jax.tree_map(lambda x: x[0], data)
+    # Step 2: Replace data on each device by data from device 0 on process 0
+    def _select_master_data(x):
+        x = jax.lax.cond(jax.lax.axis_index("devices") == 0,
+                         lambda y: y,
+                         lambda y: jax.tree_util.tree_map(jnp.zeros_like, y),
+                         x)
+        return jax.lax.psum(x, axis_name='devices')
+    data = jax.pmap(_select_master_data, axis_name='devices')(data)
+    return data
 
+def get_from_devices(data):
+    return jax.tree_util.tree_map(lambda x: x[0], data)
+
+def is_equal_across_devices(data):
+    full_data = jax.tree_util.tree_map(_pad_data, data)
+    full_data = jax.tree_leaves(full_data)
+    n_devices = jax.device_count()
+    for x in full_data:
+        for i in range(1, n_devices):
+            if not np.allclose(x[i], x[0]):
+                return False
+    return True
+
+@functools.partial(jax.pmap, axis_name='i')
+def _pad_data(x):
+    full_data = jnp.zeros((jax.device_count(), *x.shape), x.dtype)
+    full_data = full_data.at[jax.lax.axis_index('i')].set(x)
+    return jax.lax.psum(full_data, axis_name='i')
+
+def merge_from_devices(x):
+    if x is None:
+        return None
+    full_data = _pad_data(x)
+    # Data is now identical on all local devices; pick the 0th device and flatten
+    return full_data[0].reshape((-1, *full_data.shape[3:]))
 
 batch_rng_split = jax.vmap(lambda k: jax.random.split(k,2), in_axes=0, out_axes=1)
+
+def init_multi_host_on_slurm():
+    for key in ['SLURM_JOB_NODELIST', 'SLURM_NODEID', 'SLURM_JOB_NUM_NODES']:
+        assert key in os.environ, "Multi-host only implemented for SLURM"
+    r = subprocess.run(["scontrol", "show", "hostnames", os.environ["SLURM_JOB_NODELIST"]],
+                       capture_output=True, encoding="utf-8")
+    master_hostname = r.stdout.split("\n")[0]
+    process_id = int(os.environ["SLURM_NODEID"])
+    process_count = int(os.environ["SLURM_JOB_NUM_NODES"])
+    LOGGER.debug(f"Initializing process {process_id} / {process_count}")
+    jax.distributed.initialize(master_hostname + ":8080", process_count, process_id)
 
 ###############################################################################
 ##################################### Logging  ################################

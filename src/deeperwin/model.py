@@ -411,12 +411,12 @@ class EnvelopeOrbitals(hk.Module):
         self.output_size_dn = physical_config.n_electrons if full_det else (self.n_el - self.n_up)
         if self.config.initialization == "analytical":
             weights, alphas = get_envelope_exponents_from_atomic_orbitals(
-                self.physical_config, pad_full_det=full_det, leading_dims=[n_dets, 1]
+                self.physical_config, pad_full_det=full_det
             )
-            self._alpha_up_init = lambda s, t: alphas[0]
-            self._alpha_dn_init = lambda s, t: alphas[1]
-            self._weights_up_init = lambda s, t: weights[0]
-            self._weights_dn_init = lambda s, t: weights[1]
+            self._alpha_up_init = lambda s, t: jnp.tile(alphas[0], [1, n_dets])
+            self._alpha_dn_init = lambda s, t: jnp.tile(alphas[1], [1, n_dets])
+            self._weights_up_init = lambda s, t: jnp.tile(weights[0], [1, n_dets])
+            self._weights_dn_init = lambda s, t: jnp.tile(weights[1], [1, n_dets])
         else:
             self._alpha_up_init = jnp.ones
             self._alpha_dn_init = jnp.ones
@@ -452,30 +452,29 @@ class EnvelopeOrbitals(hk.Module):
         return mo_matrix_up * bf_up, mo_matrix_dn * bf_dn
 
     def _envelope_isotropic(self, el_ion_dist):
-        alpha_up = hk.get_parameter("alpha_up", [self.physical_config.n_ions, self.n_dets*self.output_size_up],
-                                    init=self._alpha_up_init)
-        alpha_dn = hk.get_parameter("alpha_dn", [self.physical_config.n_ions, self.n_dets*self.output_size_dn],
-                                    init=self._alpha_dn_init)
+        n_ions = self.physical_config.n_ions
+        shape_up = [n_ions, self.n_dets * self.output_size_up]
+        shape_dn = [n_ions, self.n_dets * self.output_size_dn]
+        alpha_up = hk.get_parameter("alpha_up", shape_up, init=self._alpha_up_init)
+        alpha_dn = hk.get_parameter("alpha_dn", shape_dn, init=self._alpha_dn_init)
+        weights_up = hk.get_parameter("weights_up", shape_up, init=self._weights_up_init)
+        weights_dn = hk.get_parameter("weights_dn", shape_dn, init=self._weights_dn_init)
 
-        weights_up = hk.get_parameter("weights_up", [self.physical_config.n_ions, self.n_dets*self.output_size_up],
-                                     init=self._weights_up_init)
-        weights_dn = hk.get_parameter("weights_dn", [self.physical_config.n_ions, self.n_dets*self.output_size_dn],
-                                     init=self._weights_dn_init)
-
-        d_up = el_ion_dist[..., :self.n_up, :, jnp.newaxis]  # [batch x el_up x ion x 1 (orb)]
+        d_up = el_ion_dist[..., :self.n_up, :, jnp.newaxis]  # [batch x el_up x ion x 1 (det*orb)]
         d_dn = el_ion_dist[..., self.n_up:, :, jnp.newaxis]
-        exp_up = jax.nn.softplus(alpha_up) * d_up  # [batch x dets x el_up x orb_up x ion]
+        exp_up = jax.nn.softplus(alpha_up) * d_up  # [batch x el_up x ion x (det*orb)]
         exp_dn = jax.nn.softplus(alpha_dn) * d_dn
         exp_up = register_scale_and_shift(exp_up, d_up, scale=alpha_up, shift=None)
         exp_dn = register_scale_and_shift(exp_dn, d_dn, scale=alpha_dn, shift=None)
 
-        orb_up = jnp.sum(weights_up * jnp.exp(-exp_up), axis=-2)  # [batch x  el_up x ion x dets*orb_up]
+        # Sum over ions; new shape: [batch x  el_up x (det*orb)]
+        orb_up = jnp.sum(weights_up * jnp.exp(-exp_up), axis=-2)
         orb_dn = jnp.sum(weights_dn * jnp.exp(-exp_dn), axis=-2)
-        orb_up = jnp.reshape(orb_up, orb_up.shape[:-1] + (self.n_dets, -1))
-        orb_dn = jnp.reshape(orb_dn, orb_dn.shape[:-1] + (self.n_dets, -1))
-
-        return jnp.moveaxis(orb_up, -2, -3), jnp.moveaxis(orb_dn, -2, -3)
-
+        orb_up = jnp.reshape(orb_up, orb_up.shape[:-1] + (self.n_dets, self.output_size_up))
+        orb_dn = jnp.reshape(orb_dn, orb_dn.shape[:-1] + (self.n_dets, self.output_size_dn))
+        orb_up = jnp.moveaxis(orb_up, -2, -3) # [batch x det x el_up x orb]
+        orb_dn = jnp.moveaxis(orb_dn, -2, -3)
+        return orb_up, orb_dn
 
 class BaselineOrbitals(hk.Module):
     def __init__(self, config: BaselineOrbitalsConfig, physical_config: PhysicalConfig, mlp_config: MLPConfig, n_dets,
@@ -739,7 +738,7 @@ class Wavefunction(hk.Module):
         return self.__call__, (self.__call__, self.get_slater_matrices, self._calculate_features, self._calculate_embedding, self._calculate_orbitals, self._calculate_jastrow)
 
 
-def build_log_psi_squared(config: ModelConfig, phys_config: PhysicalConfig, fixed_params=None):
+def build_log_psi_squared(config: ModelConfig, phys_config: PhysicalConfig, fixed_params, rng_seed):
     # Initialize fixed model parameters
     fixed_params = fixed_params or init_model_fixed_params(config, phys_config)
 
@@ -748,9 +747,9 @@ def build_log_psi_squared(config: ModelConfig, phys_config: PhysicalConfig, fixe
 
     # Initialized trainable parameters using a dummy batch
     n_el, _, R, Z = phys_config.get_basic_params()
-    r = np.random.normal(size=[1, n_el, 3])
-    rng = jax.random.PRNGKey(np.random.randint(2**31))
-    params = model.init(rng, r, R, Z, fixed_params)
+    rng1, rng2 = jax.random.split(jax.random.PRNGKey(rng_seed), 2)
+    r = jax.random.normal(rng1, [1, n_el, 3])
+    params = model.init(rng2, r, R, Z, fixed_params)
 
     # Remove rng-argument (replace by None) and move parameters to back of function
     log_psi_sqr = lambda params, *batch: model.apply[0](params, None, *batch)
@@ -783,6 +782,6 @@ def init_model_fixed_params(config: ModelConfig, physical_config: PhysicalConfig
     if config.features.use_local_coordinates:
         fixed_params["input"]["local_rotations"] = build_local_rotation_matrices(physical_config)
 
-    return jax.tree_map(jnp.array, fixed_params)
+    return jax.tree_util.tree_map(jnp.array, fixed_params)
 
 

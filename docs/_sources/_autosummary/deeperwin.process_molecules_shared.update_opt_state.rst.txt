@@ -1,6 +1,0 @@
-deeperwin.process\_molecules\_shared.update\_opt\_state
-=======================================================
-
-.. currentmodule:: deeperwin.process_molecules_shared
-
-.. autofunction:: update_opt_state

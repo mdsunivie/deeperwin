@@ -123,8 +123,8 @@
         <span class="kn">from</span> <span class="nn">deeperwin.process_molecule</span> <span class="kn">import</span> <span class="n">process_molecule</span>
         <span class="n">process_molecule</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">config_file</span><span class="p">)</span>
     <span class="k">elif</span> <span class="n">args</span><span class="o">.</span><span class="n">command</span> <span class="o">==</span> <span class="s2">&quot;run-shared&quot;</span><span class="p">:</span>
-        <span class="kn">from</span> <span class="nn">deeperwin.process_molecules_shared</span> <span class="kn">import</span> <span class="n">process_molecules_shared</span>
-        <span class="n">process_molecules_shared</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">config_file</span><span class="p">)</span>
+        <span class="kn">from</span> <span class="nn">deeperwin.process_molecules_shared</span> <span class="kn">import</span> <span class="n">process_molecule_shared</span>
+        <span class="n">process_molecule_shared</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">config_file</span><span class="p">)</span>
     <span class="k">elif</span> <span class="n">args</span><span class="o">.</span><span class="n">command</span> <span class="o">==</span> <span class="s2">&quot;select-gpus&quot;</span><span class="p">:</span>
         <span class="kn">from</span> <span class="nn">deeperwin.run_tools.available_gpus</span> <span class="kn">import</span> <span class="n">assign_free_GPU_ids</span>
         <span class="nb">print</span><span class="p">(</span><span class="n">assign_free_GPU_ids</span><span class="p">(</span><span class="n">n_gpus</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">n_gpus</span><span class="p">,</span> <span class="n">sleep_seconds</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">sleep</span><span class="p">))</span>

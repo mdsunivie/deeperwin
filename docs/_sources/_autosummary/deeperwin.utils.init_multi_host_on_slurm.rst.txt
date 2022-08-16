@@ -1,0 +1,6 @@
+deeperwin.utils.init\_multi\_host\_on\_slurm
+============================================
+
+.. currentmodule:: deeperwin.utils
+
+.. autofunction:: init_multi_host_on_slurm

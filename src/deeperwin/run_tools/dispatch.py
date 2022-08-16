@@ -52,7 +52,7 @@ def dispatch_to_local(command, run_dir, config: Configuration, sleep_in_sec):
     subprocess.run(command, cwd=run_dir, env=env)
 
 def dispatch_to_local_background(command, run_dir, config: Configuration, sleep_in_sec):
-    n_gpus = config.computation.n_devices or 1
+    n_gpus = config.computation.n_local_devices or 1
     with open(os.path.join(run_dir, 'GPU.out'), 'w') as f:
         command = f"export CUDA_VISIBLE_DEVICES=$(deeperwin select-gpus --n-gpus {n_gpus} --sleep {sleep_in_sec}) && " + " ".join(command)
         print(f"Dispatching to local_background: {command}")
@@ -60,11 +60,30 @@ def dispatch_to_local_background(command, run_dir, config: Configuration, sleep_
 
 def dispatch_to_vsc3(command, run_dir, config: Configuration, sleep_in_sec):
     time_in_minutes = duration_string_to_minutes(config.dispatch.time)
-    queue = 'gpu_rtx2080ti' if config.dispatch.queue == "default" else config.dispatch.queue
-    n_gpus = config.computation.n_devices or 1
+    queue = 'gpu_a40dual' if config.dispatch.queue == "default" else config.dispatch.queue
+    n_gpus = config.computation.n_local_devices or 1
+    n_nodes = config.computation.n_nodes
+    if (n_nodes > 1) and ('a40' in queue) and (n_gpus < 2):
+        print("You requested multiple A40 nodes, using only 1 GPU each. Are you sure, you want this?")
     jobfile_content = get_jobfile_content_vsc3(' '.join(command), config.experiment_name, queue,
                                                time_in_minutes, config.dispatch.conda_env, sleep_in_sec,
-                                               n_gpus)
+                                               n_gpus, n_nodes)
+
+    with open(os.path.join(run_dir, 'job.sh'), 'w') as f:
+        f.write(jobfile_content)
+    subprocess.run(['sbatch', 'job.sh'], cwd=run_dir)
+
+
+def dispatch_to_vsc5(command, run_dir, config: Configuration, sleep_in_sec):
+    time_in_minutes = duration_string_to_minutes(config.dispatch.time)
+    queue = 'gpu_a100_dual' if config.dispatch.queue == "default" else config.dispatch.queue
+    n_gpus = config.computation.n_local_devices or 1
+    n_nodes = config.computation.n_nodes
+    if (n_nodes > 1) and ('a100' in queue) and (n_gpus < 2):
+        print("You requested multiple A100 nodes, using only 1 GPU each. Are you sure, you want this?")
+    jobfile_content = get_jobfile_content_vsc5(' '.join(command), config.experiment_name, queue,
+                                               time_in_minutes, config.dispatch.conda_env, sleep_in_sec,
+                                               n_gpus, n_nodes)
 
     with open(os.path.join(run_dir, 'job.sh'), 'w') as f:
         f.write(jobfile_content)
@@ -140,23 +159,46 @@ module purge
 {command}"""
 
 
-def get_jobfile_content_vsc3(command, jobname, queue, time, conda_env, sleep_in_seconds, n_gpus):
+def get_jobfile_content_vsc3(command, jobname, queue, time, conda_env, sleep_in_seconds, n_local_gpus, n_nodes):
+    if (n_nodes > 1) or (queue != 'gpu_a40dual'):
+        nodes_string = f"#SBATCH -N {n_nodes}"
+    else:
+        nodes_string = ""
     return f"""#!/bin/bash
 #SBATCH -J {jobname}
-{'#SBATCH -N 1' if queue != "gpu_a40dual" else ''}
+{nodes_string}
 #SBATCH --partition {queue}
 #SBATCH --qos {queue}
 #SBATCH --output GPU.out
 #SBATCH --time {time}
-#SBATCH --gres=gpu:{n_gpus}
+#SBATCH --gres=gpu:{n_local_gpus}
 
 module purge
-module load cuda/11.2.2
+module load cuda/11.4.2
 source /opt/sw/x86_64/glibc-2.17/ivybridge-ep/anaconda3/5.3.0/etc/profile.d/conda.sh
 conda activate {conda_env}
 export WANDB_DIR="${{HOME}}/tmp"
-export CUDA_VISIBLE_DEVICES=$(deeperwin select-gpus --n-gpus {n_gpus} --sleep {sleep_in_seconds}) 
-{command}"""
+export CUDA_VISIBLE_DEVICES=$(deeperwin select-gpus --n-gpus {n_local_gpus} --sleep {sleep_in_seconds})
+srun {command}"""
+
+
+def get_jobfile_content_vsc5(command, jobname, queue, time, conda_env, sleep_in_seconds, n_local_gpus, n_nodes):
+    return f"""#!/bin/bash
+#SBATCH -J {jobname}
+#SBATCH -N {n_nodes}
+#SBATCH --partition {queue}
+#SBATCH --qos goodluck
+#SBATCH --output GPU.out
+#SBATCH --time {time}
+#SBATCH --gres=gpu:{n_local_gpus}
+
+module purge
+module load cuda/11.5.0-gcc-11.2.0-ao7cp7w
+source /gpfs/opt/sw/spack-0.17.1/opt/spack/linux-almalinux8-zen3/gcc-11.2.0/miniconda3-4.12.0-ap65vga66z2rvfcfmbqopba6y543nnws/etc/profile.d/conda.sh
+conda activate {conda_env}
+export WANDB_DIR="${{HOME}}/tmp"
+export CUDA_VISIBLE_DEVICES=$(deeperwin select-gpus --n-gpus {n_local_gpus} --sleep {sleep_in_seconds})
+srun {command}"""
 
 
 def get_jobfile_content_dgx(command, jobname, jobdir, time, conda_env, src_dir):
@@ -190,12 +232,15 @@ def dispatch_job(command, job_dir, config, sleep_in_sec):
                 slurm_conf = f.readlines()
                 if 'slurm.vda.univie.ac.at' in ''.join(slurm_conf):
                     dispatch_to = "dgx"
-        if 'HPC_SYSTEM' in os.environ:
+        if os.environ.get('HOSTNAME', '').startswith("l5"):
+            dispatch_to = "vsc5"
+        elif 'HPC_SYSTEM' in os.environ:
             dispatch_to = os.environ["HPC_SYSTEM"].lower()  # vsc3 or vsc4
     logging.info(f"Dispatching command {' '.join(command)} to: {dispatch_to}")
     dispatch_func = dict(local=dispatch_to_local,
                          local_background=dispatch_to_local_background,
                          vsc3=dispatch_to_vsc3,
                          vsc4=dispatch_to_vsc4,
+                         vsc5=dispatch_to_vsc5,
                          dgx=dispatch_to_dgx)[dispatch_to]
     dispatch_func(command, job_dir, config, sleep_in_sec)
