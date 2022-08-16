@@ -61,7 +61,12 @@ def dispatch_to_local_background(command, run_dir, config: Configuration, sleep_
 def dispatch_to_vsc3(command, run_dir, config: Configuration, sleep_in_sec):
     time_in_minutes = duration_string_to_minutes(config.dispatch.time)
     queue = 'gpu_a40dual' if config.dispatch.queue == "default" else config.dispatch.queue
-    n_gpus = config.computation.n_local_devices or 1
+    if config.computation.n_local_devices:
+        n_gpus = config.computation.n_local_devices
+    elif queue in ['gpu_a40dual', 'gpu_a100_dual']:
+        n_gpus = 2
+    else:
+        n_gpus = 1
     n_nodes = config.computation.n_nodes
     if (n_nodes > 1) and ('a40' in queue) and (n_gpus < 2):
         print("You requested multiple A40 nodes, using only 1 GPU each. Are you sure, you want this?")
@@ -77,7 +82,12 @@ def dispatch_to_vsc3(command, run_dir, config: Configuration, sleep_in_sec):
 def dispatch_to_vsc5(command, run_dir, config: Configuration, sleep_in_sec):
     time_in_minutes = duration_string_to_minutes(config.dispatch.time)
     queue = 'gpu_a100_dual' if config.dispatch.queue == "default" else config.dispatch.queue
-    n_gpus = config.computation.n_local_devices or 1
+    if config.computation.n_local_devices:
+        n_gpus = config.computation.n_local_devices
+    elif queue in ['gpu_a40dual', 'gpu_a100_dual']:
+        n_gpus = 2
+    else:
+        n_gpus = 1
     n_nodes = config.computation.n_nodes
     if (n_nodes > 1) and ('a100' in queue) and (n_gpus < 2):
         print("You requested multiple A100 nodes, using only 1 GPU each. Are you sure, you want this?")

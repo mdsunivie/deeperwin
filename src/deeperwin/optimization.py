@@ -182,10 +182,11 @@ def optimize_wavefunction(
         if (n_epoch+1) in eval_checkpoints:
             LOGGER.debug(f"opt epoch {n_epoch:5d}: Running intermediate evaluation...")
             eval_config = EvaluationConfig(n_epochs=opt_config.intermediate_eval.n_epochs)
-            params_merged, fixed_params_merged = get_from_devices((params_merged, fixed_params_merged))
+            params_merged, fixed_params_merged = get_from_devices((params, fixed_params))
             mcmc_state_merged = mcmc_state.merge_devices()
             evaluate_wavefunction(
-                log_psi_squared, params_merged, fixed_params_merged, mcmc_state_merged, eval_config, phys_config, logger, n_epoch,
+                log_psi_squared, params_merged, fixed_params_merged, mcmc_state_merged, eval_config, phys_config,
+                rng_seed, logger, n_epoch,
             )
 
     LOGGER.debug("Finished wavefunction optimization...")
