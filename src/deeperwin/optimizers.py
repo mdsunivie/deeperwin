@@ -188,6 +188,12 @@ def build_optimizer(value_and_grad_func,
     if opt_config.name in ['kfac', 'kfac_adam']:
         schedule = build_lr_schedule(opt_config.learning_rate, opt_config.lr_schedule)
         internal_optimizer = build_optax_optimizer(opt_config.internal_optimizer)
+
+        if opt_config.damping_scheduler:
+            damping_scheduler = build_lr_schedule(opt_config.damping, opt_config.lr_schedule)
+        else:
+            damping_scheduler = lambda t: opt_config.damping
+
         return kfac_jax.Optimizer(value_and_grad_func,
                                   l2_reg=0.0,
                                   value_func_has_aux=value_func_has_aux,
@@ -196,7 +202,7 @@ def build_optimizer(value_and_grad_func,
                                   multi_device=True,
                                   pmap_axis_name="devices",
                                   momentum_schedule = lambda t: opt_config.momentum,
-                                  damping_schedule = build_lr_schedule(opt_config.damping, opt_config.lr_schedule),
+                                  damping_schedule = damping_scheduler,
                                   internal_optimizer=internal_optimizer,
                                   learning_rate_schedule=schedule,
                                   inverse_update_period=opt_config.update_inverse_period,
