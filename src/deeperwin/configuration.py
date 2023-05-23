@@ -2,7 +2,8 @@
 DeepErwin hyperparameter and configuration management.
 """
 import copy
-from typing import Union, Literal, Optional, List, Tuple, Iterable, Any
+from typing import Union, Optional, List, Tuple, Iterable, Any
+from typing_extensions import Literal
 import ruamel.yaml.comments
 from pydantic import BaseModel, validator, root_validator
 import numpy as np
