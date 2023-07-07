@@ -1,6 +1,0 @@
-deeperwin.configuration.build\_nested\_dict
-===========================================
-
-.. currentmodule:: deeperwin.configuration
-
-.. autofunction:: build_nested_dict

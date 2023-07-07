@@ -1,0 +1,113 @@
+# Pre-training config for a base model:
+# Orbital descriptors: Pre-trained PhisNet
+# Geometries: Continuous distortion of geometries
+# Dataset: Molecules up to size 4 heavy atoms
+# Embedding: GNN + ion-ion MPNN
+
+
+experiment_name: base_model_phisnetcoeff_distortion_gnn
+
+reuse:
+  mode: "reuse"
+  path_phisnet: "PATH TO PRETRAINED PhisNet model.zip"
+  reuse_trainable_params: False
+
+physical: QM7xTinyMol_rotated_torsion_angle
+
+optimization:
+  n_epochs: 500_000
+  init_clipping_with_None: True
+  optimizer:
+    learning_rate: 0.1
+    damping: 1
+    damping_schedule:
+      name: exponential
+      decay_time: 5000
+      minimum: 0.002
+    curvature_ema: 0.99
+    lr_schedule:
+      decay_time: 20000
+    norm_constraint_mode: fisher
+    norm_constraint: 30.0
+    scale_nc_by_std_dev: True
+  mcmc:
+    n_walkers: 2048
+    n_inter_steps: 40
+    n_burn_in: 2000
+  clipping:
+    name: hard
+    center: median
+    width_metric: mae
+  checkpoints:
+    keep_every_n_epochs: 16000
+    replace_every_n_epochs: 2000
+    log_only_zero_geom: True
+  shared_optimization:
+    scheduling_method: stddev
+    n_initial_round_robin_per_geom: 30
+    distortion:
+      max_age: 20
+      distortion_energy: 0.005
+
+evaluation:
+  n_epochs: 0
+model:
+  name: dpe4
+  embedding:
+    name: gnn
+    cutoff_type: constant
+    gnn:
+      n_iterations: 4
+      attention:
+      message_passing:
+        node_dim: 256
+        update_edge_features: false
+        use_edge_features_for_gating: true
+        use_node_features_for_gating: false
+        activation: silu
+      mlp_depth: 0
+    ion_gnn:
+      name: phisnet_ion_emb
+  Z_max: 8
+  orbitals:
+    n_determinants: 4
+    determinant_schema: full_det
+    transferable_atomic_orbitals:
+      atom_types: [1, 6, 7, 8]
+      basis_set: "STO-6G"
+      localization: boys
+      symmetrize_exponent_mlp: true
+      antisymmetrize_backflow_mlp: true
+      use_squared_envelope_input: true
+      envelope_width: 128
+      backflow_width: 256
+      envelope_depth: 2
+      backflow_depth: 2
+      orb_feature_gnn:
+        n_iterations: 2
+      phisnet_model:
+    envelope_orbitals:
+  features:
+    coordinates: cartesian
+    concatenate_el_ion_features: false
+    use_el_el_differences: True
+    n_ion_ion_rbf_features: 32
+    ion_embed_type:
+
+pre_training:
+  n_epochs: 50
+  sampling_density: reference
+  mcmc:
+    n_inter_steps: 40
+    stepsize_update_interval: 10
+    initialization: exponential
+  baseline:
+    basis_set: "STO-6G"
+    localization: boys
+  off_diagonal_mode: exponential
+  off_diagonal_scale: 0.05
+  off_diagonal_exponent: 3.0
+logging:
+  basic:
+    n_skip_epochs: 0
+

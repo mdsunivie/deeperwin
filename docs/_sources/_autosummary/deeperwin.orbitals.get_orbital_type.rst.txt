@@ -1,6 +1,0 @@
-deeperwin.orbitals.get\_orbital\_type
-=====================================
-
-.. currentmodule:: deeperwin.orbitals
-
-.. autofunction:: get_orbital_type

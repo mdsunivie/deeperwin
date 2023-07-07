@@ -1,6 +1,0 @@
-deeperwin.orbitals.evaluate\_molecular\_orbitals
-================================================
-
-.. currentmodule:: deeperwin.orbitals
-
-.. autofunction:: evaluate_molecular_orbitals

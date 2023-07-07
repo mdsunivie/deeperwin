@@ -1,6 +1,0 @@
-deeperwin.run\_tools.dispatch.dispatch\_to\_vsc4
-================================================
-
-.. currentmodule:: deeperwin.run_tools.dispatch
-
-.. autofunction:: dispatch_to_vsc4

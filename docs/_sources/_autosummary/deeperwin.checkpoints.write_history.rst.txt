@@ -1,6 +1,0 @@
-deeperwin.checkpoints.write\_history
-====================================
-
-.. currentmodule:: deeperwin.checkpoints
-
-.. autofunction:: write_history

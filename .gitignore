@@ -6,6 +6,13 @@
 /results.bz2
 /full_config.yml
 /wandb
-/src/deeperwin.egg-info
+/src/deeperwin.egg-info/
 /doc/build/
 settings.json
+/docs
+.vscode/
+log.out
+chkpt*.zip
+prechkpt*.zip
+src/scratchpad/bond_basis/tmp*
+src/analysis/gao_shared/tmp*

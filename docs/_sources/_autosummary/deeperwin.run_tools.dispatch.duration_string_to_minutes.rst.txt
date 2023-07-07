@@ -1,6 +1,0 @@
-deeperwin.run\_tools.dispatch.duration\_string\_to\_minutes
-===========================================================
-
-.. currentmodule:: deeperwin.run_tools.dispatch
-
-.. autofunction:: duration_string_to_minutes

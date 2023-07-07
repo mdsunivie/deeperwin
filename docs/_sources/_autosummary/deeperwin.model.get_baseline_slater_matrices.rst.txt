@@ -1,6 +1,0 @@
-deeperwin.model.get\_baseline\_slater\_matrices
-===============================================
-
-.. currentmodule:: deeperwin.model
-
-.. autofunction:: get_baseline_slater_matrices

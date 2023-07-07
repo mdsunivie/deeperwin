@@ -1,6 +1,0 @@
-deeperwin.utils.get\_from\_devices
-==================================
-
-.. currentmodule:: deeperwin.utils
-
-.. autofunction:: get_from_devices

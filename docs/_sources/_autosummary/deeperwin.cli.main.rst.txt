@@ -1,6 +1,0 @@
-deeperwin.cli.main
-==================
-
-.. currentmodule:: deeperwin.cli
-
-.. autofunction:: main

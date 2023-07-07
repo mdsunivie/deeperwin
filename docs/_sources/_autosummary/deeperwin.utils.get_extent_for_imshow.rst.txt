@@ -1,6 +1,0 @@
-deeperwin.utils.get\_extent\_for\_imshow
-========================================
-
-.. currentmodule:: deeperwin.utils
-
-.. autofunction:: get_extent_for_imshow

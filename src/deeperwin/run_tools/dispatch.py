@@ -46,61 +46,69 @@ def get_fname_fullpath(fname):
     return Path(__file__).resolve().parent.joinpath(fname)
 
 
-def dispatch_to_local(command, run_dir, config: Configuration, sleep_in_sec):
+def dispatch_to_local(command, run_dir, config: Configuration, sleep_in_sec, dry_run=False):
     env = os.environ.copy()
     env["CUDA_VISIBLE_DEVICES"] = assign_free_GPU_ids(sleep_seconds=sleep_in_sec)
-    subprocess.run(command, cwd=run_dir, env=env)
+    if dry_run:
+        print(f"Dry-run of command: {command}")
+    else:
+        subprocess.run(command, cwd=run_dir, env=env)
 
-def dispatch_to_local_background(command, run_dir, config: Configuration, sleep_in_sec):
+def dispatch_to_local_background(command, run_dir, config: Configuration, sleep_in_sec, dry_run):
     n_gpus = config.computation.n_local_devices or 1
     with open(os.path.join(run_dir, 'GPU.out'), 'w') as f:
         command = f"export CUDA_VISIBLE_DEVICES=$(deeperwin select-gpus --n-gpus {n_gpus} --sleep {sleep_in_sec}) && " + " ".join(command)
-        print(f"Dispatching to local_background: {command}")
-        subprocess.Popen(command, stdout=f, stderr=f, start_new_session=True, cwd=run_dir, shell=True)
+        if not dry_run:
+            print(f"Dispatching to local_background: {command}")
+            subprocess.Popen(command, stdout=f, stderr=f, start_new_session=True, cwd=run_dir, shell=True)
+        else:
+            print(f"Dry-runing: {command}")
 
-def dispatch_to_vsc3(command, run_dir, config: Configuration, sleep_in_sec):
+
+def dispatch_to_vsc5(command, run_dir, config: Configuration, sleep_in_sec, dry_run):
     time_in_minutes = duration_string_to_minutes(config.dispatch.time)
-    queue = 'gpu_a40dual' if config.dispatch.queue == "default" else config.dispatch.queue
+    queue_translation = dict(default="zen3_0512_a100x2",
+                             a40="zen2_0256_a40x2",
+                             a100="zen3_0512_a100x2"
+                             )
+    queue = queue_translation.get(config.dispatch.queue, config.dispatch.queue)
     if config.computation.n_local_devices:
         n_gpus = config.computation.n_local_devices
-    elif queue in ['gpu_a40dual', 'gpu_a100_dual']:
+    elif queue in ['zen3_0512_a100x2', 'zen2_0256_a40x2']:
         n_gpus = 2
     else:
         n_gpus = 1
     n_nodes = config.computation.n_nodes
-    if (n_nodes > 1) and ('a40' in queue) and (n_gpus < 2):
-        print("You requested multiple A40 nodes, using only 1 GPU each. Are you sure, you want this?")
-    jobfile_content = get_jobfile_content_vsc3(' '.join(command), config.experiment_name, queue,
-                                               time_in_minutes, config.dispatch.conda_env, sleep_in_sec,
-                                               n_gpus, n_nodes)
-
-    with open(os.path.join(run_dir, 'job.sh'), 'w') as f:
-        f.write(jobfile_content)
-    subprocess.run(['sbatch', 'job.sh'], cwd=run_dir)
-
-
-def dispatch_to_vsc5(command, run_dir, config: Configuration, sleep_in_sec):
-    time_in_minutes = duration_string_to_minutes(config.dispatch.time)
-    queue = 'gpu_a100_dual' if config.dispatch.queue == "default" else config.dispatch.queue
-    if config.computation.n_local_devices:
-        n_gpus = config.computation.n_local_devices
-    elif queue in ['gpu_a40dual', 'gpu_a100_dual']:
-        n_gpus = 2
-    else:
-        n_gpus = 1
-    n_nodes = config.computation.n_nodes
-    if (n_nodes > 1) and ('a100' in queue) and (n_gpus < 2):
-        print("You requested multiple A100 nodes, using only 1 GPU each. Are you sure, you want this?")
+    if (n_nodes > 1) and (('a100x2' in queue) or ('a40x2' in queue)) and (n_gpus < 2):
+        print("You requested multiple multi-GPU nodes, using only 1 GPU each. Are you sure, you want this?")
     jobfile_content = get_jobfile_content_vsc5(' '.join(command), config.experiment_name, queue,
                                                time_in_minutes, config.dispatch.conda_env, sleep_in_sec,
                                                n_gpus, n_nodes)
 
     with open(os.path.join(run_dir, 'job.sh'), 'w') as f:
         f.write(jobfile_content)
-    subprocess.run(['sbatch', 'job.sh'], cwd=run_dir)
+    if not dry_run:
+        subprocess.run(['sbatch', 'job.sh'], cwd=run_dir)
 
 
-def dispatch_to_vsc4(command, run_dir, config: Configuration, sleep_in_sec):
+def dispatch_to_hgx(command, run_dir, config: Configuration, sleep_in_sec, dry_run):
+    time_in_minutes = duration_string_to_minutes(config.dispatch.time)
+    queue = 'hgx' if config.dispatch.queue == "default" else config.dispatch.queue
+    qos = config.dispatch.qos or 'normal'
+    if config.computation.n_local_devices:
+        n_gpus = config.computation.n_local_devices
+    else:
+        n_gpus = 1
+    jobfile_content = get_jobfile_content_hgx(' '.join(command), config.experiment_name, queue,
+                                               qos, time_in_minutes, config.dispatch.conda_env,
+                                               n_gpus, n_nodes=1)
+    with open(os.path.join(run_dir, 'job.sh'), 'w') as f:
+        f.write(jobfile_content)
+    if not dry_run:
+        subprocess.run(['sbatch', 'job.sh'], cwd=run_dir)
+
+
+def dispatch_to_vsc4(command, run_dir, config: Configuration, sleep_in_sec, dry_run):
     time_in_minutes = duration_string_to_minutes(config.dispatch.time)
     queue = 'mem_0096' if config.dispatch.queue == "default" else config.dispatch.queue
     jobfile_content = get_jobfile_content_vsc4(' '.join(command), config.experiment_name, queue,
@@ -108,7 +116,8 @@ def dispatch_to_vsc4(command, run_dir, config: Configuration, sleep_in_sec):
 
     with open(os.path.join(run_dir, 'job.sh'), 'w') as f:
         f.write(jobfile_content)
-    subprocess.run(['sbatch', 'job.sh'], cwd=run_dir)
+    if not dry_run:
+        subprocess.run(['sbatch', 'job.sh'], cwd=run_dir)
 
 
 def append_nfs_to_fullpaths(command):
@@ -126,7 +135,7 @@ def _map_dgx_path(path):
     else:
         return path
 
-def dispatch_to_dgx(command, run_dir, config: Configuration, sleep_in_sec):
+def dispatch_to_dgx(command, run_dir, config: Configuration, sleep_in_sec, dry_run):
     command = append_nfs_to_fullpaths(command)
     time_in_minutes = duration_string_to_minutes(config.dispatch.time)
     src_dir = _map_dgx_path(Path(__file__).resolve().parent.parent)
@@ -137,7 +146,8 @@ def dispatch_to_dgx(command, run_dir, config: Configuration, sleep_in_sec):
 
     with open(os.path.join(run_dir, 'job.sh'), 'w') as f:
         f.write(jobfile_content)
-    subprocess.run(['sbatch', 'job.sh'], cwd=run_dir)
+    if not dry_run:
+        subprocess.run(['sbatch', 'job.sh'], cwd=run_dir)
 
 
 def duration_string_to_minutes(s):
@@ -193,23 +203,48 @@ srun {command}"""
 
 
 def get_jobfile_content_vsc5(command, jobname, queue, time, conda_env, sleep_in_seconds, n_local_gpus, n_nodes):
+    assert n_nodes == 1
     return f"""#!/bin/bash
 #SBATCH -J {jobname}
 #SBATCH -N {n_nodes}
 #SBATCH --partition {queue}
-#SBATCH --qos goodluck
+#SBATCH --qos {queue}
 #SBATCH --output GPU.out
 #SBATCH --time {time}
 #SBATCH --gres=gpu:{n_local_gpus}
+#SBATCH --exclude=n3067-005,n3068-001,n3066-015,n3068-003
 
+export MODULEPATH=/opt/sw/vsc4/VSC/Modules/TUWien:/opt/sw/vsc4/VSC/Modules/Intel/oneAPI:/opt/sw/vsc4/VSC/Modules/Parallel-Environment:/opt/sw/vsc4/VSC/Modules/Libraries:/opt/sw/vsc4/VSC/Modules/Compiler:/opt/sw/vsc4/VSC/Modules/Debugging-and-Profiling:/opt/sw/vsc4/VSC/Modules/Applications:/opt/sw/vsc4/VSC/Modules/p71545::/opt/sw/spack-0.17.1/var/spack/environments/zen3/modules/linux-almalinux8-zen:/opt/sw/spack-0.17.1/var/spack/environments/zen3/modules/linux-almalinux8-zen2:/opt/sw/spack-0.17.1/var/spack/environments/zen3/modules/linux-almalinux8-zen3
 module purge
 module load cuda/11.5.0-gcc-11.2.0-ao7cp7w
 source /gpfs/opt/sw/spack-0.17.1/opt/spack/linux-almalinux8-zen3/gcc-11.2.0/miniconda3-4.12.0-ap65vga66z2rvfcfmbqopba6y543nnws/etc/profile.d/conda.sh
 conda activate {conda_env}
+export OMP_NUM_THREADS=10
+export MKL_NUM_THREADS=10
 export WANDB_DIR="${{HOME}}/tmp"
 export CUDA_VISIBLE_DEVICES=$(deeperwin select-gpus --n-gpus {n_local_gpus} --sleep {sleep_in_seconds})
-srun {command}"""
+{command}"""
 
+
+def get_jobfile_content_hgx(command, jobname, queue, qos, time, conda_env, n_local_gpus, n_nodes):
+    return f"""#!/bin/bash
+#SBATCH -J {jobname}
+#SBATCH -N {n_nodes}
+#SBATCH -n 1
+#SBATCH --cpus-per-task 8
+#SBATCH --partition {queue}
+#SBATCH --qos {qos}
+#SBATCH --output GPU.out
+#SBATCH --time {time}
+#SBATCH --gres=gpu:{n_local_gpus}
+
+source /opt/anaconda3/etc/profile.d/conda.sh
+conda activate {conda_env}
+export OMP_NUM_THREADS=10
+export MKL_NUM_THREADS=10
+export WANDB_DIR="${{HOME}}/tmp"
+srun {command}
+"""
 
 def get_jobfile_content_dgx(command, jobname, jobdir, time, conda_env, src_dir):
     return f"""#!/bin/bash
@@ -231,26 +266,27 @@ export XLA_FLAGS=--xla_gpu_force_compilation_parallelism=1
 {command}"""
 
 
-def dispatch_job(command, job_dir, config, sleep_in_sec):
+def dispatch_job(command, job_dir, config, sleep_in_sec, dry_run=False):
     dispatch_to = config.dispatch.system
     if dispatch_to == "auto":
-        dispatch_to = "local"
         if os.uname()[1] == "gpu1-mat": # HGX
-            dispatch_to = "local_background"
+            dispatch_to = "hgx"
         elif os.path.exists("/etc/slurm/slurm.conf"):
             with open('/etc/slurm/slurm.conf') as f:
                 slurm_conf = f.readlines()
                 if 'slurm.vda.univie.ac.at' in ''.join(slurm_conf):
                     dispatch_to = "dgx"
-        if os.environ.get('HOSTNAME', '').startswith("l5"):
+        elif os.environ.get('HOSTNAME', '').startswith("l5"):
             dispatch_to = "vsc5"
         elif 'HPC_SYSTEM' in os.environ:
             dispatch_to = os.environ["HPC_SYSTEM"].lower()  # vsc3 or vsc4
+        else:
+            dispatch_to = "local"
     logging.info(f"Dispatching command {' '.join(command)} to: {dispatch_to}")
     dispatch_func = dict(local=dispatch_to_local,
                          local_background=dispatch_to_local_background,
-                         vsc3=dispatch_to_vsc3,
                          vsc4=dispatch_to_vsc4,
                          vsc5=dispatch_to_vsc5,
-                         dgx=dispatch_to_dgx)[dispatch_to]
-    dispatch_func(command, job_dir, config, sleep_in_sec)
+                         dgx=dispatch_to_dgx,
+                         hgx=dispatch_to_hgx)[dispatch_to]
+    dispatch_func(command, job_dir, config, sleep_in_sec, dry_run)

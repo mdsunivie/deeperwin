@@ -1,6 +1,0 @@
-deeperwin.utils.get\_ion\_pos\_string
-=====================================
-
-.. currentmodule:: deeperwin.utils
-
-.. autofunction:: get_ion_pos_string

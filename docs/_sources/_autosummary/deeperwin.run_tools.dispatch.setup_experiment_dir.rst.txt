@@ -1,6 +1,0 @@
-deeperwin.run\_tools.dispatch.setup\_experiment\_dir
-====================================================
-
-.. currentmodule:: deeperwin.run_tools.dispatch
-
-.. autofunction:: setup_experiment_dir

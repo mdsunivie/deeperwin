@@ -1,6 +1,0 @@
-deeperwin.loggers.build\_dpe\_root\_logger
-==========================================
-
-.. currentmodule:: deeperwin.loggers
-
-.. autofunction:: build_dpe_root_logger

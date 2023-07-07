@@ -1,6 +1,0 @@
-deeperwin.checkpoints.delete\_obsolete\_checkpoints
-===================================================
-
-.. currentmodule:: deeperwin.checkpoints
-
-.. autofunction:: delete_obsolete_checkpoints

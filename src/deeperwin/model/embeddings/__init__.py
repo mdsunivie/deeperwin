@@ -1,0 +1,5 @@
+from deeperwin.model.embeddings.ferminet_embedding import FermiNetEmbedding
+from deeperwin.model.embeddings.paulinet_embedding import PauliNetEmbedding
+from deeperwin.model.embeddings.transformer_embedding import TransformerEmbedding, AxialTransformerEmbedding
+from deeperwin.model.embeddings.e3_equivariant_embedding import EquivariantMPNNEmbedding
+from deeperwin.model.embeddings.gnn_embedding import GNNEmbedding

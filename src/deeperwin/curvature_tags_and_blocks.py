@@ -37,8 +37,8 @@ def register_repeated_dense(y, x, w, b):
 class RepeatedDenseBlock(kfac_jax.DenseTwoKroneckerFactored):
     """Dense block that is repeatedly applied to multiple inputs (e.g. vmap)."""
 
-    @property
-    def scale(self) -> Union[float, jnp.ndarray]:
+    # @property
+    def fixed_scale(self) -> Union[float, jnp.ndarray]:
         (x_shape,) = self.inputs_shapes
         return float(kfac_jax.utils.product(x_shape) // (x_shape[0] * x_shape[-1]))
 
@@ -79,54 +79,34 @@ def _dense_parameter_extractor(
 
 
 # repeating a dense layer once
-_repeated_dense1 = jax.vmap(_dense, in_axes=[0, [None, None]])
-_repeated_dense2 = jax.vmap(_repeated_dense1, in_axes=[0, [None, None]])
-_repeated_dense1_no_b = jax.vmap(_dense, in_axes=[0, [None]])
-_repeated_dense2_no_b = jax.vmap(_repeated_dense1_no_b, in_axes=[0, [None]])
+repeated_dense_patterns = []
+_dense_func = _dense
+_dense_func_no_bias = _dense
+_example_args_x = np.zeros([11, 13])
+_example_args_w = np.zeros([13, 7])
+_example_args_b = np.zeros([7])
+n_repeated_max = 4
+for n_rep in range(1, n_repeated_max+1):
+    _dense_func = jax.vmap(_dense_func, in_axes=[0, [None, None]])
+    _dense_func_no_bias = jax.vmap(_dense_func_no_bias, in_axes=[0, [None]])
+    _example_args_x = np.tile(_example_args_x, [n_rep+1] + [1] * _example_args_x.ndim)
+    pattern_dense = kfac_jax.tag_graph_matcher.GraphPattern(
+        name=f"repeated_dense{n_rep}_with_bias",
+        tag_primitive=repeated_dense_tag,
+        compute_func=_dense_func,
+        parameters_extractor_func=_dense_parameter_extractor,
+        example_args=[_example_args_x, [_example_args_w, _example_args_b]],
+    )
+    pattern_dense_no_bias = kfac_jax.tag_graph_matcher.GraphPattern(
+        name=f"repeated_dense{n_rep}_no_bias",
+        tag_primitive=repeated_dense_tag,
+        compute_func=_dense_func_no_bias,
+        parameters_extractor_func=_dense_parameter_extractor,
+        example_args=[_example_args_x, [_example_args_w]],
+    )
+    repeated_dense_patterns.append(pattern_dense)
+    repeated_dense_patterns.append(pattern_dense_no_bias)
 
-# Computation for repeated dense layer
-repeated_dense1_with_bias_pattern = kfac_jax.tag_graph_matcher.GraphPattern(
-    name="repeated_dense1_with_bias",
-    tag_primitive=repeated_dense_tag,
-    precedence=0,
-    compute_func=_repeated_dense1,
-    parameters_extractor_func=_dense_parameter_extractor,
-    example_args=[np.zeros([9, 11, 13]), [np.zeros([13, 7]), np.zeros([7])]],
-)
-
-repeated_dense1_no_bias_pattern = kfac_jax.tag_graph_matcher.GraphPattern(
-    name="repeated_dense1_no_bias",
-    tag_primitive=repeated_dense_tag,
-    precedence=0,
-    compute_func=_repeated_dense1_no_b,
-    parameters_extractor_func=_dense_parameter_extractor,
-    example_args=[np.zeros([9, 11, 13]), [np.zeros([13, 7])]],
-)
-
-repeated_dense2_with_bias_pattern = kfac_jax.tag_graph_matcher.GraphPattern(
-    name="repeated_dense2_with_bias",
-    tag_primitive=repeated_dense_tag,
-    precedence=0,
-    compute_func=_repeated_dense2,
-    parameters_extractor_func=_dense_parameter_extractor,
-    example_args=[np.zeros([8, 9, 11, 13]), [np.zeros([13, 7]), np.zeros([7])]],
-)
-
-repeated_dense2_no_bias_pattern = kfac_jax.tag_graph_matcher.GraphPattern(
-    name="repeated_dense2_no_bias",
-    tag_primitive=repeated_dense_tag,
-    precedence=0,
-    compute_func=_repeated_dense2_no_b,
-    parameters_extractor_func=_dense_parameter_extractor,
-    example_args=[np.zeros([8, 9, 11, 13]), [np.zeros([13, 7])]],
-)
-
-GRAPH_PATTERNS = (
-    repeated_dense1_with_bias_pattern,
-    repeated_dense2_with_bias_pattern,
-    repeated_dense1_no_bias_pattern,
-    repeated_dense2_no_bias_pattern,
-) + kfac_jax.tag_graph_matcher.DEFAULT_GRAPH_PATTERNS
-
+GRAPH_PATTERNS = tuple(repeated_dense_patterns) + kfac_jax.tag_graph_matcher.DEFAULT_GRAPH_PATTERNS
 
 kfac_jax.set_default_tag_to_block_ctor("repeated_dense_tag", RepeatedDenseBlock)

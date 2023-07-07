@@ -1,6 +1,0 @@
-deeperwin.process\_molecules\_shared.process\_molecule\_shared
-==============================================================
-
-.. currentmodule:: deeperwin.process_molecules_shared
-
-.. autofunction:: process_molecule_shared

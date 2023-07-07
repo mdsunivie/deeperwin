@@ -1,6 +1,0 @@
-deeperwin.local\_features.build\_local\_rotation\_matrices
-==========================================================
-
-.. currentmodule:: deeperwin.local_features
-
-.. autofunction:: build_local_rotation_matrices

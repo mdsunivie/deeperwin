@@ -1,6 +1,0 @@
-deeperwin.process\_molecules\_shared.optimize\_shared
-=====================================================
-
-.. currentmodule:: deeperwin.process_molecules_shared
-
-.. autofunction:: optimize_shared

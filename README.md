@@ -6,21 +6,193 @@ DeepErwin is based on JAX and supports:
 - Optimizing a wavefunction for a single nuclear geometry
 - Optimizing wavefunctions for multiple nuclear geometries in parallel, while sharing neural network weights across these wavefunctions to speed-up optimization
 - Using pre-trained weights of a network to speed-up optimization for entirely new wavefunctions
-- Using second-order optimizers such as KFAC or L-BFGS 
+- Using second-order optimizers such as KFAC 
 
-A detailed description of our method and the corresponding results can be found in our recent [arxiv publication](https://arxiv.org/pdf/2105.08351.pdf). When you use DeepErwin in your work, please cite:
+A detailed description of our method and the corresponding results can be found in our publications: 
 
-M. Scherbela, R. Reisenhofer, L. Gerard, P. Marquetand, and P. Grohs.<br>
-Solving the electronic Schrödinger equation for multiple nuclear geometries with weight-sharing deep neural networks.<br>
-arXiv preprint [arXiv:2105.08351](https://arxiv.org/pdf/2105.08351.pdf) (2021).
+[Solving the electronic Schrödinger equation for multiple nuclear geometries with weight-sharing deep neural networks](https://www.nature.com/articles/s43588-022-00228-x) \
+Scherbela, M., Reisenhofer, R., Gerard, L. et al. Published in: Nat Comput Sci 2, 331–341 (2022). 
+
+[Gold-standard solutions to the Schrödinger equation using deep learning: How much physics do we need?](https://proceedings.neurips.cc/paper_files/paper/2022/hash/430894999584d0bd358611e2ecf00b15-Abstract-Conference.html) \
+Gerard, L., Scherbela, M., et al. Published in: Advances in Neural Information Processing Systems (2022). 
+
+[Towards a Foundation Model for Neural Network Wavefunctions](https://arxiv.org/abs/2303.09949)
+Scherbela, M., Gerard, L., and Grohs., P. 
+
+Please cite the respective publication when using our codebase.
 
 
-## Getting Started
+# Quick overview
 
-The quickest way to get started with DeepErwin is to have a look at our [documentation](https://mdsunivie.github.io/deeperwin/). It contains a detailed description of our python codebase and a [tutorial](https://mdsunivie.github.io/deeperwin/tutorial.html) which should help you to quickly get up-and-running using DeepErwin.
+## Installation
 
-## About
+DeepErwin is a python3 package and has been tested on Linux and macOS.
+To get the most up-to-date version of the code, we recommend to checkout our repository from github:
+https://github.com/mdsunivie/deeperwin
 
-DeepErwin is a collaborative effort of Michael Scherbela, Rafael Reisenhofer, Leon Gerard, Philipp Marquetand, and Philipp Grohs.\
+To install deeperwin and all its dependencies, go to the downloaded directory and run
+
+```bash
+    pip install -e .
+```
+
+This will install the repository "in-place", so you can make changes to the source code without having to reinstall the package.
+If you need CUDA support to run the JAX code on GPUs (recommended), additionally install the prepackaged jax[cuda] wheel:
+
+```bash
+    pip install --upgrade "jax==0.3.23 jaxlib=0.3.22+cuda11.cudnn82 dm-haiku=0.0.9" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+```
+
+
+## Running a simple calculation
+
+
+To run a DeepErwin calculation, all configuration options must be specified in a YAML file, typically named *config.yml*.
+For all options that are not specified explicitly, sensible default values will be used. The default values are defined in :~deeperwin.configuration: and a full_config.yml will also be created for each calculation listing the full configuration.
+
+The absolute minimum that must be specified in a config-file is the physical system that one is interested in, i.e. the positions and charges of the nuclei.
+
+```yaml
+    physical:
+        R: [[0,0,0], [3.0,0,0]]
+        Z: [3, 1]
+```
+
+
+By default, DeepErwin assumes a neutral, closed shell calculation, i.e. the number of electrons equals the total charge of all nuclei, and the number of spin-up electrons is equal to the number of spin-down electrons.
+For a system with an uneven number of electrons, it is assumed that there is one extra spin-up electron.
+To calculate charged or spin-polarized systems, simply state the total number of electrons and the total number of spin-up electrons, e.g.
+
+```yaml
+    physical:
+        R: [[0,0,0], [3.0,0,0]]
+        Z: [3, 1]
+        n_electrons: 4
+        n_up: 2
+```
+
+Additionally, you might want to specifiy settings for the CASSCF-baseline model: The number of active electrons and active orbitals.
+
+```yaml
+    physical:
+        R: [[0,0,0], [3.0,0,0]]
+        Z: [3, 1]
+        n_electrons: 4
+        n_up: 2
+        n_cas_electrons: 2
+        n_cas_orbitals: 4
+```
+
+For several small molecules (e.g. H2, LiH, Ethene, first and second row elements) we have predefined their geometries and spin-settings.
+Instead of setting all these parameters manually, you can just specify them using the tag :code:`physical: name`:
+
+```yaml
+    physical:
+        name: LiH
+```
+
+You can also partially overwrite settings, e.g. to calculate a modified geometry of a molecule. For example to calculate a streteched LiH molecule with a bond-length of 3.5 bohr use this configuration:
+
+```yaml
+    physical:
+        name: LiH
+        R: [[0,0,0],[3.5,0,0]]
+```
+
+To run an actual calculation, run the python package as an executable:
+
+```bash
+    deeperwin run config.yml
+```
+
+This will combine your supplied configuration with default values for all other settings and dump it as *full_config.yml*. It will then run a calculation in the current directory, writing its output to the standard output and logfile.
+
+You can also set-up factorial sweeps of config-options, by using ```deeperwin setup``` with the -p flag.
+The following call will set-up 12 subdirectories (4 molecules x 3 learning-rates) and start calculations for all of them.
+If you run this on a SLURM-cluster, the jobs will not be executed directly, but instead SLURM-jobs will be submitted for parallel computation.
+
+```bash
+    deeperwin setup -p experiment_name my_sweep -p physical.name B C N O -p optimization.optimizer.learning_rate 1e-3 2e-3 5e-3 -i config.yml
+```
+
+The code runs best on a GPU, but will in principle also work on a CPU. It will generate several output files, in particular containing:
+
+* **GPU.out** containing a detailed debug log of all steps of the calculation
+* **full_config.yml** containing all configuration options used for this calculation: Your provided options, as well as all default options. Take a look at this file to see all the available config options for DeepErwin
+* **checkpoint** files containing a compressed, pickled representation of all data (including history and model weights)
+
+
+## Major configuration options
+
+
+To see a structure of all possible configuration options, take a look at the class ```deeperwin.configuration.Configuration``` which contains a full tree of all possible config options.
+Alternatively you can see the full configuration tree when looking at the *full_config.yml* file that is being generated at every run.
+
+
+## Optimization using weight-sharing
+ 
+When calculating wavefunctions for multiple related wavefunctions (e.g. for different geometries of the same molecule or even of different molecules), the naive approach would be to conduct independent wavefuntion optimiziations for each run.
+Another approach with a potential speed-up and a generalized wavefunction across compounds is to use the so called TAOs (transferable atomic orbitals), see also `arxiv publication`_.
+
+Therefore you need to specify multiple geometries in the physical config, choose the shared optimization flag and use in the model settings TAOs:
+
+```yaml
+    physical:
+        name: LiH
+        changes:
+          - R: [[0,0,0],[3.0,0,0]]
+            comment: "Equilibrium bond length"
+          - R: [[0,0,0],[2.8,0,0]]
+            comment: "Compressed molecule"
+          - R: [[0,0,0],[3.2,0,0]]
+            comment: "Stretched molecule"
+    optimization:
+        shared_optimization:
+            use: True
+
+    model:
+      orbitals:
+        generalized_atomic_orbitals:
+          atom_types: [1, 6, 7, 8]
+          basis_set: "STO-6G"
+          envelope_width: 128
+          backflow_width: 256
+          orb_feature_gnn:
+            n_iterations: 2
+          phisnet_model:
+```
+
+A complete config can be found in the folder sample_configs/pre_trained_basemodel/config_bm_hfcoeff.yml. Here,
+a wavefunction
+is optimized across 18 compounds with in total 360 geometries using Hartree Fock orbital descriptors as explained in our [arxiv publication](https://arxiv.org/abs/2303.09949). Pre-trained neural network weights (and the corresponding checkpoint) can be found at [https://doi.org/10.6084/m9.figshare.23585358.v1](https://doi.org/10.6084/m9.figshare.23585358.v1).
+For an example to reuse pre-trained model weights see also sample_configs/finetuning/config_reuse_from_basemodel_template.yml
+and the corresponding setup_finetuning_exp.py file.
+
+## Datasets and Geometries
+
+To handle large pre-training molecule datasets for the base model (as in [https://arxiv.org/abs/2303.09949](https://arxiv.org/abs/2303.09949)) we have a geometry database.
+It stores geometries of various molecules
+and groups them in datasets (cf. folder: datasets/db/datasets.json or datasets/db/geometries.json). Each geometry has a
+unique hash and each dataset has a unique name. Instead of defining molecules by name one can also use:
+
+
+
+```yaml
+    physical: eeed25f9e4dc8b8b44c0b8245cf1210c
+```
+
+or for a whole group of molecules:
+
+```yaml
+    physical: TinyMol_CNO_rot_dist_train_42compounds_10geoms_no_overlap_qm7
+```
+
+This can be useful when pre-training a wavefunction across hundreds of geometries of various compounds, preventing the need to define each geometry manually in a yaml file as it was done in the section "Optimization using weight-sharing".
+We have gathered additional example configs in the folder sample_configs.
+
+
+# About
+
+DeepErwin is a collaborative effort of Michael Scherbela, Leon Gerard, Rafael Reisenhofer, Philipp Marquetand, and Philipp Grohs.\
 The code was written by Michael Scherbela, Leon Gerard, and Rafael Reisenhofer.\
 If you have any questions, freel free to reach out via [e-mail](mailto:deeperwin.datascience@univie.ac.at).

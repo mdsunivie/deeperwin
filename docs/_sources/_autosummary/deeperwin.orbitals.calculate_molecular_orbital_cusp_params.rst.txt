@@ -1,6 +1,0 @@
-deeperwin.orbitals.calculate\_molecular\_orbital\_cusp\_params
-==============================================================
-
-.. currentmodule:: deeperwin.orbitals
-
-.. autofunction:: calculate_molecular_orbital_cusp_params

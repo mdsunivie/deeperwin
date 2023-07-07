@@ -1,6 +1,0 @@
-deeperwin.orbitals.get\_baseline\_solution
-==========================================
-
-.. currentmodule:: deeperwin.orbitals
-
-.. autofunction:: get_baseline_solution

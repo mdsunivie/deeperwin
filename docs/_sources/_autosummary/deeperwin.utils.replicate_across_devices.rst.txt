@@ -1,6 +1,0 @@
-deeperwin.utils.replicate\_across\_devices
-==========================================
-
-.. currentmodule:: deeperwin.utils
-
-.. autofunction:: replicate_across_devices

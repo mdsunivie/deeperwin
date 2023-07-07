@@ -18,7 +18,10 @@ import optax
 from typing import Optional, Any, Callable, Tuple, Mapping, Iterator, Union
 import jax
 import jax.numpy as jnp
-from deeperwin.configuration import OptimizerConfigKFAC, BFGSOptimizerConfig, OptimizationConfig, StandardOptimizerConfig
+from deeperwin.configuration import OptimizerConfigKFAC, BFGSOptimizerConfig, OptimizationConfig, \
+    StandardOptimizerConfig
+from deeperwin.optimization.opt_utils import build_lr_schedule, build_optax_optimizer
+from deeperwin.srcg import SRCGOptimizer
 from deeperwin import curvature_tags_and_blocks
 import haiku as hk
 import re
@@ -26,9 +29,11 @@ import re
 OptimizerConfigType = Union[StandardOptimizerConfig, OptimizerConfigKFAC, BFGSOptimizerConfig]
 OptaxState = Any
 
+
 class OptaxWrapper:
     """Wrapper class for Optax optimizers to have the same interface as KFAC.
     """
+
     def __init__(
             self,
             value_and_grad_func: kfac_jax.optimizer.ValueAndGradFunc,
@@ -38,7 +43,7 @@ class OptaxWrapper:
             optax_optimizer: optax.GradientTransformation,
             multi_device: bool = False,
             pmap_axis_name="devices",
-           batch_process_func: Optional[Callable[[Any], Any]] = lambda x: x,
+            batch_process_func: Optional[Callable[[Any], Any]] = lambda x: x,
     ):
         """Initializes the Optax wrapper.
 
@@ -72,19 +77,20 @@ class OptaxWrapper:
         self._multi_device = multi_device
         self._pmap_axis_name = pmap_axis_name
         if self._multi_device:
-            self._jit_step = jax.pmap(self._step, axis_name=self._pmap_axis_name, donate_argnums=[0, 1, 2, 3, 5])
+            self._jit_step = jax.pmap(self._step, axis_name=self._pmap_axis_name, static_broadcasted_argnums=[2], donate_argnums=[0, 1, 3, 5])
         else:
-            self._jit_step = jax.jit(self._step)
+            self._jit_step = jax.jit(self._step, static_argnums=[2])
 
     def init(
             self,
             params: kfac_jax.utils.Params,
             rng: jnp.ndarray,
             batch: kfac_jax.utils.Batch,
+            static_args: Optional[Any] = None,
             func_state: Optional[kfac_jax.utils.FuncState] = None
     ) -> OptaxState:
         """Initializes the optimizer and returns the appropriate optimizer state."""
-        del rng, batch, func_state
+        del rng, batch, func_state, static_args
         if self._multi_device:
             return jax.pmap(self._optax_optimizer.init)(params)
         else:
@@ -94,14 +100,19 @@ class OptaxWrapper:
             self,
             params: kfac_jax.utils.Params,
             state: OptaxState,
-            rng,
+            static_args: Any,
+            rng: jnp.ndarray,
             batch: kfac_jax.utils.Batch,
             func_state: Optional[kfac_jax.utils.FuncState] = None,
     ) -> kfac_jax.optimizer.FuncOutputs:
         """A single step of optax."""
         batch = self._batch_process_func(batch)
         func_args = kfac_jax.optimizer.make_func_args(
-            params, func_state, rng, batch,
+            params=params,
+            func_state=func_state,
+            rng=rng,
+            static_args=static_args,
+            batch=batch,
             has_state=self._value_func_has_state,
             has_rng=self._value_func_has_rng
         )
@@ -125,7 +136,7 @@ class OptaxWrapper:
         new_params = optax.apply_updates(params, updates)
 
         # Add batch size
-        batch_size = jax.tree_leaves(batch)[0].shape[0]
+        batch_size = jax.tree_util.tree_leaves(batch)[0].shape[0]
         stats["batch_size"] = batch_size * jax.device_count()
 
         if self._value_func_has_state:
@@ -137,6 +148,7 @@ class OptaxWrapper:
             self,
             params: kfac_jax.utils.Params,
             state: OptaxState,
+            static_args: Optional[Any],
             rng: jnp.ndarray,
             batch: kfac_jax.utils.Batch,
             func_state: Optional[kfac_jax.utils.FuncState] = None,
@@ -146,77 +158,62 @@ class OptaxWrapper:
                      Mapping[str, jnp.ndarray]]]:
         """A step with similar interface to KFAC."""
         result = self._jit_step(
-            params=params,
-            state=state,
-            rng=rng,
-            batch=batch,
-            func_state=func_state,
+            params,
+            state,
+            static_args,
+            rng,
+            batch,
+            func_state,
         )
         return result
 
-def build_lr_schedule(base_lr, schedule_config):
-    if schedule_config.name == "inverse":
-        return lambda t: base_lr / (1 + t / schedule_config.decay_time)
-    elif schedule_config.name == "fixed":
-        return lambda t: base_lr
-    else:
-        raise ValueError(f"Unsupported config-value for optimization.schedule.name: {schedule_config.name}")
-
-def build_optax_optimizer(config: StandardOptimizerConfig):
-    lr_schedule = build_lr_schedule(config.learning_rate, config.lr_schedule)
-    if config.name in ['adam', 'sgd', 'rmsprop']:
-        optimizer = getattr(optax, config.name)(lr_schedule)
-    else:
-        raise ValueError(f"Unknown optimizer: {config.name}")
-
-    # Scale gradients for selected modules
-    if hasattr(config, "scaled_modules") and config.scaled_modules:
-        regex = re.compile("(" + "|".join(config.scaled_modules) + ")")
-        def leaf_filter_func(module_name, name, v):
-            return len(regex.findall(f"{module_name}/{name}")) > 0
-        optimizer = optax.chain(
-            optimizer,
-            optax.masked(optax.scale(config.scale_lr), lambda params: hk.data_structures.map(leaf_filter_func, params))
-        )
-    return optimizer
 
 
 def build_optimizer(value_and_grad_func,
                     opt_config: OptimizerConfigType,
                     value_func_has_aux=False,
-                    value_func_has_state=False):
+                    value_func_has_state=False,
+                    log_psi_squared_func=None):
     if opt_config.name in ['kfac', 'kfac_adam']:
         schedule = build_lr_schedule(opt_config.learning_rate, opt_config.lr_schedule)
         internal_optimizer = build_optax_optimizer(opt_config.internal_optimizer)
-
-        if opt_config.damping_scheduler:
-            damping_scheduler = build_lr_schedule(opt_config.damping, opt_config.lr_schedule)
-        else:
-            damping_scheduler = lambda t: opt_config.damping
-
+        damping_scheduler = build_lr_schedule(opt_config.damping,
+                                              opt_config.damping_schedule)
         return kfac_jax.Optimizer(value_and_grad_func,
-                                  l2_reg=0.0,
+                                  l2_reg=opt_config.l2_reg,
                                   value_func_has_aux=value_func_has_aux,
                                   value_func_has_state=value_func_has_state,
                                   value_func_has_rng=False,
                                   multi_device=True,
                                   pmap_axis_name="devices",
-                                  momentum_schedule = lambda t: opt_config.momentum,
-                                  damping_schedule = damping_scheduler,
+                                  momentum_schedule=lambda t: opt_config.momentum,
+                                  damping_schedule=damping_scheduler,
                                   internal_optimizer=internal_optimizer,
                                   learning_rate_schedule=schedule,
                                   inverse_update_period=opt_config.update_inverse_period,
                                   num_burnin_steps=opt_config.n_burn_in,
                                   register_only_generic=opt_config.register_generic,
+                                  norm_constraint_mode=opt_config.norm_constraint_mode,
                                   norm_constraint=opt_config.norm_constraint,
+                                  scale_nc_by_std_dev=opt_config.scale_nc_by_std_dev,
+                                  min_clip_nc=opt_config.min_clip_nc,
+                                  max_clip_nc=opt_config.max_clip_nc,
                                   estimation_mode=opt_config.estimation_mode,
                                   min_damping=opt_config.min_damping,
                                   curvature_ema=opt_config.curvature_ema,
                                   auto_register_kwargs=dict(
-                                        graph_patterns=curvature_tags_and_blocks.GRAPH_PATTERNS),
-                                  include_norms_in_stats=True
+                                        graph_patterns=curvature_tags_and_blocks.GRAPH_PATTERNS,
+                                        raise_error_on_diff_jaxpr=False,
+                                  ),
+                                  include_norms_in_stats=True,
+                                  include_per_param_norms_in_stats=False,
                                   )
-    elif opt_config.name in ['adam', 'sgd', 'rmsprop']:
+    elif opt_config.name == 'slbfgs':
+        raise NotImplementedError("BFGS currently not yet implemented")
+    elif opt_config.name == 'srcg':
+        assert log_psi_squared_func is not None, "log_psi_squared_func must be provided for Stochastic Reconfigration Optimizer (SRCG)"
+        return SRCGOptimizer(log_psi_squared_func, value_and_grad_func, opt_config)
+    else:
         return OptaxWrapper(value_and_grad_func,
                             value_func_has_aux=value_func_has_aux,
                             value_func_has_state=value_func_has_state,
@@ -224,9 +221,3 @@ def build_optimizer(value_and_grad_func,
                             optax_optimizer=build_optax_optimizer(opt_config),
                             multi_device=True,
                             pmap_axis_name="devices")
-    elif opt_config.name == 'slbfgs':
-        raise NotImplementedError("BFGS currently not yet implemented")
-    else:
-        raise ValueError(f"Unknown optimizer: {opt_config.name}")
-
-

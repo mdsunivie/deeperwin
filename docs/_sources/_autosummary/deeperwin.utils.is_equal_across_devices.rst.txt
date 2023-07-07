@@ -1,6 +1,0 @@
-deeperwin.utils.is\_equal\_across\_devices
-==========================================
-
-.. currentmodule:: deeperwin.utils
-
-.. autofunction:: is_equal_across_devices

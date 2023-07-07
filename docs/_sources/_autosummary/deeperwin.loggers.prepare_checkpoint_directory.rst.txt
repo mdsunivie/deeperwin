@@ -1,6 +1,0 @@
-deeperwin.loggers.prepare\_checkpoint\_directory
-================================================
-
-.. currentmodule:: deeperwin.loggers
-
-.. autofunction:: prepare_checkpoint_directory

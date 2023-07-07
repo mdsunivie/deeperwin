@@ -1,6 +1,0 @@
-deeperwin.run\_tools.sweep\_agent.run\_sweep\_agent
-===================================================
-
-.. currentmodule:: deeperwin.run_tools.sweep_agent
-
-.. autofunction:: run_sweep_agent

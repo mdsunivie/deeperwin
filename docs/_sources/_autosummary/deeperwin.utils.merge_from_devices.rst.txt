@@ -1,6 +1,0 @@
-deeperwin.utils.merge\_from\_devices
-====================================
-
-.. currentmodule:: deeperwin.utils
-
-.. autofunction:: merge_from_devices

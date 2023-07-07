@@ -1,6 +1,0 @@
-deeperwin.utils.getCodeVersion
-==============================
-
-.. currentmodule:: deeperwin.utils
-
-.. autofunction:: getCodeVersion

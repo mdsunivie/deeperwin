@@ -1,6 +1,0 @@
-deeperwin.utils.save\_xyz\_file
-===============================
-
-.. currentmodule:: deeperwin.utils
-
-.. autofunction:: save_xyz_file

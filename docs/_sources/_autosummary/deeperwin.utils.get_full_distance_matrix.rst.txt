@@ -1,6 +1,0 @@
-deeperwin.utils.get\_full\_distance\_matrix
-===========================================
-
-.. currentmodule:: deeperwin.utils
-
-.. autofunction:: get_full_distance_matrix

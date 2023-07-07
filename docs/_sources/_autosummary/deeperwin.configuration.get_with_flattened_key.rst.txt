@@ -1,6 +1,0 @@
-deeperwin.configuration.get\_with\_flattened\_key
-=================================================
-
-.. currentmodule:: deeperwin.configuration
-
-.. autofunction:: get_with_flattened_key

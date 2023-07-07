@@ -1,6 +1,0 @@
-deeperwin.orbitals.build\_pyscf\_molecule
-=========================================
-
-.. currentmodule:: deeperwin.orbitals
-
-.. autofunction:: build_pyscf_molecule

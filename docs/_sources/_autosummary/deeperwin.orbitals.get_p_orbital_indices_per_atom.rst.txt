@@ -1,6 +1,0 @@
-deeperwin.orbitals.get\_p\_orbital\_indices\_per\_atom
-======================================================
-
-.. currentmodule:: deeperwin.orbitals
-
-.. autofunction:: get_p_orbital_indices_per_atom

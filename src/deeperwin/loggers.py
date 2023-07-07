@@ -7,7 +7,7 @@ import time
 import os.path
 import sys
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Literal
+from typing import List, Dict, Any, Literal, Optional
 
 import jax
 import numpy as np
@@ -16,6 +16,7 @@ import wandb
 from deeperwin.configuration import LoggingConfig, BasicLoggerConfig, LoggerBaseConfig, PickleLoggerConfig, \
     WandBConfig, Configuration
 from deeperwin.checkpoints import save_run, RunData
+from deeperwin.utils.utils import without_cache
 
 
 def build_dpe_root_logger(config: BasicLoggerConfig):
@@ -35,7 +36,15 @@ def build_dpe_root_logger(config: BasicLoggerConfig):
     logging.basicConfig(level=config.log_level, handlers=handlers, force=True)
 
     # Step 2: Set up dpe-logger: Currently no handlers, but will also automatically log into root
-    return logging.getLogger("dpe")
+    dpe_logger = logging.getLogger("dpe")
+
+    # Step 3: Configure loggers of dependencies
+    for logger, level in config.sublog_levels.items():
+        logging.getLogger(logger).setLevel(level)
+
+    return dpe_logger
+
+
 
 class DataLogger(ABC):
     """
@@ -80,7 +89,7 @@ class DataLogger(ABC):
     def log_metrics(self, metrics: Dict[str, Any], epoch=None, metric_type: Literal["", "opt", "eval", "pre"] = "", force_log=False):
         pass
 
-    def log_checkpoint(self, n_epoch, params=None, fixed_params=None, mcmc_state=None, opt_state=None, clipping_state=None):
+    def log_checkpoint(self, n_epoch, params=None, fixed_params=None, mcmc_state=None, opt_state=None, clipping_state=None, ema_params=None, prefix=""):
         pass
 
     def on_run_end(self):
@@ -94,24 +103,38 @@ class LoggerCollection(DataLogger):
     List of multiple loggers that replicates logs across all sub-loggers.
     """
 
-    def __init__(self, config: LoggingConfig, name, save_path=".", prefix=''):
+    def __init__(self, config: LoggingConfig, name: str, use_wandb_group: bool = False,
+                       exp_idx_in_group: Optional[int] = None, save_path: str = ".", prefix: str = '',
+                       parallel_wandb_logging: bool = False):
         super(LoggerCollection, self).__init__(config, name, save_path)
-        self.loggers: List[DataLogger] = self.build_loggers(config, name, save_path, prefix)
+
+        if use_wandb_group:
+            group_name = name
+            experiment_name = f'{group_name}_{exp_idx_in_group}'
+        else:
+            group_name = None
+            experiment_name = name
+
+        self.loggers: List[DataLogger] = self.build_loggers(config, group_name, experiment_name, save_path, prefix, parallel_wandb_logging)
 
     @staticmethod
-    def build_loggers(config: LoggingConfig, name, save_path=".", prefix=''):
+    def build_loggers(config: LoggingConfig, group_name: Optional[str], experiment_name: str, 
+                      save_path: str = ".", prefix: str = '', parallel_wandb_logging: bool = False):
         loggers = []
         if config.basic is not None:
-            loggers.append(BasicLogger(config.basic, name, save_path, prefix))
+            loggers.append(BasicLogger(config.basic, experiment_name, save_path, prefix))
         if config.pickle is not None:
-            loggers.append(PickleLogger(config.pickle, name, save_path, config.log_opt_state))
+            loggers.append(PickleLogger(config.pickle, experiment_name, save_path, config.log_opt_state))
         if config.wandb is not None:
-            loggers.append(WandBLogger(config.wandb, name, save_path, prefix))
+            if parallel_wandb_logging:
+                loggers.append(WandBParallelLogger(config.wandb, group_name, experiment_name, save_path, prefix))
+            else:
+                loggers.append(WandBLogger(config.wandb, group_name, experiment_name, save_path, prefix))
         return loggers
 
-    def log_checkpoint(self, n_epoch, params=None, fixed_params=None, mcmc_state=None, opt_state=None, clipping_state=None):
+    def log_checkpoint(self, n_epoch, params=None, fixed_params=None, mcmc_state=None, opt_state=None, clipping_state=None, ema_params=None, prefix=""):
         for l in self.loggers:
-            l.log_checkpoint(n_epoch, params, fixed_params, mcmc_state, opt_state, clipping_state)
+            l.log_checkpoint(n_epoch, params, fixed_params, mcmc_state, opt_state, clipping_state, ema_params, prefix)
 
     def on_run_begin(self):
         for l in self.loggers:
@@ -137,12 +160,94 @@ class LoggerCollection(DataLogger):
         for l in self.loggers:
             l.log_tags(tags)
 
+import multiprocessing
 
-class WandBLogger(DataLogger):
-    def __init__(self, config: WandBConfig, name, save_path='.', prefix=''):
-        super().__init__(config, name, save_path)
+def wandb_parallel_logger_process(save_path, project, entity, experiment_name, group_name, queue):
+    wandb_run = wandb.init(dir=save_path, project=project, name=experiment_name, entity=entity, group=group_name, tags=[], reinit=True)
+
+    running = True
+    while running:
+        (name, values) = queue.get()
+        if name == "metrics":
+            wandb_run.log(values)
+        if name == "summary":
+            for k, v in values.items():
+                wandb_run.summary[k] = v
+            wandb_run.summary
+        elif name == "params":
+            wandb_run.config.update(values, allow_val_change=False)
+        elif name == "tags":
+            wandb_run.tags = wandb_run.tags + tuple(values)
+        elif name == "finish":
+            wandb_run.finish()
+            running = False
+
+class WandBParallelLogger(DataLogger):
+    def __init__(self, config: WandBConfig, group_name: Optional[str], experiment_name: str, 
+                       save_path: str = '.', prefix: str = ''):
+        super().__init__(config, experiment_name, save_path)
+        self.experiment_name = experiment_name
+        self.group_name = group_name
         self.prefix = (prefix + "_") if prefix else ""
         self.blacklist = tuple(config.blacklist)
+
+        self.queue = multiprocessing.Queue(maxsize=1)
+        self.process = multiprocessing.Process(target=wandb_parallel_logger_process, 
+                                               args=(self.save_path, config.project, config.entity, 
+                                                     self.experiment_name, self.group_name, self.queue,))
+
+    def on_run_begin(self):
+        self.process.start()
+
+    def on_run_end(self):
+        self.queue.put(("finish", ""))
+
+    def log_params(self, params):
+        self.queue.put(("params", params))
+
+    def log_tags(self, tags: List[str]):
+        self.queue.put(("tags", tags))
+
+    @staticmethod
+    def _convert_metric_datatype(x):
+        if x is None:
+            return x
+        elif isinstance(x, (float, int)):
+            return x
+        elif hasattr(x, 'shape'):
+            n_elements = int(np.prod(x.shape))
+            if n_elements > 1:
+                return np.array(x)
+            else:
+                return float(x)
+        else:
+            # logging.warning(f"Cannot log data-type using WandB: {type(x)}")
+            return float(np.mean(x))
+
+    def log_metrics(self, metrics, epoch=None, metric_type: str = "", force_log=False):
+        if (not force_log) and self._should_skip_epoch(epoch):
+            return
+        metrics_prefixed = {self.prefix + k: v for k,v in metrics.items() if not k.endswith(self.blacklist)}
+        for key in metrics_prefixed:
+            metrics_prefixed[key] = self._convert_metric_datatype(metrics_prefixed[key])
+        if epoch is None:
+            self.queue.put(("summary", metrics_prefixed))
+        else:
+            epoch_key = f'{metric_type}_epoch' if metric_type else 'epoch'
+            metrics_prefixed[epoch_key] = epoch
+            self.queue.put(('metrics', metrics_prefixed))
+
+
+
+class WandBLogger(DataLogger):
+    def __init__(self, config: WandBConfig, group_name: Optional[str], experiment_name: str, 
+                       save_path: str = '.', prefix: str = ''):
+        super().__init__(config, experiment_name, save_path)
+        self.experiment_name = experiment_name
+        self.group_name = group_name
+        self.prefix = (prefix + "_") if prefix else ""
+        self.blacklist = tuple(config.blacklist)
+        self.include_epoch = True
 
     @staticmethod
     def _convert_metric_datatype(x):
@@ -161,13 +266,17 @@ class WandBLogger(DataLogger):
             return float(np.mean(x))
 
     def on_run_begin(self):
-        if wandb.run is None:
-            if self.logger_config.id is not None and self.logger_config.use_id:
-                wandb.init(dir=self.save_path, project=self.logger_config.project, name=self.name,
-                           entity=self.logger_config.entity, tags=[], resume='must', id=self.logger_config.id,
-                           allow_val_change=True)
-            else:
-                wandb.init(dir=self.save_path, project=self.logger_config.project, name=self.name, entity=self.logger_config.entity, tags=[])
+        if self.logger_config.id is not None and self.logger_config.use_id:
+            wandb.init(dir=self.save_path, project=self.logger_config.project, name=self.name,
+                        entity=self.logger_config.entity, tags=[], resume='must', id=self.logger_config.id,
+                        allow_val_change=True, reinit=True)
+        
+        if self.group_name is not None:
+            wandb.init(dir=self.save_path, project=self.logger_config.project, name=self.experiment_name, 
+                                    entity=self.logger_config.entity, group=self.group_name, tags=[], reinit=True)
+        else:
+            wandb.init(dir=self.save_path, project=self.logger_config.project, name=self.experiment_name, 
+                        entity=self.logger_config.entity, tags=[], reinit=True)
 
 
     def on_run_end(self):
@@ -186,15 +295,18 @@ class WandBLogger(DataLogger):
     def log_metrics(self, metrics, epoch=None, metric_type: str = "", force_log=False):
         if (not force_log) and self._should_skip_epoch(epoch):
             return
-        metrics_prefixed = {self.prefix + k: v for k,v in metrics.items() if not k.endswith(self.blacklist)}
+
+        blacklist = tuple(metric_type + "_" + bl for bl in self.blacklist) if metric_type != "" else self.blacklist
+        metrics_prefixed = {self.prefix + k: v for k,v in metrics.items() if not k.startswith(blacklist)}
         for key in metrics_prefixed:
             metrics_prefixed[key] = self._convert_metric_datatype(metrics_prefixed[key])
         if epoch is None:
             for k, v in metrics_prefixed.items():
                 wandb.run.summary[k] = v
         else:
-            epoch_key = f'{metric_type}_epoch' if metric_type else 'epoch'
-            metrics_prefixed[epoch_key] = epoch
+            if self.include_epoch:
+                epoch_key = f'{metric_type}_epoch' if metric_type else 'epoch'
+                metrics_prefixed[epoch_key] = epoch
             wandb.run.log(metrics_prefixed)
 
 
@@ -212,10 +324,14 @@ class BasicLogger(DataLogger):
         logger_name = "dpe" if len(prefix) == 0 else f"dpe.{prefix}"
         self.logger = logging.getLogger(logger_name)
         self.logger.handlers.append(fh)
+        self.blacklist = tuple(config.blacklist)
 
     def log_metrics(self, metrics: Dict[str, Any], epoch=None, metric_type: Literal["", "opt", "eval", "pre"] = "", force_log=False):
         if (not force_log) and self._should_skip_epoch(epoch):
             return
+
+        blacklist = tuple(metric_type + "_" + bl for bl in self.blacklist) if metric_type != "" else self.blacklist
+        metrics = {k: v for k, v in metrics.items() if not k.startswith(blacklist)}
         msg = "; ".join(f"{key}={value}" for key, value in metrics.items())
         if epoch is not None:
             msg = f"{metric_type} Epoch {epoch:>5d}: " + msg
@@ -225,14 +341,6 @@ class BasicLogger(DataLogger):
         msg = "; ".join(f"{key}={value}" for key, value in params.items())
         self.logger.info(msg)
 
-def prepare_checkpoint_directory(epoch, run_path=".", pretraining_checkpoint=False):
-    chkpt_name = f"chkpt{epoch:06d}" if not pretraining_checkpoint else f"pretrain_chkpt{epoch:06d}"
-    chkpt_dir = os.path.join(run_path, chkpt_name)
-    if os.path.exists(chkpt_dir):
-        logging.warning(f"Directory {chkpt_dir} already exists. Results might be overwritten.")
-    else:
-        os.mkdir(chkpt_dir)
-    return chkpt_dir
 
 class PickleLogger(DataLogger):
     """
@@ -269,20 +377,21 @@ class PickleLogger(DataLogger):
     def log_params(self, params: Dict[str, Any]):
         self.meta_data.update(params)
 
-    def log_checkpoint(self, n_epoch, params=None, fixed_params=None, mcmc_state=None, opt_state=None, clipping_state=None):
+    def log_checkpoint(self, n_epoch, params=None, fixed_params=None, mcmc_state=None, opt_state=None, clipping_state=None, ema_params=None, prefix=""):
         data = RunData(config=self.config,
                        metadata=dict(n_epochs=n_epoch, **self.meta_data),
                        history=self.history,
                        summary=self.summary,
                        params=jax.tree_util.tree_map(np.array, params),
                        fixed_params=fixed_params,
+                       ema_params=jax.tree_util.tree_map(np.array, ema_params),
                        opt_state=opt_state,
                        mcmc_state=mcmc_state,
                        clipping_state=clipping_state)
         if n_epoch is None:
-            fname = os.path.join(self.save_path, f"chkpt.zip")
+            fname = os.path.join(self.save_path, f"{prefix}chkpt.zip")
         else:
-            fname = os.path.join(self.save_path, f"chkpt{n_epoch:06d}.zip")
+            fname = os.path.join(self.save_path, f"{prefix}chkpt{n_epoch:06d}.zip")
         save_run(fname, data)
 
 class WavefunctionLogger:
@@ -305,7 +414,7 @@ class WavefunctionLogger:
             return np.nanmean(samples_for_averaging, axis=0)
 
     def log_step(self, metrics, E_ref=None, mcmc_state:'MCMCState'=None, opt_stats=None,
-                 extra_metrics=None):
+                 extra_metrics=None, epoch: Optional[int] = None):
         if self.loggers is None:
             return
 
@@ -335,8 +444,8 @@ class WavefunctionLogger:
             self._mcmc_state_old = mcmc_state
 
         if opt_stats is not None:
-            for key in ['param_norm', 'grad_norm', 'precon_grad_norm', 'norm_constraint_factor']:
-                if key in opt_stats:
+            for key in opt_stats:
+                if key.startswith(('param_norm', 'grad_norm', 'precon_grad_norm', 'norm_constraint_factor', 'norm_constraint')):
                     metrics[key] = opt_stats[key]
 
         for key in ["E_mean", "error_E_mean", "forces"]:
@@ -353,11 +462,16 @@ class WavefunctionLogger:
         if extra_metrics:
             metrics.update(extra_metrics)
 
-        self.loggers.log_metrics(metrics, self.n_step, self.prefix)
+        if epoch is None:
+            epoch = self.n_step
+
+        self.loggers.log_metrics(metrics, 
+                                 epoch=epoch,
+                                 metric_type=self.prefix)
         self.n_step += 1
 
-    def log_summary(self, E_ref=None, epoch_nr=None):
-        metrics = dict()
+    def log_summary(self, E_ref=None, epoch_nr=None, extra_metrics=None):
+        metrics = extra_metrics or dict()
         if "E_mean" in self.history:
             energies = np.array(self.history["E_mean"], dtype=float)
             metrics["E_mean"] = np.nanmean(energies)

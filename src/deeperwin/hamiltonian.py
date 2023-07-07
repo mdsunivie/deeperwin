@@ -5,7 +5,7 @@ import jax
 import numpy as np
 from jax import numpy as jnp
 from deeperwin.configuration import ForceEvaluationConfig
-from deeperwin.utils import get_el_ion_distance_matrix, get_full_distance_matrix
+from deeperwin.utils.utils import get_el_ion_distance_matrix, get_full_distance_matrix
 import functools
 
 def get_el_el_potential_energy(r_el):
@@ -33,11 +33,12 @@ def get_potential_energy(r, R, Z):
     return E_pot_el_el + E_pot_el_ions + E_pot_ion_ion
 
 
-def get_kinetic_energy(log_psi_squared, trainable_params, r, R, Z, fixed_params):
+def get_kinetic_energy(log_psi_squared, trainable_params, spin_state, r, R, Z, fixed_params):
     """This code here is strongly inspired by the implementation of FermiNet (Copyright 2020 DeepMind Technologies Limited.)"""
     n_coords = r.shape[-2] * r.shape[-1]
     eye = jnp.eye(n_coords)
-    grad_psi_func = lambda r: jax.grad(log_psi_squared, argnums=1)(trainable_params,
+    grad_psi_func = lambda r: jax.grad(log_psi_squared, argnums=3)(trainable_params,
+                                                                   *spin_state,
                                                                    r.reshape([-1, 3]),
                                                                    R, Z, fixed_params
                                                                    ).flatten()
@@ -48,9 +49,9 @@ def get_kinetic_energy(log_psi_squared, trainable_params, r, R, Z, fixed_params)
     laplacian = 0.25 * jnp.sum(grad_value**2) + 0.5 * jax.lax.fori_loop(0, n_coords, _loop_body, 0.0)
     return -0.5 * laplacian
 
-@functools.partial(jax.vmap, in_axes=(None, None, 0, None, None, None))
-def get_local_energy(log_psi_squared, trainable_params, r, R, Z, fixed_params):
-    E_kin = get_kinetic_energy(log_psi_squared, trainable_params, r, R, Z, fixed_params)
+@functools.partial(jax.vmap, in_axes=(None, None, None, 0, None, None, None))
+def get_local_energy(log_psi_squared, trainable_params, spin_state, r, R, Z, fixed_params):
+    E_kin = get_kinetic_energy(log_psi_squared, trainable_params, spin_state, r, R, Z, fixed_params)
     E_pot = get_potential_energy(r, R, Z)
     return E_kin + E_pot
 

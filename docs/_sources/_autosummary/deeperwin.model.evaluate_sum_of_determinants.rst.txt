@@ -1,6 +1,0 @@
-deeperwin.model.evaluate\_sum\_of\_determinants
-===============================================
-
-.. currentmodule:: deeperwin.model
-
-.. autofunction:: evaluate_sum_of_determinants

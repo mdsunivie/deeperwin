@@ -1,6 +1,0 @@
-deeperwin.process\_molecule.process\_molecule
-=============================================
-
-.. currentmodule:: deeperwin.process_molecule
-
-.. autofunction:: process_molecule

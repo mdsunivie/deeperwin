@@ -1,6 +1,0 @@
-deeperwin.orbitals.get\_envelope\_exponents\_from\_atomic\_orbitals
-===================================================================
-
-.. currentmodule:: deeperwin.orbitals
-
-.. autofunction:: get_envelope_exponents_from_atomic_orbitals

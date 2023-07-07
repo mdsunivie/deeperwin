@@ -1,6 +1,0 @@
-deeperwin.utils.split\_params
-=============================
-
-.. currentmodule:: deeperwin.utils
-
-.. autofunction:: split_params

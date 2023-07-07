@@ -1,0 +1,73 @@
+
+
+experiment_name: dpe_tao
+physical:
+  name: NH3
+
+optimization:
+  n_epochs: 10_000
+  mcmc:
+    n_walkers: 2048
+    n_inter_steps: 20
+    n_burn_in: 1000
+  clipping:
+    name: hard
+    center: median
+    width_metric: mae
+  checkpoints:
+    keep_every_n_epochs: 10000
+
+evaluation:
+  n_epochs: 500
+model:
+  name: dpe4
+  embedding:
+    name: dpe4
+    use_h_two_same_diff: true
+    use_w_mapping: true
+    emb_dim: 32
+    n_hidden_one_el: 256
+    n_hidden_two_el: 32
+    n_hidden_el_ions: 32
+    n_iterations: 4
+  orbitals:
+    n_determinants: 4
+    determinant_schema: full_det
+    generalized_atomic_orbitals:
+      atom_types: [1, 6, 7, 8]
+      basis_set: default:6-31G__H:6-31G**
+      localization: boys
+      symmetrize_exponent_mlp: true
+      antisymmetrize_backflow_mlp: true
+      use_squared_envelope_input: true
+      envelope_width: 128
+      backflow_width: 256
+      envelope_depth: 2
+      backflow_depth: 2
+      orb_feature_gnn:
+        n_iterations: 2
+    envelope_orbitals:
+  features:
+    concatenate_el_ion_features: false
+    n_el_ion_features: 32
+    init_with_el_ion_feat: True
+    use_el_el_differences: false
+    coordinates: cartesian
+
+pre_training:
+  n_epochs: 2000
+  sampling_density: reference
+  mcmc:
+    n_inter_steps: 20
+    stepsize_update_interval: 10
+    initialization: exponential
+  baseline:
+    basis_set: default:6-31G__H:6-31G**
+    localization: boys
+  off_diagonal_mode: exponential
+  off_diagonal_scale: 0.05
+  off_diagonal_exponent: 3.0
+
+logging:
+  basic:
+    n_skip_epochs: 0

@@ -1,6 +1,0 @@
-deeperwin.model.build\_log\_psi\_squared
-========================================
-
-.. currentmodule:: deeperwin.model
-
-.. autofunction:: build_log_psi_squared

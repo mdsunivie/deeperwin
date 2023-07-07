@@ -1,6 +1,0 @@
-deeperwin.hamiltonian.calculate\_forces
-=======================================
-
-.. currentmodule:: deeperwin.hamiltonian
-
-.. autofunction:: calculate_forces

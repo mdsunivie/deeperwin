@@ -9,7 +9,7 @@ from jax.flatten_util import ravel_pytree
 
 from deeperwin.configuration import BFGSOptimizerConfig, OptimizationConfig
 from deeperwin.mcmc import MCMCState, MetropolisHastingsMonteCarlo
-from deeperwin.utils import get_builtin_optimizer, calculate_clipping_state, _update_adam_opt_state
+from deeperwin.utils.utils import get_builtin_optimizer, calculate_clipping_state, _update_adam_opt_state
 
 def _update_bfgs_opt_state(opt_state_old, params):
     params, _ = ravel_pytree(params)

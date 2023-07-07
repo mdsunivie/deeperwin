@@ -1,6 +1,0 @@
-deeperwin.hamiltonian.get\_potential\_energy
-============================================
-
-.. currentmodule:: deeperwin.hamiltonian
-
-.. autofunction:: get_potential_energy

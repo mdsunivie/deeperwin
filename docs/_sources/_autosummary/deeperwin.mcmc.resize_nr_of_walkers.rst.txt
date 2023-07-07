@@ -1,6 +1,0 @@
-deeperwin.mcmc.resize\_nr\_of\_walkers
-======================================
-
-.. currentmodule:: deeperwin.mcmc
-
-.. autofunction:: resize_nr_of_walkers

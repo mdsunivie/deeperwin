@@ -1,6 +1,0 @@
-deeperwin.orbitals.build\_pyscf\_molecule\_from\_physical\_config
-=================================================================
-
-.. currentmodule:: deeperwin.orbitals
-
-.. autofunction:: build_pyscf_molecule_from_physical_config

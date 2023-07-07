@@ -4,14 +4,15 @@ Logic for Markov chain Monte Carlo (MCMC) steps.
 
 import copy
 import functools
-from typing import Tuple
+from typing import Dict, Tuple
 import jax
 import jax.numpy as jnp
 import numpy as np
 import chex
 
 from deeperwin.configuration import MCMCConfig, MCMCLangevinProposalConfig, PhysicalConfig, LocalStepsizeProposalConfig
-from deeperwin.utils import get_el_ion_distance_matrix, pmap, pmean, batch_rng_split, merge_from_devices
+from deeperwin.utils.utils import get_el_ion_distance_matrix, pmap, pmean, batch_rng_split, merge_from_devices
+from deeperwin.orbitals import initialize_walkers_with_exponential_radial_pdf
 
 @chex.dataclass
 class MCMCState:
@@ -28,31 +29,41 @@ class MCMCState:
     step_nr: jnp.array = jnp.array(0, dtype=int)
     acc_rate: jnp.array = jnp.array(0.0)
 
-    def build_batch(self, fixed_params):
+    def build_batch(self, fixed_params: Dict):
         return self.r, self.R, self.Z, fixed_params
 
     @classmethod
-    def initialize_around_nuclei(cls, n_walkers, physical_config: PhysicalConfig, rng):
-        # TODO: add element specific density electron density as initial guess
-        rng1, rng2 = jax.random.split(rng)
-        r0 = np.array(jax.random.normal(rng1, [n_walkers, physical_config.n_electrons, 3]))
-        for i_el, i_nuc in enumerate(physical_config.el_ion_mapping):
-            r0[:, i_el, :] += np.array(physical_config.R[i_nuc])
+    def initialize_around_nuclei(cls, n_walkers, physical_config: PhysicalConfig, init_method, rng):
+        subkey, rng = jax.random.split(rng)
+        if init_method == 'gaussian':
+            r0 = np.array(jax.random.normal(subkey, [n_walkers, physical_config.n_electrons, 3]))
+            for i_el, i_nuc in enumerate(physical_config.el_ion_mapping):
+                r0[:, i_el, :] += np.array(physical_config.R[i_nuc])
+        elif init_method == 'exponential':
+            r0 = initialize_walkers_with_exponential_radial_pdf(subkey,
+                                                           physical_config.R,
+                                                           physical_config.Z,
+                                                           n_walkers,
+                                                           physical_config.n_electrons,
+                                                           physical_config.n_up,
+                                                           physical_config.el_ion_mapping)
+        else:
+            raise NotImplementedError(f"Unknown initialization: {init_method}")
         return cls(r=jnp.array(r0),
                    R=jnp.array(physical_config.R),
                    Z=jnp.array(physical_config.Z),
                    log_psi_sqr=-jnp.ones(n_walkers) * 1000, # initialize walkers with very low probability; will always be accepted in first MCMC move,
                    walker_age=jnp.zeros(n_walkers, dtype=int),
-                   rng_state=jax.random.split(rng2, n_walkers))
+                   rng_state=jax.random.split(rng, n_walkers))
 
     @classmethod
-    def resize_or_init(cls, mcmc_state, n_walkers, physical_config: PhysicalConfig, rng):
+    def resize_or_init(cls, mcmc_state, n_walkers, physical_config: PhysicalConfig, init_method, rng):
         if mcmc_state:
             if mcmc_state.r.ndim == 4:
                 mcmc_state = mcmc_state.merge_devices()
             mcmc_state = resize_nr_of_walkers(mcmc_state, n_walkers)
         else:
-            mcmc_state = cls.initialize_around_nuclei(n_walkers, physical_config, rng)
+            mcmc_state = cls.initialize_around_nuclei(n_walkers, physical_config, init_method, rng)
         return mcmc_state
 
     def split_across_devices(self):
@@ -286,19 +297,19 @@ class MetropolisHastingsMonteCarlo:
         stepsize = jnp.clip(stepsize, self.config.min_stepsize_scale, self.config.max_stepsize_scale)
         return stepsize
 
-    def _run_mcmc_steps(self, func, state, params, fixed_params, n_steps):
+    def _run_mcmc_steps(self, func, state, params, n_up, n_dn, fixed_params, n_steps):
         def partial_func(s):
-            return func(params, *s.build_batch(fixed_params))
+            return func(params, n_up, n_dn, *s.build_batch(fixed_params))
         if state.log_psi_sqr is None:
             state.log_psi_sqr = partial_func(state)
         def _loop_body(i, _state):
             return self.make_mcmc_step(partial_func, _state)
         return jax.lax.fori_loop(0, n_steps, _loop_body, state)
 
-    @functools.partial(pmap, static_broadcasted_argnums=(0,1))
-    def run_inter_steps(self, func, state: MCMCState, params, fixed_params):
-        return self._run_mcmc_steps(func, state, params, fixed_params, self.config.n_inter_steps)
+    @functools.partial(pmap, static_broadcasted_argnums=(0,1,4,5))
+    def run_inter_steps(self, func, state: MCMCState, params, n_up, n_dn, fixed_params):
+        return self._run_mcmc_steps(func, state, params, n_up, n_dn, fixed_params, self.config.n_inter_steps)
 
-    @functools.partial(pmap, static_broadcasted_argnums=(0,1))
-    def run_burn_in(self, func, state: MCMCState, params, fixed_params):
-        return self._run_mcmc_steps(func, state, params, fixed_params, self.config.n_burn_in)
+    @functools.partial(pmap, static_broadcasted_argnums=(0,1,4,5))
+    def run_burn_in(self, func, state: MCMCState, params, n_up, n_dn, fixed_params):
+        return self._run_mcmc_steps(func, state, params, n_up, n_dn, fixed_params, self.config.n_burn_in)

@@ -1,6 +1,0 @@
-deeperwin.utils.get\_number\_of\_params
-=======================================
-
-.. currentmodule:: deeperwin.utils
-
-.. autofunction:: get_number_of_params
