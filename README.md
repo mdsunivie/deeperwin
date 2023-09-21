@@ -40,7 +40,7 @@ This will install the repository "in-place", so you can make changes to the sour
 If you need CUDA support to run the JAX code on GPUs (recommended), additionally install the prepackaged jax[cuda] wheel:
 
 ```bash
-    pip install --upgrade jax==0.3.23 jaxlib==0.3.22+cuda11.cudnn82 dm-haiku==0.0.9 flax==0.6.4 -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+    pip install --upgrade jax==0.3.23 jaxlib==0.3.22+cuda11.cudnn82 dm-haiku==0.0.9 flax==0.6.4 orbax==0.1.2 -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 ```
 
 
