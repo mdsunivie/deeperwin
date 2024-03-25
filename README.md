@@ -4,22 +4,32 @@ DeepErwin is python package that implements and optimizes wave function models f
 
 DeepErwin is based on JAX and supports:
 - Optimizing a wavefunction for a single nuclear geometry
-- Optimizing wavefunctions for multiple nuclear geometries in parallel, while sharing neural network weights across these wavefunctions to speed-up optimization
+- Optimizing wavefunctions for multiple nuclear geometries at once, while sharing neural network weights across these wavefunctions to speed-up optimization
 - Using pre-trained weights of a network to speed-up optimization for entirely new wavefunctions
 - Using second-order optimizers such as KFAC 
 
 A detailed description of our method and the corresponding results can be found in our publications: 
 
 [Solving the electronic Schrödinger equation for multiple nuclear geometries with weight-sharing deep neural networks](https://www.nature.com/articles/s43588-022-00228-x) \
-Scherbela, M., Reisenhofer, R., Gerard, L. et al. Published in: Nat Comput Sci 2, 331–341 (2022). 
+Scherbela, M., Reisenhofer, R., Gerard, L. et al. Published in: Nat Comput Sci 2, 331–341 (2022). \
+Code version: [arxiv_2105.08351v2](https://github.com/mdsunivie/deeperwin/releases/tag/arxiv_2105.08351v2)
 
 [Gold-standard solutions to the Schrödinger equation using deep learning: How much physics do we need?](https://proceedings.neurips.cc/paper_files/paper/2022/hash/430894999584d0bd358611e2ecf00b15-Abstract-Conference.html) \
-Gerard, L., Scherbela, M., et al. Published in: Advances in Neural Information Processing Systems (2022). 
+Gerard, L., Scherbela, M., et al. Published in: Advances in Neural Information Processing Systems (2022). \
+Code version: [arxiv_2205.09438v2](https://github.com/mdsunivie/deeperwin/releases/tag/arxiv_2205.09438v2)
 
-[Towards a Foundation Model for Neural Network Wavefunctions](https://arxiv.org/abs/2303.09949)
+[Towards a Foundation Model for Neural Network Wavefunctions](https://www.nature.com/articles/s41467-023-44216-9#Sec18) \
 Scherbela, M., Gerard, L., and Grohs., P. 
 
-Please cite the respective publication when using our codebase.
+[Variational Monte Carlo on a Budget — Fine-tuning pre-trained Neural Wavefunctions](https://papers.nips.cc/paper_files/paper/2023/hash/4b5721f7fcc1672930d860e0dfcfee84-Abstract-Conference.html) \
+Scherbela, M., Gerard, L., and Grohs., P. 
+
+Please cite the respective publication when using our codebase. 
+
+On [figshare](https://figshare.com/articles/online_resource/Pre-trained_neural_wavefunction_checkpoints_for_the_GitHub_codebase_DeepErwin/23585358/1) we store checkpoints for:
+1. A pre-trained PhisNet reimplementation to generate orbital descriptors for a neural wavefunction.
+2. A pre-trained neural wavefunction on a dataset of 18 compounds with Hartree-Fock orbital descriptors.
+3. A pre-trained neural wavefunction on a dataset of 98 compounds with PhisNet orbital descriptors. 
 
 
 # Quick overview
@@ -30,19 +40,27 @@ DeepErwin is a python3 package and has been tested on Linux and macOS.
 To get the most up-to-date version of the code, we recommend to checkout our repository from github:
 https://github.com/mdsunivie/deeperwin
 
-To install deeperwin and all its dependencies, go to the downloaded directory and run
-
+To install deeperwin and all its dependencies after you cloned our codebase:
 ```bash
     pip install -e .
 ```
-
+To install the kfac fork we are using:
+```bash
+    git checkout master
+    git pull origin master
+    git submodule init
+    git submodule update
+    cd kfac_jax
+    pip install -e .
+```
 This will install the repository "in-place", so you can make changes to the source code without having to reinstall the package.
 If you need CUDA support to run the JAX code on GPUs (recommended), additionally install the prepackaged jax[cuda] wheel:
-
 ```bash
-    pip install --upgrade jax==0.3.23 jaxlib==0.3.22+cuda11.cudnn82 dm-haiku==0.0.9 flax==0.6.4 orbax==0.1.2 -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+    pip install --upgrade jax==0.3.24 jaxlib==0.3.24+cuda11.cudnn82 -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 ```
-
+Other known issues: 
+- Pin `tensorflow-prob == 0.19.0`
+- Pin `e3nn-jax == 0.17.1` 
 
 ## Running a simple calculation
 
@@ -196,3 +214,4 @@ We have gathered additional example configs in the folder sample_configs.
 DeepErwin is a collaborative effort of Michael Scherbela, Leon Gerard, Rafael Reisenhofer, Philipp Marquetand, and Philipp Grohs.\
 The code was written by Michael Scherbela, Leon Gerard, and Rafael Reisenhofer.\
 If you have any questions, freel free to reach out via [e-mail](mailto:deeperwin.datascience@univie.ac.at).
+
