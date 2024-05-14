@@ -7,8 +7,10 @@ from deeperwin.loggers import LoggerCollection, WavefunctionLogger
 from deeperwin.mcmc import MCMCState
 from deeperwin.run_tools.dispatch import idx_to_job_name
 from deeperwin.utils.utils import LOGGER, get_el_ion_distance_matrix, setup_job_dir, PERIODIC_TABLE, ANGSTROM_IN_BOHR
-from deeperwin.utils.setup_utils import initialize_training_loggers
+from deeperwin.loggers import initialize_training_loggers
 import numpy as np
+import haiku as hk
+import dataclasses
 
 @dataclass
 class GeometryDataStore:
@@ -19,7 +21,7 @@ class GeometryDataStore:
     idx: int = None
     physical_config: PhysicalConfig = None
     physical_config_original: PhysicalConfig = None
-    rotation: np.ndarray = np.eye(3)
+    rotation: np.ndarray = dataclasses.field(default_factory=lambda: np.eye(3))
     spin_state: Tuple[int] = None
     mcmc_state: MCMCState = None
     fixed_params: Dict = None
@@ -30,12 +32,13 @@ class GeometryDataStore:
     n_opt_epochs: int = 0
     n_opt_epochs_last_dist: int = 0
     last_epoch_optimized: int = 0
+    weight: float = None
 
 
-    def init_wave_function_logger(self, config: Configuration, params: Dict) -> None:
+    def init_wave_function_logger(self, config: Configuration) -> None:
         job_name = idx_to_job_name(self.idx)
         job_dir = setup_job_dir(".", job_name)
-        loggers = initialize_training_loggers(config, params, self.fixed_params, True, self.idx, job_dir, True)
+        loggers = initialize_training_loggers(config, True, self.idx, job_dir, True)
         self.wavefunction_logger = WavefunctionLogger(loggers, prefix="opt", n_step=config.optimization.n_epochs_prev, smoothing=0.05)
 
 def parse_xyz(xyz_content):

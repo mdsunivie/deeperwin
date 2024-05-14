@@ -3,21 +3,27 @@ Contains the physical baseline model (e.g. CASSCF).
 
 This module provides functionality to calculate a basline solution using pySCF and functions to
 """
+from typing import List, Tuple, Optional, Union, Dict, Iterable
+import dataclasses
+import functools
+import pathlib
+from collections import Counter
 import logging
 import jax
 import jax.numpy as jnp
 import pyscf
+import pyscf.pbc.gto
+import pyscf.pbc.scf
 import pyscf.ci
 import pyscf.lo
 import pyscf.mcscf
 import numpy as np
-from deeperwin.configuration import PhysicalConfig, CASSCFConfig
-from deeperwin.utils.utils import get_el_ion_distance_matrix, generate_exp_distributed, PERIODIC_TABLE
-from collections import Counter
 import chex
-from typing import List, Tuple, Optional, Union, Dict
-import dataclasses
-import functools
+from deeperwin.configuration import PhysicalConfig, CASSCFConfig, BaselineConfigType, HartreeFockConfig, PeriodicMeanFieldConfig, PyscfOptionsConfig, TransferableAtomicOrbitalsConfig
+from deeperwin.utils import lazy_pyscf as pyscf
+from deeperwin.utils.utils import get_el_ion_distance_matrix, generate_exp_distributed, PERIODIC_TABLE, load_periodic_pyscf, interleave_real_and_complex
+from deeperwin.utils.periodic import map_to_first_brillouin_zone, is_commensurable, project_into_first_unit_cell
+from deeperwin.pbc_orbital_localization import localize_orbitals_pbc
 
 logger = logging.getLogger("dpe")
 
@@ -41,9 +47,6 @@ class AtomicOrbital:
 
     @property
     def id_string(self):
-        PERIODIC_TABLE = (
-            "H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr".split()
-        )
         atom_type = PERIODIC_TABLE[int(self.Z) - 1] + str(int(self.idx_atom))
         orbital_type = ["s", "p", "d", "f"][self.l_tot]
         for power, axis in zip(self.angular_momenta, ["x", "y", "z"]):
@@ -52,15 +55,50 @@ class AtomicOrbital:
 
 
 @chex.dataclass
-class OrbitalParams:
+class OrbitalParamsHF:
     atomic_orbitals: List[AtomicOrbital] = dataclasses.field(default_factory=lambda: [])
-    # float; [n_basis x n_orbitals], [n_basis x n_orbitals]
-    mo_coeff: Tuple[jnp.array, jnp.array] = (None, None)
-    idx_orbitals: Tuple[jnp.array, jnp.array] = (None, None)  # int; [n_dets x n_up], [n_dets x n_dn]
+    mo_coeff: Tuple[jnp.array, jnp.array] = (None, None)  # float; [n_basis x n_orbitals], [n_basis x n_orbitals]
+    mo_occ: Tuple[jnp.array, jnp.array] = (None, None)  # int; [n_orbs_total], [n_orbs_total]
     mo_energies: Tuple[jnp.array, jnp.array] = (None, None)  # float; [n_orbitals], [n_orbitals]
-    ci_weights: jnp.array = None
-    mo_cusp_params: Union[Tuple[jnp.array], Tuple[None, None]] = (None, None)
 
+
+@chex.dataclass
+class OrbitalParamsPeriodicMeanField:
+    atomic_orbitals: List[AtomicOrbital] = dataclasses.field(default_factory=lambda: [])
+    mo_coeff_pyscf: Tuple[jnp.array, jnp.array] = (None, None)  # float; [n_orbs_total x n_basis], [n_orbs_total x n_basis]
+    mo_coeff: Tuple[jnp.array, jnp.array] = (None, None)  # float; [n_orbs_total x n_basis], [n_orbs_total x n_basis]
+    mo_energies: Tuple[jnp.array, jnp.array] = (None, None)  # float; [n_orbs_total], [n_orbs_total]
+    mo_occ: Tuple[jnp.array, jnp.array] = (None, None)  # int; [n_orbs_total], [n_orbs_total]
+    k_points: Tuple[jnp.array, jnp.array] = (None, None) # float; [3 x n_orbs_total], [3 x n_orbs_total]
+    ind_band: Tuple[jnp.array, jnp.array] = (None, None)  # int; [n_orbs_total], [n_orbs_total]
+    orbital_center: Tuple[jnp.array, jnp.array] = (None, None)  # int; [n_orbs_total], [n_orbs_total]
+    k_twist: Optional[jnp.array] = None
+    # TODO: use different lattices for different orbitals
+    # rcut: jnp.ndarray = None
+    lattice_vecs: jnp.ndarray = None
+    ind_sorted: jnp.ndarray = None
+    shift_vecs: jnp.ndarray = None
+
+    def __str__(self) -> str:
+        s = ""
+        for i, spin in enumerate(["Up", "Down"]):
+            s += f"Spin {spin}:\n"
+            for ind_orb, (k, E, band, occ) in enumerate(zip(self.k_points[i].T, self.mo_energies[i], self.ind_band[i], self.mo_occ[i])):
+                s += f"{ind_orb:2d}: k = [{k[0]:+4.3f}, {k[1]:+4.3f}, {k[2]:+4.3f}] | band = {band:2d} | E = {E:+.3f} | occ = {int(occ)}\n"
+            s += "-" * 70 + "\n"
+        return s
+
+
+@chex.dataclass
+class OrbitalParamsCI:
+    atomic_orbitals: List[AtomicOrbital] = dataclasses.field(default_factory=lambda: [])
+    mo_coeff: Tuple[jnp.array, jnp.array] = (None, None)  # float; [n_basis x n_orbitals], [n_basis x n_orbitals]
+    idx_orbitals: Tuple[jnp.array, jnp.array] = (None, None)  # int; [n_dets x n_up], [n_dets x n_dn]
+    ci_weights: jnp.array = None
+
+
+OrbitalParamsType = Union[OrbitalParamsHF, OrbitalParamsCI,
+                          OrbitalParamsPeriodicMeanField]
 
 #################################################################################
 ############################ Orbital functions ##################################
@@ -116,6 +154,54 @@ def eval_atomic_orbitals(el_ion_diff, el_ion_dist, atomic_orbitals: List[AtomicO
     return jnp.stack(outputs, axis=-1)
 
 
+def eval_atomic_orbitals_kpoints(el_ion_diff, el_ion_dist, atomic_orbitals: List[AtomicOrbital], lattice_vecs, k_points=None):
+    """Evaluates atomic orbitals on a grid of kpoints, corresponding to what is
+    returned by pyscf.pbc.eval_gto.eval_gto. For debugging purposes"""
+    print("WARNING, DEPRECATED CODE")
+    n_eval = el_ion_diff.shape[0]
+    n_aos = len(atomic_orbitals)
+    n_kpts = k_points.shape[0]
+
+    if k_points is None:
+        k_points = jnp.zeros((1, 3))
+
+    aos = jnp.zeros((n_eval, n_kpts, n_aos), dtype=complex)
+
+    for lattice_vec in lattice_vecs:
+        diffs = el_ion_diff - lattice_vec
+        dists = jnp.linalg.norm(diffs, axis=-1)
+        ao = eval_atomic_orbitals(diffs, dists, atomic_orbitals)
+        for ik, k_point in enumerate(k_points):
+            aos = aos.at[:,ik].add(jnp.exp(1.0j * k_point @ lattice_vec) * ao)
+    return aos
+
+
+def eval_atomic_orbitals_periodic(el_ion_diff, el_ion_dist, atomic_orbitals:
+                                  List[AtomicOrbital], lattice_vecs,
+                                  shift_vecs=None, k_twist=None):
+    """shift_vecs: Shift vectors corresponding to the origin of each primitive
+    cell in the simulation cell."""
+    n_aos = len(atomic_orbitals)
+    n_cells = shift_vecs.shape[0]
+    *batch_dims, n_atoms, n_dim = el_ion_diff.shape
+
+    if shift_vecs is None:
+        shift_vecs = jnp.zeros((1, 3))
+    if k_twist is None:
+        k_twist = jnp.zeros((3,))
+
+    aos = jnp.zeros((*batch_dims, n_cells, n_aos), dtype=complex)
+    el_ion_diff_cell = el_ion_diff.reshape((*batch_dims, n_cells, n_atoms // n_cells, n_dim))
+
+    diffs = el_ion_diff_cell[..., None, :, :, :] - lattice_vecs[:, None, None, :]
+    dists = jnp.linalg.norm(diffs, axis=-1)
+    phase = jnp.exp(1.0j * k_twist @ lattice_vecs.T)
+    aos = eval_atomic_orbitals(diffs, dists, atomic_orbitals) * phase[:, None, None]
+    aos = jnp.sum(aos, axis=-3) # sum over lattice vectors
+    aos = aos.reshape((*aos.shape[:-2], -1)) # merge cell and basis dim => [batch x el x basis_total]
+    return aos
+
+
 def _eval_cusp_molecular_orbital(dist, r_c, offset, sign, poly):
     dist = jnp.minimum(dist, r_c)
     n = jnp.arange(5)
@@ -134,9 +220,19 @@ def _eval_cusp_atomic_orbital(dist, r_c, offset, sign, poly):
     return psi
 
 
-def evaluate_molecular_orbitals(el_ion_diff, el_ion_dist, atomic_orbitals, mo_coeff, mo_cusp_params=None):
-    aos = eval_atomic_orbitals(el_ion_diff, el_ion_dist, atomic_orbitals)
+def evaluate_molecular_orbitals(el_ion_diff, el_ion_dist, atomic_orbitals,
+                                mo_coeff, mo_cusp_params=None,
+                                lattice_vecs=None, shift_vecs=None, k_twist=None):
+    if lattice_vecs is None:
+        aos = eval_atomic_orbitals(el_ion_diff, el_ion_dist, atomic_orbitals)
+    else:
+        aos = eval_atomic_orbitals_periodic(el_ion_diff, el_ion_dist,
+                                            atomic_orbitals=atomic_orbitals, lattice_vecs=lattice_vecs,
+                                            shift_vecs=shift_vecs, k_twist=k_twist)
+
+    # aos: [batch x el x basis], mo_coeff: [basis x n_orbitals]
     mos = aos @ mo_coeff
+
 
     if mo_cusp_params is not None:
         r_c, offset, sign, poly, coeff_1s = mo_cusp_params
@@ -150,83 +246,70 @@ def evaluate_molecular_orbitals(el_ion_diff, el_ion_dist, atomic_orbitals, mo_co
         mos = mos + sto  # subtract GTO-part of 1s orbitals and replace by STO-part
     return mos
 
+
 def get_atomic_orbital_descriptors(
-        mo_coeffs,
-        Z,
-        all_elements: List[int],
-        n_basis_per_Z: Dict[int, int],
-):
+    orbital_params: Union[OrbitalParamsHF, OrbitalParamsPeriodicMeanField],
+    R: jax.Array,
+    Z: jax.Array,
+    lattice: jax.Array,
+    atom_types: Iterable[int],
+    n_basis_per_Z,
+    tao_config: TransferableAtomicOrbitalsConfig
+    ): # return Tuple(jnp.array, jnp.array) each [n_ions x n_orbitals x n_basis_total]
     n_ions = len(Z)
+    mo_coeffs = [mo[:, occ>0] for mo, occ in zip(orbital_params.mo_coeff, orbital_params.mo_occ)]
+    mo_dtype = mo_coeffs[0].dtype
+    center_of_mass = np.sum(R * Z[:, None], axis=-2) / np.sum(Z, axis=-1)
+
+    if lattice is not None:
+        def map_close_to_origin(x):
+            # # This offset is a simple hack to make it less likely that orbital positions sit right on the boundary of the unit cell,
+            # # leading to potential inconsistencies in downstream models when to positions suddendly changes by a lattice_vec
+            # # It shifts all positions slightly in one direction (potentially outside the cell), projects them back and then shifts them back
+            offset = 0.5 # bohr, not fractional coords
+            x = x - offset
+            x = project_into_first_unit_cell(x, lattice, around_origin=True)
+            x = x + offset
+            return x
+    else:
+        def map_close_to_origin(x):
+            return x
+
+
     if isinstance(n_basis_per_Z[Z[0]], dict):
-        n_basis_per_Z = {z: sum(n_per_l.values()) for z,n_per_l in n_basis_per_Z.items()}
-    offsets = np.array([0] + [n_basis_per_Z[z] for z in all_elements], int)
+        n_basis_per_Z = {z: sum(n_per_l.values()) for z, n_per_l in n_basis_per_Z.items()}
+    offsets = np.array([0] + [n_basis_per_Z[z] for z in atom_types], int)
     offsets = np.cumsum(offsets)
     n_basis_total = offsets[-1]
-    slice_tgt = {z: slice(offsets[i], offsets[i + 1]) for i, z in enumerate(all_elements)}
-
-    features_up = np.zeros([n_ions, mo_coeffs[0].shape[1], n_basis_total])
-    features_dn = np.zeros([n_ions, mo_coeffs[1].shape[1], n_basis_total])
-    ind_src_start = 0
-    for i,z in enumerate(Z):
-        n_basis = n_basis_per_Z[z]
-        features_up[i, :, slice_tgt[z]] = mo_coeffs[0][ind_src_start:ind_src_start + n_basis, :].T
-        features_dn[i, :, slice_tgt[z]] = mo_coeffs[1][ind_src_start:ind_src_start + n_basis, :].T
-        ind_src_start += n_basis
-    return [features_up, features_dn]
+    slice_tgt = {z: slice(offsets[i], offsets[i + 1]) for i, z in enumerate(atom_types)}
 
 
-# def get_atomic_orbital_descriptors(
-#     orbital_params: OrbitalParams,
-#     all_elements: List[int],
-#     basis_set: str,
-#     ao_mapping: Optional[Dict] = None,
-#     get_all_atomic_orbitals=False,
-# ):
-#     # Construct a mapping from element and basis index to flat, zero-padded descriptor vector
-#     if ao_mapping is None:
-#         all_atomic_orbitals = _get_all_basis_functions(all_elements, basis_set)
-#         ao_mapping = {(int(ao.Z), int(ao.idx_basis)): i for i, ao in enumerate(all_atomic_orbitals)}
+    features = []
+    for spin in range(2):
+        n_orbitals = mo_coeffs[spin].shape[1]
+        feature = np.zeros([n_ions, n_orbitals, n_basis_total], mo_dtype)
+        ind_src_start = 0
+        for i, z in enumerate(Z):
+            n_basis = n_basis_per_Z[z]
+            feature[i, :, slice_tgt[z]] = mo_coeffs[spin][ind_src_start : ind_src_start + n_basis, :].T
+            ind_src_start += n_basis
+        feature = interleave_real_and_complex(feature)
 
-#     # Get shapes of output matrix
-#     n_ions = max([int(ao.idx_atom) for ao in orbital_params.atomic_orbitals]) + 1
-#     feature_dim = len(ao_mapping)
-#     orbital_descriptors = []
-#     for spin, mo_coeff in enumerate(orbital_params.mo_coeff):
-#         n_orbitals = mo_coeff.shape[1]
-#         features = np.zeros([n_ions, n_orbitals, feature_dim])
-#         # Loop over all basis functions used in the molecule and map their mo_coeff values (i.e. rows) to the corresponding feature
-#         for idx_ao, ao in enumerate(orbital_params.atomic_orbitals):
-#             idx_feature = ao_mapping[(int(ao.Z), int(ao.idx_basis))]
-#             features[ao.idx_atom, :, idx_feature] = mo_coeff[idx_ao, :]
-#         orbital_descriptors.append(features)
-
-#     if get_all_atomic_orbitals:
-#         return orbital_descriptors, all_atomic_orbitals
-#     else:
-#         return orbital_descriptors
-
-
-def get_atomic_orbital_descriptors_e3(
-    orbital_params: OrbitalParams, all_elements: List[int], basis_set: str, ao_mapping: Optional[Dict] = None
-):
-    # Construct a mapping from element and basis index to flat, zero-padded descriptor vector
-    if ao_mapping is None:
-        all_atomic_orbitals = _get_all_basis_functions(all_elements, basis_set)
-        ao_mapping = {(int(ao.Z), int(ao.idx_basis)): i for i, ao in enumerate(all_atomic_orbitals)}
-
-    # Get shapes of output matrix
-    n_ions = max([int(ao.idx_atom) for ao in orbital_params.atomic_orbitals]) + 1
-    feature_dim = len(ao_mapping)
-    orbital_descriptors = []
-    for spin, mo_coeff in enumerate(orbital_params.mo_coeff):
-        n_orbitals = mo_coeff.shape[1]
-        features = np.zeros([n_ions, n_orbitals, feature_dim])
-        # Loop over all basis functions used in the molecule and map their mo_coeff values (i.e. rows) to the corresponding feature
-        for idx_ao, ao in enumerate(orbital_params.atomic_orbitals):
-            idx_feature = ao_mapping[(int(ao.Z), int(ao.idx_basis))]
-            features[ao.idx_atom, :, idx_feature] = mo_coeff[idx_ao, :]
-        orbital_descriptors.append(features)
-    return orbital_descriptors
+        if tao_config.use_atom_positions:
+            rel_atom_pos = map_close_to_origin(R - center_of_mass)
+            rel_atom_pos = np.tile(rel_atom_pos[:,  None, :], (1, n_orbitals, 1))
+            feature = np.concatenate([feature, rel_atom_pos], axis=-1)
+        if tao_config.use_orbital_positions:
+            rel_orb_pos = map_close_to_origin(orbital_params.orbital_center[spin].T - center_of_mass)
+            rel_orb_pos = np.tile(rel_orb_pos[None, :, :], (n_ions, 1, 1))
+            feature = np.concatenate([feature, rel_orb_pos], axis=-1)
+        if tao_config.use_atom_orbital_diff:
+            atom_pos = R[:,  None, :]
+            orb_pos = orbital_params.orbital_center[spin].T[None, :, :]
+            atom_orb_diff = map_close_to_origin(atom_pos - orb_pos)
+            feature = np.concatenate([feature, atom_orb_diff], axis=-1)
+        features.append(feature)
+    return features
 
 
 def get_sum_of_atomic_exponentials(dist_el_ion, exponent=1.0, scale=1.0):
@@ -239,7 +322,8 @@ def get_sum_of_atomic_exponentials(dist_el_ion, exponent=1.0, scale=1.0):
 #################################################################################
 
 
-def build_pyscf_molecule(R, Z, charge=0, spin=0, basis_set="6-311G"):
+def build_pyscf_molecule(R, Z, charge=0, spin=0, basis_set="6-311G",
+                         pseudo=None, lattice=None, pyscf_options=None):
     """
     Args:
         R: ion positions, shape [Nx3]
@@ -251,15 +335,20 @@ def build_pyscf_molecule(R, Z, charge=0, spin=0, basis_set="6-311G"):
     Returns:
         pyscf.Molecule
     """
-    molecule = pyscf.gto.Mole()
+    pyscf_options = dict(pyscf_options) if pyscf_options is not None else {}
+    pyscf_options.pop("mf_options", None)
+    if lattice is None:
+        molecule = pyscf.gto.Mole(**pyscf_options)
+    else:
+        molecule = pyscf.pbc.gto.Cell(**pyscf_options)
+        molecule.a = lattice
     molecule.atom = [[Z_, tuple(R_)] for R_, Z_ in zip(R, Z)]
     molecule.unit = "bohr"
     molecule.basis = get_basis_set(basis_set, set(Z))
+    molecule.pseudo = pseudo
     molecule.cart = True
     molecule.spin = spin  # 2*n_up - n_down
     molecule.charge = charge
-    molecule.output = "/dev/null"
-    molecule.verbose = 0  # suppress output to console
     # maximum memory in megabytes (i.e. 10e3 = 10GB)
     molecule.max_memory = 10e3
     molecule.build()
@@ -288,7 +377,7 @@ def _get_atomic_orbital_basis_functions(molecule):
     n_basis = len(ao_labels)
     n_basis_functions_total = 0
     atomic_orbitals = []
-    for idx_atom, (element, atom_pos) in enumerate(molecule._atom):
+    for idx_atom, (element, _) in enumerate(molecule._atom):
         idx_basis_per_atom = 0
         for gto_data in molecule._basis[element]:
             l = gto_data[0]
@@ -319,6 +408,7 @@ def _get_atomic_orbital_basis_functions(molecule):
     ), "Could not properly construct basis functions. You probably tried to use a valence-only basis (e.g. cc-pVDZ) for an all-electron calculation."  # noqa
     return atomic_orbitals
 
+
 def _get_orbital_mapping(atomic_orbitals, all_elements):
     orbitals_per_Z = {key: {} for key in all_elements}
     for ao in atomic_orbitals:
@@ -329,7 +419,7 @@ def _get_orbital_mapping(atomic_orbitals, all_elements):
         else:
             orbitals_per_Z[Z][ang_momentum] = 1
 
-    #nb_orbitals_per_Z = {key: sum(orbitals_per_Z[key].values()) for key in all_elements}
+    # nb_orbitals_per_Z = {key: sum(orbitals_per_Z[key].values()) for key in all_elements}
     irrep = []
     for orb_type, nb_orb in orbitals_per_Z[max(all_elements)].items():
         if orb_type == 0:
@@ -337,31 +427,47 @@ def _get_orbital_mapping(atomic_orbitals, all_elements):
         elif orb_type == 1:
             irrep.append(f"{nb_orb//3}x1o")
         elif orb_type == 2:
-            raise "Not yet implemented for d-type orbitals"
+            raise NotImplementedError("Not yet implemented for d-type orbitals")
     irrep = "+".join(irrep)
 
     return orbitals_per_Z, irrep
 
-def _get_all_basis_functions(Z_values: List[int], basis_set):
+
+def _get_all_basis_functions(Z_values: List[int], basis_set, is_periodic=False, pyscf_options=None):
     """Get all possible basis functions for a given set of chemical elements"""
     # Build a fictional "molecule" with all elements stacked on top of each other
     Z_values = sorted(list(set(Z_values)))
     R = np.zeros([len(Z_values), 3])
     charge = 0
     spin = sum(Z_values) % 2
-    molecule = build_pyscf_molecule(R, Z_values, charge, spin, basis_set)
+    lattice = np.eye(3) if is_periodic else None
+    molecule = build_pyscf_molecule(R, Z_values, charge, spin, basis_set, None, lattice, pyscf_options)
     return _get_atomic_orbital_basis_functions(molecule)
 
 
-def build_pyscf_molecule_from_physical_config(physical_config: PhysicalConfig, basis_set):
-    n_electrons, n_up, R, Z = physical_config.get_basic_params()
-    charge = np.sum(Z) - n_electrons
-    spin = 2 * n_up - n_electrons
-    return build_pyscf_molecule(R, Z, charge, spin, basis_set)
+def build_pyscf_molecule_from_physical_config(physical_config: PhysicalConfig, basis_set, pseudo=None, use_primitive=False, pyscf_options=None):
+    if (physical_config.periodic is not None) and physical_config.periodic.is_expanded and use_primitive :
+        R, Z = np.array(physical_config.periodic.R_prim), np.array(physical_config.periodic.Z_prim)
+        charge, spin = physical_config.periodic.charge_prim, physical_config.periodic.spin_prim
+    else:
+        _, _, R, Z = physical_config.get_basic_params()
+        charge, spin = physical_config.charge, physical_config.spin
+
+    if physical_config.periodic is not None:
+        if use_primitive:
+            lattice = np.array(physical_config.periodic.lattice_prim)
+        else:
+            lattice = np.array(physical_config.periodic.lattice)
+    else:
+        lattice = None
+    return build_pyscf_molecule(R, Z, charge, spin, basis_set, pseudo, lattice, pyscf_options=pyscf_options)
 
 
-def get_hartree_fock_solution(physical_config: PhysicalConfig, basis_set):
-    molecule = build_pyscf_molecule_from_physical_config(physical_config, basis_set) # Bauen basissatz; rausziehen; atomic orbitals= Liste aus orbital mit property l-tot
+
+def get_hartree_fock_solution(physical_config: PhysicalConfig, basis_set, pyscf_options: Optional[PyscfOptionsConfig] = None):
+    molecule = build_pyscf_molecule_from_physical_config(
+        physical_config, basis_set, pyscf_options=pyscf_options
+    )
     atomic_orbitals = _get_atomic_orbital_basis_functions(molecule)
     hf = pyscf.scf.HF(molecule)
     hf.verbose = 0  # suppress output to console
@@ -396,12 +502,14 @@ def get_basis_set(basis_set: Union[str, Dict], atom_charges=None):
         return basis_set
     else:
         raise ValueError(f"Unknown dtype of basis-set: {type(basis_set)}")
-    
+
+
 @functools.lru_cache
-def get_n_basis_per_Z(basis_set: str, Z_values: tuple):
+def get_n_basis_per_Z(basis_set: str, Z_values: tuple, is_periodic: bool = False, exp_to_discard: float = None):
     """Get the number of basis functions for a given set of chemical elements"""
     basis_dict = get_basis_set(basis_set, Z_values)
-    all_basis_functions = _get_all_basis_functions(Z_values, basis_dict)
+    pyscf_options = PyscfOptionsConfig(exp_to_discard=exp_to_discard)
+    all_basis_functions = _get_all_basis_functions(Z_values, basis_dict, is_periodic, pyscf_options)
     n_basis_per_Z = {}
     for ao in all_basis_functions:
         Z = int(ao.Z)
@@ -415,7 +523,7 @@ def get_n_basis_per_Z(basis_set: str, Z_values: tuple):
 
 
 def localize_orbitals(mol, mo_coeffs_occ, method, orb_energies=None, canonicalize=True):
-    if method is None:
+    if (method is None) or (method == "") or (method == "none"):
         mo_loc = mo_coeffs_occ
     elif method == "boys":
         localizer = pyscf.lo.Boys(mol, mo_coeffs_occ)
@@ -423,9 +531,9 @@ def localize_orbitals(mol, mo_coeffs_occ, method, orb_energies=None, canonicaliz
     elif method == "pm":
         localizer = pyscf.lo.PipekMezey(mol, mo_coeffs_occ)
         mo_loc = localizer.kernel()
-    elif method == 'cholesky':
+    elif method == "cholesky":
         mo_loc = pyscf.lo.cholesky_mos(mo_coeffs_occ)
-    elif method == 'qr':
+    elif method == "qr":
         _, R = np.linalg.qr(mo_coeffs_occ.T)
         mo_loc = R.T
     elif method == "iao":
@@ -440,7 +548,7 @@ def localize_orbitals(mol, mo_coeffs_occ, method, orb_energies=None, canonicaliz
 
     if canonicalize:
         mo_loc = mo_loc * np.sign(np.sum(mo_loc, axis=0))
-    
+
     if orb_energies is None:
         return mo_loc
     else:
@@ -456,83 +564,241 @@ def get_local_orb_energy_estimate(mo_coeff, mo_coeff_loc, mo_E):
     return local_orb_energies
 
 
-def get_baseline_solution(physical_config: PhysicalConfig, casscf_config: CASSCFConfig, n_dets: int):
-    n_el, n_up, R, Z = physical_config.get_basic_params()
-    n_dn = n_el - n_up
-    atomic_orbitals, hf = get_hartree_fock_solution(physical_config, casscf_config.basis_set)
+def get_baseline_solution_HF(physical_config: PhysicalConfig, hf_config: HartreeFockConfig):
+    atomic_orbitals, hf = get_hartree_fock_solution(physical_config, hf_config.basis_set, pyscf_options=hf_config.pyscf_options)
+    mo_coeff, mo_energy, mo_occ = split_results_into_spins(hf)
 
-    if n_dets == 1 or casscf_config.only_hf:
-        # Only 1 determinant => no MRCI/CASSCF calculation required
-        mo_coeff = hf.mo_coeff
-        mo_energies = hf.mo_energy
-        if mo_coeff.ndim == 2:
-            mo_coeff = [mo_coeff, mo_coeff]
-            mo_energies = [mo_energies, mo_energies]
-        elif mo_coeff.ndim == 3:
-            mo_coeff = [mo_coeff[0], mo_coeff[1]]
-            mo_energies = [mo_energies[0], mo_energies[0]]
-        else:
-            raise ValueError("Unknown output shape of pySCF calculation")
-        ci_weights = np.ones(1) if not casscf_config.only_hf else np.ones(n_dets)
-        if casscf_config.only_hf:
-            ind_orbitals = [
-                np.tile(np.arange(n_up), n_dets).reshape((-1, n_up)),
-                np.tile(np.arange(n_dn), n_dets).reshape((-1, n_dn)),
-            ]
-        else:
-            ind_orbitals = [np.arange(n_up)[None, :], np.arange(n_dn)[None, :]]
-
-        E_hf, E_casscf = hf.e_tot, np.nan
-    else:
-        # Run CASSCF to get excited determinants
-        casscf = pyscf.mcscf.UCASSCF(hf, physical_config.n_cas_orbitals, physical_config.n_cas_electrons)
-        casscf.kernel()
-        E_hf, E_casscf = hf.e_tot, casscf.e_tot
-
-        mo_coeff = list(casscf.mo_coeff)  # tuple of spin_up, spin_down
-        ind_orbitals = _get_orbital_indices(casscf)
-        ci_weights = casscf.ci.flatten()
-
-        logger.debug(f"Total nuber of CASSCF-determinants before truncation: {len(ci_weights)}")
-
-        if n_dets < len(ci_weights):
-            ind_largest = np.argsort(np.abs(ci_weights))[::-1][:n_dets]
-            share_captured = np.sum(ci_weights[ind_largest] ** 2) / np.sum(ci_weights**2)
-            logger.debug(f"Share of CI-weights captured by {n_dets} dets: {share_captured:.3%}")
-            ci_weights = ci_weights[ind_largest]
-            ci_weights = jnp.array(ci_weights / np.sum(ci_weights**2))
-            ind_orbitals = ind_orbitals[0][ind_largest], ind_orbitals[1][ind_largest]
-
-    if casscf_config.localization:
-        assert (n_dets == 1) or casscf_config.only_hf, "Orbital localization is potentially incompatible with CASSCF"
-        mol = build_pyscf_molecule_from_physical_config(physical_config, casscf_config.basis_set)
-        for spin, n_occ in enumerate([n_up, n_dn]):
-            mo_coeff[spin][:, :n_occ], mo_energies[spin][:n_occ] = localize_orbitals(
-                mol, mo_coeff[spin][:, :n_occ], casscf_config.localization, mo_energies[spin][:n_occ]
+    if hf_config.localization:
+        for spin, n_occ in enumerate([physical_config.n_up, physical_config.n_dn]):
+            mo_coeff[spin][:, :n_occ], mo_energy[spin][:n_occ] = localize_orbitals(
+                hf.mol, mo_coeff[spin][:, :n_occ], hf_config.localization, mo_energy[spin][:n_occ]
             )
-            mo_coeff[spin][:, n_occ:], mo_energies[spin][n_occ:] = localize_orbitals(
-                mol, mo_coeff[spin][:, n_occ:], casscf_config.localization, mo_energies[spin][n_occ:]
+            mo_coeff[spin][:, n_occ:], mo_energy[spin][n_occ:] = localize_orbitals(
+                hf.mol, mo_coeff[spin][:, n_occ:], hf_config.localization, mo_energy[spin][n_occ:]
             )
 
-    orbital_params = OrbitalParams(
-        atomic_orbitals=atomic_orbitals,
-        mo_coeff=mo_coeff,
-        idx_orbitals=ind_orbitals,
-        mo_energies=mo_energies,
-        ci_weights=ci_weights,
+    orbital_params = OrbitalParamsHF(atomic_orbitals=atomic_orbitals, mo_coeff=mo_coeff, mo_energies=mo_energy, mo_occ=mo_occ)
+    energies = dict(E_hf=hf.e_tot)
+    return orbital_params, energies
+
+
+def get_baseline_solution_CASSCF(physical_config: PhysicalConfig, casscf_config: CASSCFConfig):
+    atomic_orbitals, hf = get_hartree_fock_solution(physical_config, casscf_config.basis_set, pyscf_options=casscf_config.pyscf_options)
+    n_cas_electrons = min(casscf_config.n_active_electrons, physical_config.n_electrons)
+    n_cas_orbitals = casscf_config.n_active_orbitals
+
+    casscf = pyscf.mcscf.UCASSCF(hf, n_cas_orbitals, n_cas_electrons)
+    casscf.kernel()
+    mo_coeff = list(casscf.mo_coeff)  # tuple of spin_up, spin_down
+    ind_orbitals = _get_orbital_indices(casscf)
+    ci_weights = casscf.ci.flatten()
+    logger.debug(f"Total nuber of CASSCF-determinants before truncation: {len(ci_weights)}")
+
+    n_dets = casscf_config.n_dets
+    if n_dets < len(ci_weights):
+        ind_largest = np.argsort(np.abs(ci_weights))[::-1][:n_dets]
+        share_captured = np.sum(ci_weights[ind_largest] ** 2) / np.sum(ci_weights**2)
+        logger.debug(f"Share of CI-weights captured by {n_dets} dets: {share_captured:.3%}")
+        ci_weights = ci_weights[ind_largest]
+        ci_weights = jnp.array(ci_weights / np.sum(ci_weights**2))
+        ind_orbitals = ind_orbitals[0][ind_largest], ind_orbitals[1][ind_largest]
+    orbital_params = OrbitalParamsCI(
+        atomic_orbitals=atomic_orbitals, mo_coeff=mo_coeff, idx_orbitals=ind_orbitals, ci_weights=ci_weights
     )
-    # Calculate cusp-correction-parameters for molecular orbitals
-    if casscf_config.cusps and (casscf_config.cusps.cusp_type == "mo"):
-        orbital_params.mo_cusp_params = [
-            calculate_molecular_orbital_cusp_params(
-                atomic_orbitals, mo_coeff[i], R, Z, casscf_config.cusps.r_cusp_el_ion_scale
-            )
-            for i in range(2)
-        ]
-    elif casscf_config.cusps and (casscf_config.cusps.cusp_type == "ao"):
-        for ao in orbital_params.atomic_orbitals:
-            ao.cusp_params = _calculate_ao_cusp_params(ao, physical_config.Z[ao.idx_atom])
-    return orbital_params, (E_hf, E_casscf)
+    energies = dict(E_hf=hf.e_tot, E_casscf=casscf.e_tot)
+    return orbital_params, energies
+
+def make_k_points(k_points, cell):
+    if k_points is None:
+        k_points = np.array([1, 1, 1], int)
+    if isinstance(k_points, list):
+        k_points = np.array(k_points)
+    if k_points.ndim == 1:
+        if np.any(k_points.astype(int) != k_points):
+            raise ValueError("if kpoints is 1d it should be should be ints specifying a kpoint grid")
+        k_points = cell.make_kpts(k_points.astype(int), with_gamma_point=True)
+        k_points = np.array(k_points)
+    # One CANNOT map the k-points back to the first Brillouin zone at this point, 
+    # since different k-points would potentially be mapped by different rec vectors
+    return k_points
+
+def apply_mf_options(mf, mf_options):
+    if mf_options is None:
+        return mf
+    if mf_options.density_fit:
+        mf = mf.density_fit()
+    if mf_options.df_mesh is not None:
+        mf.with_df.mesh = mf_options.df_mesh
+    return mf
+
+def get_periodic_mean_field(physical_config: PhysicalConfig, hf_config:
+                            PeriodicMeanFieldConfig, return_pyscf_objects=False):
+    # options preprocessing
+    pyscf_options = hf_config.pyscf_options
+    if pyscf_options is None:
+        mf_options = None
+        chkfile = ""
+    else:
+        mf_options = pyscf_options.mf_options
+        chkfile = pyscf_options.mf_options.chkfile
+
+    mf = None
+    if chkfile and pathlib.Path(chkfile).is_file():
+        # TODO:  Check that the loaded cell and mf is correct
+        cell, mf = load_periodic_pyscf(chkfile)
+    else:
+        cell: pyscf.pbc.gto.Cell = build_pyscf_molecule_from_physical_config(physical_config, hf_config.basis_set, use_primitive=True, pyscf_options=pyscf_options)
+    simulation_cell: pyscf.pbc.gto.Cell = build_pyscf_molecule_from_physical_config(physical_config, hf_config.basis_set, use_primitive=False, pyscf_options=pyscf_options)
+    
+
+    assert cell.spin == 0, "Spin-polarized periodic mean-field not yet implemented"
+
+    atomic_orbitals = _get_atomic_orbital_basis_functions(cell)
+
+    k_points = hf_config.k_points
+    if hf_config.k_points is None:
+        k_points = physical_config.periodic.supercell
+
+
+    # k_points: [n_k_points, 3]
+    k_points = make_k_points(k_points, cell)
+    k_twist = np.array(physical_config.periodic.k_twist) if (physical_config.periodic.k_twist is not None) else np.zeros(3)
+    k_twist = k_twist @ simulation_cell.reciprocal_vectors()
+    k_points += k_twist
+    with np.printoptions(precision=3):
+        logger.debug(f"{k_points=}")
+
+    if mf is None:
+        if hf_config.name == "periodic_hf":
+            mf = pyscf.pbc.scf.KRHF(cell, k_points)
+        elif hf_config.name == "periodic_dft":
+            mf = pyscf.pbc.scf.KRKS(cell, k_points)
+            mf.xc = "pbe,pbe"
+        elif hf_config.name == "periodic_unrestricted_dft":
+            mf = pyscf.pbc.scf.KUKS(cell, k_points)
+            mf.xc = "pbe,pbe"
+
+        mf = apply_mf_options(mf, mf_options)
+
+        mf.chkfile = chkfile
+        # mf.max_cycle = 20
+        mf.kernel()
+
+    # shift_vecs: [n_shifts, 3]
+    shift_vecs = physical_config.periodic.get_shifts()
+
+    # Build a long-list of all orbitals at all k-points, sorted by orbital energy
+    mo_coeffs = np.array(mf.mo_coeff)           # [(spin) x n_k_points, n_basis_per_prim_cell, n_orb_per_kpoint]
+    mo_occ = np.array(mf.mo_occ)
+    mo_energy = np.array(mf.mo_energy)
+    if mo_coeffs.ndim == 4:
+        mo_coeffs = mo_coeffs[0] # TODO: This is a hack to get the first spin, should be fixed
+        mo_occ = mo_occ[0] * 2
+        mo_energy = mo_energy[0]
+    mo_coeffs = np.moveaxis(mo_coeffs, -1, -2)  # [n_k_points, n_orb_per_kpoint, n_basis_per_prim_cell]
+    n_k_points, n_orb_per_kpoint, n_basis = mo_coeffs.shape
+    n_shift = shift_vecs.shape[0]
+
+    # mo_coeffs_supercell: [n_k_points, n_orb_per_kpoint, n_shift, n_basis]
+    # exp() has shape: [n_k_points x n_shifts]
+    mo_coeffs_supercell = mo_coeffs[:, :, None, :] * np.exp(1j * k_points @ shift_vecs.T)[:,None,:,None]
+    mo_coeffs_supercell /= np.sqrt(n_shift)  # normalize to have same norm as mo_coeffs
+
+    mo_coeffs_supercell = mo_coeffs_supercell.reshape([-1, n_basis*n_shift])
+    mo_coeffs = mo_coeffs.reshape([-1, n_basis])
+
+    mo_energies_all = np.stack(mo_energy).flatten()
+    mo_occ_all = np.stack(mo_occ).flatten()
+    ind_sorted = np.argsort(mo_energies_all)
+
+    ind_k, ind_band = np.divmod(ind_sorted, n_orb_per_kpoint)
+    mo_coeff_sorted = mo_coeffs[ind_sorted].T                     # [n_basis x n_orbitals_total]
+    mo_coeff_supercell_sorted = mo_coeffs_supercell[ind_sorted].T # [n_basis_total x n_orbitals_total]
+    mo_energies_sorted = mo_energies_all[ind_sorted]
+    mo_occ_sorted = mo_occ_all[ind_sorted]
+    k_points_sorted = k_points[ind_k].T    
+    energies = {f"E_{hf_config.name}_prim": mf.e_tot, 
+                f"E_{hf_config.name}": mf.e_tot * physical_config.periodic.n_prim_cells}
+
+    # Lattice vecs are from the simulation cell
+    rcut = pyscf.pbc.gto.eval_gto._estimate_rcut(simulation_cell)
+
+    # TODO: Since there is potentially a different nr of lattice vectors for every geometry, this requires recompilation 
+    # during shared optimization for every geometry. Would be better to pad this to some reasonable nearest integer or similar to avoid recompilation
+    lattice_vecs = pyscf.pbc.gto.eval_gto.get_lattice_Ls(simulation_cell, rcut=rcut.max())
+   
+    if hf_config.localization in [None, "", "none"]:
+        orbital_center = None
+    elif hf_config.localization == "boys":
+        mo_coeff_supercell_sorted_occ = mo_coeff_supercell_sorted[:, mo_occ_sorted > 0]
+        mo_coeff_supercell_sorted_empty = mo_coeff_supercell_sorted[:, mo_occ_sorted == 0]
+        mo_coeff_supercell_sorted_occ, loc_metrics, orbital_center = localize_orbitals_pbc(mo_coeff_supercell_sorted_occ,
+                                                                                           simulation_cell,
+                                                                                           k_twist
+                                                                                           )
+        mo_coeff_supercell_sorted = np.concatenate([mo_coeff_supercell_sorted_occ, mo_coeff_supercell_sorted_empty], axis=1)
+        energies.update(loc_metrics)
+    else:
+        raise ValueError(f"Localization method not supported for PBC: {hf_config.localization}")
+
+    orbital_params = OrbitalParamsPeriodicMeanField(
+        atomic_orbitals=atomic_orbitals,
+        mo_coeff_pyscf=(mo_coeff_sorted, mo_coeff_sorted),
+        mo_coeff=(mo_coeff_supercell_sorted, mo_coeff_supercell_sorted),
+        mo_energies=(mo_energies_sorted, mo_energies_sorted),
+        mo_occ = (mo_occ_sorted // 2, mo_occ_sorted // 2),
+        k_points=(k_points_sorted, k_points_sorted),
+        orbital_center=(orbital_center, orbital_center),
+        ind_band=(ind_band, ind_band),
+        k_twist=k_twist,
+        lattice_vecs=lattice_vecs,
+        ind_sorted=ind_sorted,
+        shift_vecs=shift_vecs,
+    )
+    if return_pyscf_objects:
+        return orbital_params, energies, cell, mf
+    return orbital_params, energies
+
+
+def get_baseline_solution(physical_config: PhysicalConfig, pyscf_config: BaselineConfigType):
+    if physical_config.periodic is None:
+        if pyscf_config.name == "hf":
+            return get_baseline_solution_HF(physical_config, pyscf_config)
+        elif pyscf_config.name == "casscf":
+            return get_baseline_solution_CASSCF(physical_config, pyscf_config)
+        else:
+            raise ValueError(f"Method not supported for non-periodic system: {pyscf_config.name}")
+    else:
+        if pyscf_config.name in ["periodic_hf", "periodic_dft", "periodic_unrestricted_dft"]:
+            # if pyscf_config.k_points is None:
+            #     pyscf_config.k_points = physical_config.periodic.supercell
+            return get_periodic_mean_field(physical_config, pyscf_config)
+        else:
+            raise ValueError(f"Method not supported for periodic system: {pyscf_config.name}")
+
+# TODO: implement for twisted, ie. non-commensurable k-points
+def get_supercell_mo_coeffs(mo_coeffs_prim, k_points, lattice_prim, n_supercell):
+    """
+    Args:
+        mo_coeffs_prim: [n_basis x n_orbitals]
+        k_points: [3 x n_k_points]
+        lattice_prim: np.array, [3 x 3]
+        supercell: [int, int, int]
+    """
+    lattice_prim = np.array(lattice_prim)
+    n_supercell = np.array(n_supercell, int)
+    lattice_sc = n_supercell @ lattice_prim
+    assert is_commensurable(lattice_sc, k_points - k_points[:, :1]), "k-points are not commensurable with supercell"
+
+    ind_shift = np.stack(np.meshgrid(*[np.arange(n) for n in n_supercell]), axis=-1).reshape([-1, 3])
+    shifts =  ind_shift @ lattice_prim
+    n_orbitals = mo_coeffs_prim.shape[-1]
+    phase = np.exp(1.j * (shifts @ k_points))
+    mo_coeff_sc = (mo_coeffs_prim[None, :, :] * phase[:, None, :]).reshape([-1, n_orbitals])
+    mo_coeff_sc /= np.sqrt(np.prod(n_supercell)) # Fix normalization
+
+    k_points_sc = np.zeros_like(k_points)
+    return mo_coeff_sc, k_points_sc
 
 
 def _get_effective_charge(Z: int, n: int, s_lower_shell=0.85, s_same_shell=0.35):
@@ -650,7 +916,7 @@ def get_envelope_exponents_from_atomic_orbitals(physical_config: PhysicalConfig,
          alpha_values: Tuple of len 2; for each spin has shape [n_ions x n_orb]
     """
     n_up, n_dn, n_ions = physical_config.n_up, physical_config.n_dn, physical_config.n_ions
-    orbitals, _ = get_baseline_solution(physical_config, CASSCFConfig(basis_set=basis_set, cusps=None), n_dets=1)
+    orbitals, _ = get_baseline_solution(physical_config, HartreeFockConfig(basis_set=basis_set))
     # keep only occupied orbitals
     mo_coeff = orbitals.mo_coeff[0][:, :n_up], orbitals.mo_coeff[1][:, :n_dn]
     alpha_ao = _get_atomic_orbital_envelope_exponents(physical_config, basis_set)
@@ -684,7 +950,7 @@ def get_envelope_exponents_from_atomic_orbitals(physical_config: PhysicalConfig,
 
 
 def _int_to_spin_tuple(x):
-    if type(x) == int:
+    if isinstance(x, int):
         return (x,) * 2
     else:
         return x
@@ -692,9 +958,9 @@ def _int_to_spin_tuple(x):
 
 def split_results_into_spins(hf):
     if len(hf.mo_occ.shape) == 2:
-        return hf.mo_coeff, hf.mo_energy, hf.mo_occ
+        return (hf.mo_coeff[0], hf.mo_coeff[1]), (hf.mo_energy[0], hf.mo_energy[1]), (hf.mo_occ[0], hf.mo_occ[1])
     else:
-        return [hf.mo_coeff, hf.mo_coeff], [hf.mo_energy, hf.mo_energy], [hf.mo_occ / 2, hf.mo_occ / 2]
+        return (hf.mo_coeff, hf.mo_coeff), (hf.mo_energy, hf.mo_energy), (hf.mo_occ // 2, hf.mo_occ // 2)
 
 
 def get_orbital_type(atomic_orbital):
@@ -770,14 +1036,6 @@ def _get_orbital_indices(casscf):
     return [jnp.array(orbitals_up, dtype=int), jnp.array(orbitals_dn, dtype=int)]
 
 
-def get_orbitals_from_rho(rho, n_occ):
-    eigvals, eigvecs = np.linalg.eigh(rho * 0.5)
-    eigvals = eigvals[::-1][:n_occ]
-    eigvecs = eigvecs[:, ::-1][:, :n_occ]
-    M = eigvecs * np.sqrt(eigvals)
-    Q,R = np.linalg.qr(M.T)
-    return R.T
-
 def align_orbitals(mo, mo_ref, n_occ=None, adjust_scale=False):
     n_orb = mo.shape[-1]
     n_occ = n_occ or n_orb
@@ -795,12 +1053,12 @@ def align_orbitals(mo, mo_ref, n_occ=None, adjust_scale=False):
         mo_aligned *= ref_norms / mo_norms
     return jnp.concatenate([mo_aligned, mo_unocc], axis=-1)
 
+
 def get_cosine_dist(mo, mo_ref, eps=1e-8):
     mo_norm = mo / (np.linalg.norm(mo, axis=-2, keepdims=True) + eps)
     mo_ref_norm = mo_ref / (np.linalg.norm(mo_ref, axis=-2, keepdims=True) + eps)
     inner_product = np.einsum("bk,bk->k", mo_norm, mo_ref_norm)
     return 1 - np.mean(inner_product, axis=-1)
-
 
 
 ##########################################################################################
@@ -887,6 +1145,7 @@ def _calculate_ao_cusp_params(ao: AtomicOrbital, Z):
 
 
 def calculate_molecular_orbital_cusp_params(atomic_orbitals: List[AtomicOrbital], mo_coeff, R, Z, r_cusp_scale):
+    # TODO: Will this function be used in periodic calculations? 
     n_molecular_orbitals, n_nuclei, n_atomic_orbitals = mo_coeff.shape[1], len(R), len(atomic_orbitals)
     cusp_rc = np.minimum(r_cusp_scale / Z, 0.5)
     cusp_offset = np.zeros([n_nuclei, n_molecular_orbitals])

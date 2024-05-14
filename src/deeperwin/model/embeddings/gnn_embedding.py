@@ -1,11 +1,10 @@
-from typing import List
-
 import haiku as hk
 import jax.numpy as jnp
-from deeperwin.model.gnn import DenseGNN, MessagePassingLayer
-from deeperwin.configuration import MLPConfig, EmbeddingConfigGNN, EmbeddingConfigMoon
+from deeperwin.model.gnn import DenseGNN, MessagePassingLayer, ScaleFeatures
+from deeperwin.configuration import MLPConfig, EmbeddingConfigGNN
 from deeperwin.model.definitions import InputFeatures, Embeddings, DiffAndDistances
 from deeperwin.model.mlp import MLP
+
 
 class GNNEmbedding(hk.Module):
     def __init__(self, config: EmbeddingConfigGNN, mlp_config: MLPConfig, name=None):
@@ -25,22 +24,35 @@ class GNNEmbedding(hk.Module):
         elif self.config.ion_gnn.name == "phisnet_ion_emb":
             self.phisnet_downmapping = MLP([config.ion_gnn.ion_width] * config.ion_gnn.ion_depth, mlp_config, linear_out=False,
                           name="phisnet_downmapping")
-            self.phisnet_mpnn = MessagePassingLayer(config.ion_gnn.message_passing, name="phisnet_mpnn")
+            self.phisnet_mpnn = MessagePassingLayer(config.ion_gnn.message_passing, use_edge_bias=config.ion_gnn.use_edge_bias, name="phisnet_mpnn")
 
-    def _embed_edges(self, features: InputFeatures, n_up):
-        batch_dims = features.el_el.shape[:-3]
-        n_dn = features.el.shape[-2] - n_up
-        up_up = features.el_el[..., :n_up, :n_up, :].reshape(batch_dims + (n_up * n_up, -1))
-        up_dn = features.el_el[..., :n_up, n_up:, :].reshape(batch_dims + (n_up * n_dn, -1))
-        dn_up = features.el_el[..., n_up:, :n_up, :].reshape(batch_dims + (n_dn * n_up, -1))
-        dn_dn = features.el_el[..., n_up:, n_up:, :].reshape(batch_dims + (n_dn * n_dn, -1))
+    def _split_same_diff(self, features, n_up, n_dn, batch_dims):
+        up_up = features[..., :n_up, :n_up, :].reshape(batch_dims + (n_up * n_up, -1))
+        up_dn = features[..., :n_up, n_up:, :].reshape(batch_dims + (n_up * n_dn, -1))
+        dn_up = features[..., n_up:, :n_up, :].reshape(batch_dims + (n_dn * n_up, -1))
+        dn_dn = features[..., n_up:, n_up:, :].reshape(batch_dims + (n_dn * n_dn, -1))
         same = jnp.concatenate([up_up, dn_dn], axis=-2)
         diff = jnp.concatenate([up_dn, dn_up], axis=-2)
+
+        return same, diff
+
+    def _embed_edges(self, features: InputFeatures, diff_dist: DiffAndDistances, n_up):
+        batch_dims = features.el_el.shape[:-3]
+        n_dn = features.el.shape[-2] - n_up
+
+        same, diff = self._split_same_diff(features.el_el, n_up, n_dn, batch_dims)
 
         el_ion = self.mlp_el_ion(features.el_ion)
         same = self.mlp_same(same)
         diff = self.mlp_diff(diff)
         ion_ion = self.ion_ion(features.ion_ion)
+
+        if self.config.exp_scaling is not None:
+            s_dist, d_dist = self._split_same_diff(diff_dist.dist_el_el[..., None], n_up, n_dn, batch_dims)
+            same *= ScaleFeatures(self.config.exp_scaling, self.config.el_el_width, name="el_same")(s_dist)
+            diff *= ScaleFeatures(self.config.exp_scaling, self.config.el_el_width, name="el_diff")(d_dist)
+            ion_ion *= ScaleFeatures(self.config.exp_scaling, self.config.ion_ion_width, name="ion_ion")(diff_dist.dist_ion_ion[..., None])
+            el_ion *= ScaleFeatures(self.config.exp_scaling, self.config.el_ion_width, name="el_ion")(diff_dist.dist_el_ion[..., None])
 
         up_up = same[..., :(n_up * n_up), :].reshape(batch_dims + (n_up, n_up, -1))
         up_dn = diff[..., :(n_up * n_dn), :].reshape(batch_dims + (n_up, n_dn, -1))
@@ -67,7 +79,7 @@ class GNNEmbedding(hk.Module):
 
 
     def __call__(self, diff_dist: DiffAndDistances, features: InputFeatures, n_up: int):
-        edge_el_ion, edge_el_el, edge_ion_ion = self._embed_edges(features, n_up)
+        edge_el_ion, edge_el_el, edge_ion_ion = self._embed_edges(features, diff_dist, n_up)
         mask_el_ion = self._get_distance_mask(diff_dist.dist_el_ion)
         mask_el_el = self._get_distance_mask(diff_dist.dist_el_el)
 

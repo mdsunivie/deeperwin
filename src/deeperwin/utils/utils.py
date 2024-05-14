@@ -7,14 +7,17 @@ import logging
 import os
 import subprocess
 import re
-
+from typing import Tuple, List
+import dataclasses
 import jax
+import jax.scipy
 import numpy as np
 import scipy.optimize
 from jax import numpy as jnp
 import haiku as hk
 import e3nn_jax as e3nn
-from typing import Tuple, List
+
+import pyscf
 
 LOGGER = logging.getLogger("dpe")
 
@@ -31,18 +34,42 @@ def multi_vmap(func, n):
         func = jax.vmap(func)
     return func
 
+@pmap
+def _select_master_data(x):
+    """
+    Selects data from the device 0 on process 0.
+    Does this by adding data across all devices, but zeroing out data on all devices except the 0th on process 0.
+    """
+    x = jax.lax.cond(jax.lax.axis_index("devices") == 0,
+                     lambda y: y,
+                     lambda y: jax.tree_util.tree_map(jnp.zeros_like, y),
+                     x)
+    return jax.lax.psum(x, axis_name='devices')
+
 def replicate_across_devices(data):
+    # Step 0: Preserve dtypes, since bools are lost in psum
+    dtypes = jax.tree_map(lambda x: x.dtype, data)
+
     # Step 1: Tile data across local devices
     data = jax.tree_util.tree_map(lambda x: jnp.tile(x, [jax.local_device_count()] + [1] * jnp.array(x).ndim), data)
 
     # Step 2: Replace data on each device by data from device 0 on process 0
-    def _select_master_data(x):
-        x = jax.lax.cond(jax.lax.axis_index("devices") == 0,
-                         lambda y: y,
-                         lambda y: jax.tree_util.tree_map(jnp.zeros_like, y),
-                         x)
-        return jax.lax.psum(x, axis_name='devices')
-    data = jax.pmap(_select_master_data, axis_name='devices')(data)
+    data = _select_master_data(data)
+    return jax.tree_map(lambda x, dtype:x.astype(dtype), data, dtypes)
+
+def replicate_across_processes(data):
+    if isinstance(data, (int, float)):
+        dtype = type(data)
+        data = jnp.array(data, dtype)
+    else:
+        dtype = None
+
+    # Replicate data across GPUs (including across GPUs on different processes)
+    data = replicate_across_devices(jnp.array(data, dtype))
+    # Pick data from the first GPU on each process
+    data = data[0] 
+    if dtype is not None:
+        data = dtype(data)
     return data
 
 def get_from_devices(data):
@@ -71,7 +98,7 @@ def merge_from_devices(x):
     # Data is now identical on all local devices; pick the 0th device and flatten
     return full_data[0].reshape((-1, *full_data.shape[3:]))
 
-batch_rng_split = jax.vmap(lambda k: jax.random.split(k,2), in_axes=0, out_axes=1)
+batch_rng_split = jax.vmap(lambda key, n: jax.random.split(key, n), in_axes=(0, None), out_axes=1)
 
 def tree_dot(x, y):
     return jax.tree_util.tree_reduce(jnp.add, jax.tree_util.tree_map(lambda x_, y_: jnp.sum(x_ * y_), x, y))
@@ -83,8 +110,8 @@ def tree_add(x, y):
     return jax.tree_util.tree_map(lambda x_, y_: x_ + y_, x, y)
 
 def tree_norm(x_as_tree):
-  norm_sqr = sum(jax.tree_util.tree_leaves(jax.tree_util.tree_map(lambda x: jnp.sum(x**2), x_as_tree)))
-  return jnp.sqrt(norm_sqr)
+    norm_sqr = sum(jax.tree_util.tree_leaves(jax.tree_util.tree_map(lambda x: jnp.sum(x**2), x_as_tree)))
+    return jnp.sqrt(norm_sqr)
 
 
 ###############################################################################
@@ -110,7 +137,7 @@ def setup_job_dir(parent_dir, name) -> str:
     if os.path.exists(job_dir):
         logging.warning(f"Directory {job_dir} already exists. Results might be overwritten.")
     else:
-        os.makedirs(job_dir)
+        os.makedirs(job_dir, exist_ok=True)
     return job_dir
 
 def get_param_size_summary(params):
@@ -178,6 +205,29 @@ def prettyprint_param_shapes(params):
 ############################# Model / physics / hamiltonian ###################
 ###############################################################################
 
+def build_complex(x: jax.Array):
+    """Turn a real-valued tensor into a complex valued tensor, by splitting the last dimension and interpreting it as real/im part"""
+    return x[..., 0::2] + 1j * x[..., 1::2]
+
+def interleave_real_and_complex(x: jax.Array):
+    """Given a complex array of shape [..., n], return a real array of shape [..., 2*n] where the last dimension is interleaved real and imaginary parts"""
+    if not jnp.iscomplexobj(x):
+        return x
+    
+    x = jnp.stack([x.real, x.imag], axis=-1)
+    return x.reshape((*x.shape[:-2], -1))
+
+def split_axis(x: jax.Array, axis: int, new_shape):
+    """Take a tensor of shape [..., dim_old, ...] and split it into shape [..., new_shape[0], ..., new_shape[-1], ...]"""
+    assert x.shape[axis] == np.prod(new_shape), f"Cannot split axis {axis} of shape {x.shape} into {new_shape}"
+    axis = axis % x.ndim
+    return x.reshape((*x.shape[:axis], *new_shape, *x.shape[axis+1:]))
+
+def residual_update(update, x_old=None):
+    if (x_old is None) or (x_old.shape != update.shape):
+        return update
+    return x_old + update
+
 def without_cache(fixed_params):
     return {k:v for k,v in fixed_params.items() if k != "cache"}
 
@@ -225,6 +275,89 @@ def get_distance_matrix(r_el, full=True):
         diff = jnp.stack(rows, axis=-3)
         dist = jnp.linalg.norm(diff, axis=-1)
     return diff, dist
+
+
+def periodic_norm(metric: jnp.ndarray, r_frac: jnp.ndarray) -> jnp.ndarray:
+    """Returns the periodic norm of a set of vectors.
+
+    Args:
+        metric: metric tensor in fractional coordinate system, A A.T, where A is the
+        lattice vectors.
+        r_frac: vectors in fractional coordinates of the lattice cell, with
+        trailing dimension ndim, to compute the periodic norm of.
+
+    References:
+        Adapted from https://github.com/deepmind/ferminet/blob/main/ferminet/pbc/feature_layer.py
+
+    """
+    #chex.assert_rank(metric, expected_ranks=2)
+    a = 1 - jnp.cos(2 * np.pi * r_frac)
+    b = jnp.sin(2 * np.pi * r_frac)
+    cos_term = jnp.einsum('...m,mn,...n->...', a, metric, a)
+    sin_term = jnp.einsum('...m,mn,...n->...', b, metric, b)
+    return (1 / (2 * jnp.pi)) * jnp.sqrt(cos_term + sin_term)
+
+
+def get_periodic_distance_matrix(r_el, lattice, inv_lattice=None, full=True):
+    """
+    Compute periodic distance matrix omitting the main diagonal (i.e. distance to the particle itself)
+    Args:
+        r_el: [batch_dims x n_electrons x 3]
+    Returns:
+        tuple: differences [batch_dims x n_el x n_el x 3], distances [batch_dims x n_el x n_el]
+
+    References:
+        Adapted from https://github.com/deepmind/ferminet/blob/main/ferminet/pbc/feature_layer.py
+    """
+    if inv_lattice is None:
+        inv_lattice = jnp.linalg.inv(lattice)
+
+    n_el = r_el.shape[-2]
+    diff = r_el[..., None, :, :] - r_el[..., :, None, :]
+    diff_frac = diff @ inv_lattice
+    periodic_diff = jnp.concatenate((jnp.sin(2 * np.pi * diff_frac), 
+                                     jnp.cos(2 * np.pi * diff_frac)), 
+                                     axis=-1)
+
+    lattice_metric = lattice @ lattice.T
+    if full:
+        # Fill diagonal != 0, so there is no problem with the gradients of the norm at r=0
+        diff_frac += jnp.eye(n_el)[..., None]
+        dist = periodic_norm(lattice_metric, diff_frac) * (1.0 - jnp.eye(n_el))
+    else:
+        rows = [jnp.concatenate([diff_frac[..., i, :i, :],
+                                 diff_frac[..., i, i + 1:, :]], axis=-2)
+                for i in range(n_el)]
+        diff_frac = jnp.stack(rows, axis=-3)
+        dist = periodic_norm(lattice_metric, diff_frac)
+    return periodic_diff, dist
+
+
+def get_periodic_el_ion_distance_matrix(r_el, R_ion, lattice, inv_lattice=None):
+    """
+    Args:
+        r_el: shape [N_batch x n_el x 3]
+        R_ion: shape [N_ion x 3]
+    Returns:
+        diff: shape [N_batch x n_el x N_ion x 3]
+        dist: shape [N_batch x n_el x N_ion]
+    """
+    # Calculate reciprocal vectors, factor 2pi omitted
+    if inv_lattice is None:
+        inv_lattice = jnp.linalg.inv(lattice)
+    lattice_metric = lattice @ lattice.T
+
+    diff = r_el[..., None, :] - R_ion[..., None, :, :]
+    diff_frac = diff @ inv_lattice
+    periodic_diff = jnp.concatenate((jnp.sin(2 * np.pi * diff_frac), 
+                                     jnp.cos(2 * np.pi * diff_frac)), 
+                                     axis=-1)
+    dist = periodic_norm(lattice_metric, diff_frac)
+    return periodic_diff, dist
+
+
+def append_across_leading_dims(features, arr):
+    return jnp.append(features, jnp.broadcast_to(arr, features.shape[:-1] + arr.shape), axis=-1)
 
 
 def generate_exp_distributed(rng, batch_shape, k=1.0):
@@ -315,9 +448,45 @@ def tp_out_irreps_with_instructions(
 
     return irreps_out, instructions
 
+
 ###############################################################################
 ########################### Post-processing / analysis ########################
 ###############################################################################
+
+def get_autocorrelation(x, n_shifts=50):
+    x = np.array(x)
+    assert x.ndim == 1
+    n_shifts = min(n_shifts, len(x)//2)
+
+    ac = np.ones(n_shifts)
+    for i in range(1, n_shifts):
+        x1 = x[i:]
+        x2 = x[:-i]
+        ac[i] = np.mean((x1 - np.mean(x1)) * (x2 - np.mean(x2))) / (np.std(x1) * np.std(x2))
+    return ac
+
+def estimate_autocorrelation_time(x, n_shifts=50, ac_threshold=0.01):
+    """Fit an exponential decay to the autocorrelation function of x and return the decay time, 
+    corresponding to the inverse slope in a log-plot."""
+    ac = get_autocorrelation(x, n_shifts)
+
+    # Only use shifts with substantial autcorrelation. Very small (or negative) autocorrelation is probably
+    # caused by Monte Carlo noise
+    is_noise = ac < ac_threshold
+    if np.any(is_noise):
+        N_fit = np.where(is_noise)[0][0]
+    else:
+        N_fit = len(ac)
+
+    # Fit an exponential, by fitting a linear function in log space
+    if N_fit == 1:
+        tau = 0.5
+    else:
+        ac_fit = ac[:N_fit]
+        y_fit = 1 - np.log(ac_fit)
+        t_fit = np.arange(len(ac_fit))
+        tau = np.sum(t_fit**2) / np.sum(t_fit * y_fit)
+    return tau
 
 
 def morse_potential(r, E, a, Rb, E0):
@@ -347,8 +516,6 @@ def fit_morse_potential(d, E, p0=None):
 def save_xyz_file(fname, R, Z, comment="", **extra_data):
     """Units for R are expected to be Bohr and will be translated to Angstrom in output"""
     assert len(R) == len(Z)
-    PERIODIC_TABLE = ['H', 'He', 'Li', 'Be', 'B', 'C', 'N', 'O', 'F', 'Ne', 'Na', 'Mg', 'Al', 'Si', 'P', 'S',
-         'Cl', 'Ar', 'K', 'Ca', 'Sc', 'Ti', 'V', 'Cr', 'Mn', 'Fe', 'Co', 'Ni', 'Cu', 'Zn', 'Ga', 'Ge', 'As', 'Se', 'Br', 'Kr']
 
     if extra_data:
         property_string = " Properties=species:S:1:pos:R:3"
@@ -362,7 +529,6 @@ def save_xyz_file(fname, R, Z, comment="", **extra_data):
                 raise ValueError("Unsupported dtype for extra data")
             property_string += f":{key}:{dtype_string}:{values.shape[1]}"
 
-    ANGSTROM_IN_BOHR = 1.88973
     with open(fname, "w") as f:
         f.write(str(len(R)) + "\n")
         f.write(comment)
@@ -413,10 +579,31 @@ def add_value_texts_to_barchart(axes, orient="v", space=.01, format_string = "{:
                 _ax.text(_x, _y, value, va='center', ha="left", **text_kwargs)
 
     if isinstance(axes, np.ndarray):
-        for idx, ax in np.ndenumerate(axes):
+        for ax in axes:
             _single(ax)
     else:
         _single(axes)
+
+
+
+###############################################################################
+############################ Pyscf related stuff ##############################
+###############################################################################
+
+
+@dataclasses.dataclass
+class PeriodicMeanFieldDuck:
+    """Quacks like a pyscf.pbc.scf meanfield object."""
+    e_tot: float
+    mo_coeff: List
+    kpts: np.array
+    mo_energy: List
+    mo_occ: List
+
+
+def load_periodic_pyscf(chkfile):
+    cell, mf_data = pyscf.pbc.scf.chkfile.load_scf(chkfile)
+    return cell, PeriodicMeanFieldDuck(**mf_data)
 
 
 ###############################################################################
@@ -459,24 +646,34 @@ def get_next_geometry_index(
     Suggests next geometry to train on using either
     (1) round_robin -> always pick next geometry in line
     (2) stddev      -> pick pick geometry with highests E_std
+    (3) weight      -> pick geometries randomly with probability proportional to their weight
     """
-    if scheduling_method == "round_robin":
+
+    # 1) If round-robin => select purely based on this
+    if (scheduling_method == "round_robin") or (n_epoch < len(geometry_data_stores) * n_initial_round_robin_per_geom):
         idx_next = n_epoch % len(geometry_data_stores)
         if permutation is not None:
             return permutation[idx_next]
         else:
             return permutation
-    elif scheduling_method == 'stddev':
-        if n_epoch < len(geometry_data_stores) * n_initial_round_robin_per_geom:
-            return get_next_geometry_index(n_epoch, geometry_data_stores, "round_robin", None, None, permutation)
-        wf_ages = n_epoch - jnp.array([geometry_data_store.last_epoch_optimized for geometry_data_store in geometry_data_stores])
-        max_age = max_age or int(len(geometry_data_stores) * 1.5)
-        if jnp.any(wf_ages > max_age):
-            index = jnp.argmax(wf_ages)
-        else:
-            stddevs = [jnp.sqrt(geometry_data_store.current_metrics['E_var']) for geometry_data_store in geometry_data_stores]
-            index = np.argmax(stddevs)
+        
+    # 2) If any geometry has surpassed its max_age, choose this one
+    wf_ages = n_epoch - jnp.array([geometry_data_store.last_epoch_optimized for geometry_data_store in geometry_data_stores])
+    max_age = max_age or int(len(geometry_data_stores) * 4.0)
+    if jnp.any(wf_ages > max_age):
+        index = jnp.argmax(wf_ages)
         return index
+
+    #3) Otherwise, choose based on stddev or weight
+    if scheduling_method == 'stddev':
+        stddevs = [jnp.sqrt(geometry_data_store.current_metrics['E_var']) for geometry_data_store in geometry_data_stores]
+        return np.argmax(stddevs)
+    elif scheduling_method == 'weight':
+        weights = [geometry_data_store.weight for geometry_data_store in geometry_data_stores]
+        return np.random.choice(len(geometry_data_stores), p=weights)
+    elif scheduling_method == "var_per_el":
+        var_per_el = [g.current_metrics.get('E_var', 1.0) / g.physical_config.n_electrons for g in geometry_data_stores]
+        return np.random.choice(len(geometry_data_stores), p=var_per_el / np.sum(var_per_el))
     else:
         raise NotImplementedError("Wavefunction scheduler currently not supported.")
 

@@ -18,11 +18,16 @@ Code version: [arxiv_2105.08351v2](https://github.com/mdsunivie/deeperwin/releas
 Gerard, L., Scherbela, M., et al. Published in: Advances in Neural Information Processing Systems (2022). \
 Code version: [arxiv_2205.09438v2](https://github.com/mdsunivie/deeperwin/releases/tag/arxiv_2205.09438v2)
 
-[Towards a Foundation Model for Neural Network Wavefunctions](https://www.nature.com/articles/s41467-023-44216-9#Sec18) \
-Scherbela, M., Gerard, L., and Grohs., P. 
+[Towards a Foundation Model for Neural Network Wavefunctions](https://www.nature.com/articles/s41467-023-44216-9) \
+Scherbela, M., Gerard, L., and Grohs, P. \
+Code version: [Transferable atomic orbitals](https://github.com/mdsunivie/deeperwin/releases/tag/transferable_atomic_orbitals)
 
 [Variational Monte Carlo on a Budget — Fine-tuning pre-trained Neural Wavefunctions](https://papers.nips.cc/paper_files/paper/2023/hash/4b5721f7fcc1672930d860e0dfcfee84-Abstract-Conference.html) \
-Scherbela, M., Gerard, L., and Grohs., P. 
+Scherbela, M., Gerard, L., and Grohs, P. \
+Code version: [Transferable atomic orbitals](https://github.com/mdsunivie/deeperwin/releases/tag/transferable_atomic_orbitals)
+
+[Transferable Neural Wavefunctions for Solids](https://arxiv.org/abs/2405.07599) \
+Gerard, L., Scherbela, M., Sutterud, H., Foulkes, M. and Grohs, P.
 
 Please cite the respective publication when using our codebase. 
 
@@ -31,6 +36,7 @@ On [figshare](https://figshare.com/articles/online_resource/Pre-trained_neural_w
 2. A pre-trained neural wavefunction on a dataset of 18 compounds with Hartree-Fock orbital descriptors.
 3. A pre-trained neural wavefunction on a dataset of 98 compounds with PhisNet orbital descriptors. 
 
+To use the checkpoints please checkout the code version [Transferable atomic orbitals](https://github.com/mdsunivie/deeperwin/releases/tag/transferable_atomic_orbitals).
 
 # Quick overview
 
@@ -56,11 +62,8 @@ To install the kfac fork we are using:
 This will install the repository "in-place", so you can make changes to the source code without having to reinstall the package.
 If you need CUDA support to run the JAX code on GPUs (recommended), additionally install the prepackaged jax[cuda] wheel:
 ```bash
-    pip install --upgrade jax==0.3.24 jaxlib==0.3.24+cuda11.cudnn82 -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+    pip install --upgrade "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 ```
-Other known issues: 
-- Pin `tensorflow-prob == 0.19.0`
-- Pin `e3nn-jax == 0.17.1` 
 
 ## Running a simple calculation
 

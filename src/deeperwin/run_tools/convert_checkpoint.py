@@ -14,8 +14,7 @@ def str2bool(v):
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
-
-def convert_param(params):
+def convert_params(params):
     new_params = dict()
     for k, v in params.items():
         if "wf/orbitals/transferable_atomic_orbitals" in k:

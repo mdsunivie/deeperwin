@@ -9,7 +9,7 @@ from deeperwin.model.e3nn_utils import (
     E3ChannelNorm,
 )
 from deeperwin.orbitals import (
-    OrbitalParams,
+    OrbitalParamsHF,
     build_pyscf_molecule_from_physical_config,
     _get_atomic_orbital_basis_functions,
     localize_orbitals,
@@ -592,7 +592,6 @@ class E3PhisNet(hk.Module):
 
     def __call__(self, R: jax.Array, Z: jax.Array, edge_ind: jax.Array):
         if self.predict_forces:
-
             def func(R_, Z_, edge_ind_):
                 (E, outputs), forces = jax.value_and_grad(self._call_no_batch, argnums=0, has_aux=True)(
                     R_, Z_, edge_ind_
@@ -800,7 +799,7 @@ def get_edge_connectivity(n_atoms):
 
 
 def get_phisnet_solution(
-    physical_config, phisnet_model, basis_set, localization_config, N_ions_max, nb_orbitals_per_Z, atomic_orbitals=None
+    physical_config, phisnet_model, basis_set, localization_method: str, N_ions_max, nb_orbitals_per_Z, atomic_orbitals=None
 ):
     n_el, n_up, R, Z = physical_config.get_basic_params()
     n_dn = n_el - n_up
@@ -830,10 +829,10 @@ def get_phisnet_solution(
 
         # Converting to numpy array to do in-place operations
         mo_coeff, mo_energies = np.array(mo_coeff), np.array(mo_energies)
-        if localization_config:
+        if localization_method:
             mol = build_pyscf_molecule_from_physical_config(physical_config, basis_set)
             mo_coeff[:, :n_up], mo_energies[:n_up] = localize_orbitals(
-                mol, mo_coeff[:, :n_up], localization_config, mo_energies[:n_up]
+                mol, mo_coeff[:, :n_up], localization_method, mo_energies[:n_up]
             )
         mo_coeff = [mo_coeff, mo_coeff]
         mo_energies = [mo_energies, mo_energies]
@@ -847,14 +846,12 @@ def get_phisnet_solution(
         np.tile(np.arange(n_dn), 1).reshape((-1, n_dn)),
     ]
 
-    orbital_params = OrbitalParams(
+    orbital_params = OrbitalParamsHF(
         atomic_orbitals=atomic_orbitals,
         mo_coeff=mo_coeff,
         mo_energies=mo_energies,
-        idx_orbitals=ind_orbitals,
-        ci_weights=np.ones(1),
     )
-    return orbital_params, node_embeddings, hessian, (E_hf, np.nan)
+    return orbital_params, node_embeddings, hessian, dict(E_phisnet=E_hf)
 
 
 if __name__ == "__main__":

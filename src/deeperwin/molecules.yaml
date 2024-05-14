@@ -4,8 +4,6 @@ H2:
   - [1.4, 0.0, 0.0]
   Z: [1, 1]
   el_ion_mapping: [0, 1]
-  cas_n_active_orbitals: 4
-  cas_n_active_electrons: 2
   E_ref: -1.17448
 N2:
   R:
@@ -13,8 +11,6 @@ N2:
   - [2.068, 0.0, 0.0]
   Z: [7, 7]
   el_ion_mapping: [0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1]
-  cas_n_active_orbitals: 16
-  cas_n_active_electrons: 6
   E_ref: -109.5423
 N2_bond_breaking:
   R:
@@ -22,8 +18,6 @@ N2_bond_breaking:
   - [4.0, 0.0, 0.0]
   Z: [7, 7]
   el_ion_mapping: [0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1]
-  cas_n_active_orbitals: 16
-  cas_n_active_electrons: 6
   E_ref: -109.194726
 LiH:
   R:
@@ -31,8 +25,6 @@ LiH:
   - [3.015, 0.0, 0.0]
   Z: [3, 1]
   el_ion_mapping: [0, 1, 0, 0]
-  cas_n_active_orbitals: 10
-  cas_n_active_electrons: 2
   E_ref: -8.070548
 Li2:
   R:
@@ -41,8 +33,6 @@ Li2:
   Z: [3, 3]
   el_ion_mapping: [0, 0, 1, 0, 1, 1]
   spin: 0
-  cas_n_active_orbitals: 16
-  cas_n_active_electrons: 6
   E_ref: -14.9954
 HChain10:
   R:
@@ -59,8 +49,6 @@ HChain10:
   Z: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
   el_ion_mapping: [0, 2, 4, 6, 8, 1, 3, 5, 7, 9]
   spin: 0
-  cas_n_active_orbitals: 10
-  cas_n_active_electrons: 10
   E_ref: -5.6655
 HChain6:
   R:
@@ -73,8 +61,6 @@ HChain6:
   Z: [1, 1, 1, 1, 1, 1]
   el_ion_mapping: [0, 2, 4, 1, 3, 5]
   spin: 0
-  cas_n_active_orbitals: 12
-  cas_n_active_electrons: 6
   E_ref: -3.4058316
 HChain15:
   Z: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, ]
@@ -370,8 +356,6 @@ H4plus:
   charge: 1
   spin: 1
   el_ion_mapping: [0, 3, 1]
-  cas_n_active_orbitals: 12
-  cas_n_active_electrons: 3
   E_ref: -1.8527330000000002
 CO:
   R:
@@ -402,8 +386,6 @@ NH3:
   Z: [7, 1, 1, 1]
   el_ion_mapping: [0, 0, 0, 0, 0, 0, 0, 1, 2, 3]
   spin: 0
-  cas_n_active_orbitals: 10
-  cas_n_active_electrons: 10
   E_ref: -56.5644
 #Ethene:
 #  R:
@@ -416,8 +398,6 @@ NH3:
 #  Z: [6, 6, 1, 1, 1, 1]
 #  el_ion_mapping: [0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 2, 4, 3, 5]
 #  spin: 0
-#  cas_n_active_orbitals: 10
-#  cas_n_active_electrons: 10
 #  E_ref: -78.57744597
 Ethene:
   R:
@@ -430,8 +410,6 @@ Ethene:
   Z: [6, 6, 1, 1, 1, 1]
   el_ion_mapping: [0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 2, 4, 3, 5]
   spin: 0
-  cas_n_active_orbitals: 10
-  cas_n_active_electrons: 10
   E_ref: -78.5844
 #Ethene_fermi:
 #  R:
@@ -444,8 +422,6 @@ Ethene:
 #  Z: [6, 6, 1, 1, 1, 1]
 #  el_ion_mapping: [0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 2, 4, 3, 5]
 #  spin: 0
-#  cas_n_active_orbitals: 10
-#  cas_n_active_electrons: 10
 #  E_ref: -78.5844
 Cyclobutadiene:
   R:
@@ -461,8 +437,6 @@ Cyclobutadiene:
   el_ion_mapping: [0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 6, 0, 0, 0, 1, 1, 1, 2,
     2, 2, 3, 3, 3, 5, 7]
   spin: 0
-  cas_n_active_orbitals: 10
-  cas_n_active_electrons: 10
   E_ref: -154.671
 Cyclobutadiene_TS:
   R:
@@ -478,8 +452,6 @@ Cyclobutadiene_TS:
   el_ion_mapping: [0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 6, 0, 0, 0, 1, 1, 1, 2,
     2, 2, 3, 3, 3, 5, 7]
   spin: 0
-  cas_n_active_orbitals: 10
-  cas_n_active_electrons: 10
   E_ref: -154.655
 Methane:
   R:
@@ -491,8 +463,6 @@ Methane:
   Z: [6, 1, 1, 1, 1]
   el_ion_mapping: [0, 0, 0, 1, 2, 0, 0, 0, 3, 4]
   spin: 0
-  cas_n_active_orbitals: 10
-  cas_n_active_electrons: 10
   E_ref: -40.488989
 Benzene:
   R:
@@ -538,40 +508,22 @@ H2O:
   E_ref_source: "CCSD(T)=FULL, cc-pCVQZ, https://cccbdb.nist.gov/energy2x.asp"
 He:
   E_ref: -2.903720
-  cas_n_active_orbitals: 2
-  cas_n_active_electrons: 2
 Li:
   E_ref: -7.478067
-  cas_n_active_orbitals: 9
-  cas_n_active_electrons: 3
 Be:
   E_ref: -14.667330
-  cas_n_active_orbitals: 8
-  cas_n_active_electrons: 2
 B:
   E_ref: -24.653710
-  cas_n_active_orbitals: 12
-  cas_n_active_electrons: 3
 C:
   E_ref: -37.844710
-  cas_n_active_orbitals: 12
-  cas_n_active_electrons: 4
 N:
   E_ref: -54.588820
-  cas_n_active_orbitals: 12
-  cas_n_active_electrons: 5
 O:
   E_ref: -75.066550
-  cas_n_active_orbitals: 12
-  cas_n_active_electrons: 6
 F:
   E_ref: -99.732900
-  cas_n_active_orbitals: 12
-  cas_n_active_electrons: 7
 Ne:
   E_ref: -128.936600
-  cas_n_active_orbitals: 12
-  cas_n_active_electrons: 8
 P:
   E_ref: -341.257800
 S:

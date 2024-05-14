@@ -5,7 +5,7 @@ import re
 
 import ruamel.yaml
 
-from deeperwin.configuration import Configuration, build_flattend_dict, CheckpointConfig, ConfigBaseclass, PhisNetModelConfig
+from deeperwin.configuration import Configuration, build_flattend_dict, CheckpointConfig, PhisNetModelConfig, build_physical_configs_from_changes
 from deeperwin.mcmc import MCMCState
 import jax
 import numpy as np
@@ -13,7 +13,7 @@ import haiku as hk
 import zipfile
 from dataclasses import dataclass, fields
 from typing import Optional, Any, List, Union
-from deeperwin.utils.utils import split_params
+from deeperwin.utils.utils import split_params, without_cache
 
 @dataclass
 class RunData:
@@ -84,7 +84,8 @@ def load_run(fname, parse_config=True, parse_csv=False, load_pkl=True):
 
 def load_data_for_reuse(config: Configuration, raw_config):
     logger = logging.getLogger("dpe")
-    params_to_reuse, fixed_params, mcmc_state, opt_state, clipping_state, phisnet_params = None, None, None, None, None, None
+    (params_to_reuse, fixed_params, mcmc_state, opt_state, clipping_state, phisnet_params,
+     map_fixed_params)= None, None, None, None, None, None, None
 
     if config.reuse.path is not None:
         # Load the old data; only parse the config if we want to reuse it, otherwise ignore
@@ -111,7 +112,7 @@ def load_data_for_reuse(config: Configuration, raw_config):
             logger.debug(f"Selecting new seed for MCMC rng_state: {new_seed}")
             mcmc_state.rng_state = jax.random.PRNGKey(new_seed)
     if config.reuse.reuse_fixed_params:
-        fixed_params = reuse_data.fixed_params
+        fixed_params = without_cache(reuse_data.fixed_params) # fixed params of initial geometry 0
     if config.reuse.reuse_trainable_params:
         params_to_reuse = reuse_data.params
         if config.reuse.reuse_modules is not None:
@@ -131,7 +132,19 @@ def load_data_for_reuse(config: Configuration, raw_config):
         logger.debug(f"Reusing {hk.data_structures.tree_size(phisnet_params)} PhisNet weights and reusing phisnet config from phisnet checkpoint")
         phisnet_model_config = PhisNetModelConfig.parse_obj(phisnet_data.config["model"])
         config.model.orbitals.transferable_atomic_orbitals.phisnet_model = phisnet_model_config
-    return config, params_to_reuse, fixed_params, mcmc_state, opt_state, clipping_state, phisnet_params
+
+    if config.optimization.shared_optimization:
+        phys_configs = build_physical_configs_from_changes(raw_config['physical'])
+        map_fixed_params = {pc.comment.split("_")[0]: (None, None, None) for pc in phys_configs}
+        for i in range(len(phys_configs)):
+            path = "/".join(config.reuse.path.split("/")[:-2]) + "/" + f"{i:04}" + "/" + config.reuse.path.split("/")[-1]
+            g = load_run(path, parse_config=True)
+            hash = g.config.physical.comment.split("_")[0]
+            map_fixed_params[hash] = (without_cache(g.fixed_params) if config.reuse.reuse_fixed_params else None,
+                                      g.mcmc_state if config.reuse.reuse_mcmc_state else None,
+                                      g.clipping_state if config.reuse.reuse_clipping_state else None,)
+
+    return config, params_to_reuse, fixed_params, mcmc_state, opt_state, clipping_state, phisnet_params, map_fixed_params
 
 
 def is_checkpoint_required(n_epoch: int, checkpoint_config: CheckpointConfig):
@@ -154,4 +167,7 @@ def delete_obsolete_checkpoints(n_epoch, chkpt_config: CheckpointConfig, prefix=
         n = int(match.group(1))
         if (n < n_epoch) and (n % chkpt_config.keep_every_n_epochs) and (n not in chkpt_config.additional_n_epochs):
             logging.getLogger("dpe").debug(f"Deleting old checkpoint: {fname}")
-            os.remove(os.path.join(directory, fname))
+            try:
+                os.remove(os.path.join(directory, fname))
+            except FileNotFoundError:
+                pass # Checkpoint has already been deleted in some other way

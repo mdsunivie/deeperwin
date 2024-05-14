@@ -5,6 +5,7 @@ import optax
 import haiku as hk
 from deeperwin.mcmc import MetropolisHastingsMonteCarlo, MCMCState
 from deeperwin.configuration import StandardOptimizerConfig
+import re
 
 
 def _run_mcmc_with_cache(
@@ -26,8 +27,6 @@ def _run_mcmc_with_cache(
         cache_func_pmapped = jax.pmap(cache_func, axis_name="devices", static_broadcasted_argnums=(1, 2))
         fixed_params["cache"] = cache_func_pmapped(params, *spin_state, *mcmc_state.build_batch(fixed_params))
 
-    log_psi_squared_pmapped = jax.pmap(log_psi_sqr_func, axis_name="devices", static_broadcasted_argnums=(1, 2))
-    mcmc_state.log_psi_sqr = log_psi_squared_pmapped(params, *spin_state, *mcmc_state.build_batch(fixed_params))
     if mode == "burnin":
         mcmc_state = mcmc.run_burn_in(log_psi_sqr_func, mcmc_state, params, *spin_state, fixed_params)
     elif mode == "intersteps":

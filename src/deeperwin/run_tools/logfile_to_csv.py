@@ -18,7 +18,11 @@ def parse_data(data, blacklist=None):
         elif key == "n_epoch" or key == "opt_n_epoch":
             epoch = int(value)
         else:
-            data_dict[key] = float(value)
+            try:
+                data_dict[key] = float(value)
+            except:
+                print("Could not parse this line: " + data)
+                raise
     return epoch, geom_id, data_dict
 
 
@@ -41,8 +45,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--n-geoms", type=int, default=0)
     parser.add_argument("--output", default="", required=False)
-    parser.add_argument("--averaging", type=int, default=500, required=False)
+    parser.add_argument("--averaging", type=int, default=50, required=False)
     parser.add_argument("--verbose", default=False, action="store_true")
+    parser.add_argument("--one_line_per_epoch", default=False, action="store_true")
     parser.add_argument("fname", nargs="+")
     args = parser.parse_args()
 
@@ -55,6 +60,7 @@ if __name__ == '__main__':
                              'opt_mcmc_stepsize',
                              'opt_mcmc_acc_rate',
                              'opt_mcmc_max_age',
+                             'opt_damping',
                              'opt_mcmc_delta_r_mean',
                              'opt_mcmc_delta_r_median'}
 
@@ -67,8 +73,10 @@ if __name__ == '__main__':
                 is_pre_epoch = "dpe          INFO     pre Epoch" in line
                 is_opt_epoch = "dpe          INFO     opt Epoch" in line
                 if is_pre_epoch or is_opt_epoch:
-                    data = line.split(": ")[1]
+                    ep_per_geom, data = line.split(": ")
+                    ep_per_geom = int(ep_per_geom.split("Epoch")[1])
                     epoch, geom_id, data = parse_data(data, METRICS_BLACKLIST)
+                    data["epoch_per_geom"] = ep_per_geom
                 else:
                     continue
 
@@ -83,11 +91,16 @@ if __name__ == '__main__':
                     values_average[k][geom_id] += v
 
                 if (epoch+1) % averaging == 0:
-                    for ind_g in range(n_geoms):
+                    if args.one_line_per_epoch:
+                        iterator = [geom_id]
+                    else:
+                        iterator = range(n_geoms)
+                    for ind_g in iterator:
                         data_row = dict(epoch=epoch+1, geom_id=ind_g, phase="pre" if is_pre_epoch else "opt")
                         for k in values_average:
                             data_row[k] = values_average[k][ind_g] / n_values[ind_g]
                         full_data.append(data_row)
+
                     n_values = np.minimum(n_values, 1)
                     for k in values_average:
                       values_average[k][:] = values_latest[k]

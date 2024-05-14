@@ -12,21 +12,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+from typing import Optional, Any, Callable, Tuple, Mapping, Union
 import kfac_jax
 import optax
-from typing import Optional, Any, Callable, Tuple, Mapping, Iterator, Union
 import jax
 import jax.numpy as jnp
-from deeperwin.configuration import OptimizerConfigKFAC, BFGSOptimizerConfig, OptimizationConfig, \
-    StandardOptimizerConfig
+from deeperwin.configuration import OptimizerConfigKFAC, StandardOptimizerConfig
 from deeperwin.optimization.opt_utils import build_lr_schedule, build_optax_optimizer
 from deeperwin.srcg import SRCGOptimizer
 from deeperwin import curvature_tags_and_blocks
-import haiku as hk
-import re
 
-OptimizerConfigType = Union[StandardOptimizerConfig, OptimizerConfigKFAC, BFGSOptimizerConfig]
+OptimizerConfigType = Union[StandardOptimizerConfig, OptimizerConfigKFAC]
 OptaxState = Any
 
 
@@ -208,8 +204,6 @@ def build_optimizer(value_and_grad_func,
                                   include_norms_in_stats=True,
                                   include_per_param_norms_in_stats=False,
                                   )
-    elif opt_config.name == 'slbfgs':
-        raise NotImplementedError("BFGS currently not yet implemented")
     elif opt_config.name == 'srcg':
         assert log_psi_squared_func is not None, "log_psi_squared_func must be provided for Stochastic Reconfigration Optimizer (SRCG)"
         return SRCGOptimizer(log_psi_squared_func, value_and_grad_func, opt_config)

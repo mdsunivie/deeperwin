@@ -1,7 +1,7 @@
 """
 Logging of metrics and weights to local disk and web services.
 """
-
+import multiprocessing
 import logging
 import time
 import os.path
@@ -15,8 +15,8 @@ import wandb
 
 from deeperwin.configuration import LoggingConfig, BasicLoggerConfig, LoggerBaseConfig, PickleLoggerConfig, \
     WandBConfig, Configuration
-from deeperwin.checkpoints import save_run, RunData
-from deeperwin.utils.utils import without_cache
+from deeperwin.checkpoints import delete_obsolete_checkpoints, save_run, RunData
+from deeperwin.utils.utils import getCodeVersion
 
 
 def build_dpe_root_logger(config: BasicLoggerConfig):
@@ -98,6 +98,17 @@ class DataLogger(ABC):
     def on_run_begin(self):
         pass
 
+
+class SilentLogger(DataLogger):
+    def __init__(self):
+        super().__init__(None, None, None)
+
+    def log_metrics(self, metrics: Dict[str, Any], epoch=None, metric_type: Literal["", "opt", "eval", "pre"] = "", force_log=False):
+        pass
+
+    def log_params(self, params: Dict[str, Any]):
+        pass
+
 class LoggerCollection(DataLogger):
     """
     List of multiple loggers that replicates logs across all sub-loggers.
@@ -153,6 +164,8 @@ class LoggerCollection(DataLogger):
             l.log_params(params)
 
     def log_metrics(self, metrics: Dict[str, Any], epoch=None, metric_type: Literal["", "opt", "eval", "pre"] = "", force_log=False):
+        if metrics is None:
+            return
         for l in self.loggers:
             l.log_metrics(metrics, epoch, metric_type, force_log)
 
@@ -160,7 +173,6 @@ class LoggerCollection(DataLogger):
         for l in self.loggers:
             l.log_tags(tags)
 
-import multiprocessing
 
 def wandb_parallel_logger_process(save_path, project, entity, experiment_name, group_name, queue):
     wandb_run = wandb.init(dir=save_path, project=project, name=experiment_name, entity=entity, group=group_name, tags=[], reinit=True)
@@ -173,7 +185,6 @@ def wandb_parallel_logger_process(save_path, project, entity, experiment_name, g
         if name == "summary":
             for k, v in values.items():
                 wandb_run.summary[k] = v
-            wandb_run.summary
         elif name == "params":
             wandb_run.config.update(values, allow_val_change=False)
         elif name == "tags":
@@ -250,20 +261,29 @@ class WandBLogger(DataLogger):
         self.include_epoch = True
 
     @staticmethod
-    def _convert_metric_datatype(x):
-        if x is None:
-            return x
-        elif isinstance(x, (float, int)):
-            return x
-        elif hasattr(x, 'shape'):
-            n_elements = int(np.prod(x.shape))
-            if n_elements > 1:
-                return np.array(x)
+    def _convert_metric_datatype(metrics):
+        metrics_new = {}
+        for key, x in metrics.items():
+            if x is None:
+                metrics_new[key] = x
+            elif isinstance(x, (float, int, complex)):
+                metrics_new[key] = x
+            elif hasattr(x, 'shape'):
+                n_elements = int(np.prod(x.shape))
+                if (n_elements > 1) and np.iscomplexobj(x):
+                    metrics_new[key + "_real"] = np.array(x.real)
+                    metrics_new[key + "_imag"] = np.array(x.imag)
+                elif (n_elements > 1) and np.isrealobj(x):
+                    metrics_new[key] = np.array(x)
+                elif (n_elements == 1) and np.isrealobj(x):
+                    metrics_new[key] = float(x)
+                elif (n_elements == 1) and np.iscomplexobj(x):
+                    metrics_new[key + "_real"] = float(x.real)
+                    metrics_new[key + "_imag"] = float(x.imag)
             else:
-                return float(x)
-        else:
-            # logging.warning(f"Cannot log data-type using WandB: {type(x)}")
-            return float(np.mean(x))
+                # logging.warning(f"Cannot log data-type using WandB: {type(x)}")
+                metrics_new[key] = float(np.mean(x))
+        return metrics_new
 
     def on_run_begin(self):
         if self.logger_config.id is not None and self.logger_config.use_id:
@@ -298,8 +318,7 @@ class WandBLogger(DataLogger):
 
         blacklist = tuple(metric_type + "_" + bl for bl in self.blacklist) if metric_type != "" else self.blacklist
         metrics_prefixed = {self.prefix + k: v for k,v in metrics.items() if not k.startswith(blacklist)}
-        for key in metrics_prefixed:
-            metrics_prefixed[key] = self._convert_metric_datatype(metrics_prefixed[key])
+        metrics_prefixed = self._convert_metric_datatype(metrics_prefixed)
         if epoch is None:
             for k, v in metrics_prefixed.items():
                 wandb.run.summary[k] = v
@@ -413,23 +432,11 @@ class WavefunctionLogger:
         if len(samples_for_averaging) > 0:
             return np.nanmean(samples_for_averaging, axis=0)
 
-    def log_step(self, metrics, E_ref=None, mcmc_state:'MCMCState'=None, opt_stats=None,
+    def log_step(self, metrics, E_ref=None, mcmc_state=None, opt_stats=None,
                  extra_metrics=None, epoch: Optional[int] = None):
         if self.loggers is None:
             return
-
-        # metrics = dict()
-        # if 'E_mean_unclipped' in aux_stats:
-        #     metrics["E_mean"] = 'E_mean_unclipped'
-        # if 'E_mean_clipped' in aux_stats:
-        #     metrics['E_mean']
-
-        # metrics["E_std"] = np.nanstd(E_loc_unclipped)
-
-        # if E_loc_clipped is not None:
-        #     metrics["E_mean_clipped"] = np.nanmean(E_loc_clipped)
-        #     metrics["E_std_clipped"] = np.nanstd(E_loc_clipped)
-
+        
         if E_ref is not None:
             metrics["error_E_mean"] = (metrics["E_mean"] - E_ref) * 1e3
 
@@ -472,18 +479,53 @@ class WavefunctionLogger:
 
     def log_summary(self, E_ref=None, epoch_nr=None, extra_metrics=None):
         metrics = extra_metrics or dict()
-        if "E_mean" in self.history:
-            energies = np.array(self.history["E_mean"], dtype=float)
-            metrics["E_mean"] = np.nanmean(energies)
-            metrics["E_mean_sigma"] = np.nanstd(energies) / np.sqrt(len(energies))
-            if E_ref is not None:
-                metrics["error_eval"] = 1e3 * (metrics["E_mean"] - E_ref)
-                metrics["sigma_error_eval"] = 1e3 * metrics["E_mean_sigma"]
-                metrics["error_plus_2_stdev"] = metrics["error_eval"] + 2 * metrics["sigma_error_eval"]
-        if "forces_mean" in self.history:
-            metrics["forces_mean"] = np.nanmean(self.history["forces_mean"], axis=0)
+        if ("E_mean" in metrics) and (E_ref is not None):
+            metrics["error_eval"] = 1e3 * (metrics["E_mean"] - E_ref)
+            metrics["sigma_error_eval"] = 1e3 * metrics["E_mean_sigma"]
+            metrics["error_plus_2_stdev"] = metrics["error_eval"] + 2 * metrics["sigma_error_eval"]
         if len(metrics) > 0:
             self.loggers.log_metrics(metrics, epoch_nr, "opt", force_log=True)
+
+
+# These functions cannot be easily moved into utils, because they need to be imported, before importing utils.py in process_molecule.py
+def initialize_training_loggers(
+        config: Configuration,
+        use_wandb_group: bool = False,
+        exp_idx_in_group: Optional[int] = None,
+        save_path=".",
+        parallel_wandb_logging=False,
+) -> LoggerCollection:
+    if jax.process_index() == 0:
+        loggers = LoggerCollection(config=config.logging,
+                                   name=config.experiment_name,
+                                   use_wandb_group=use_wandb_group,
+                                   exp_idx_in_group=exp_idx_in_group,
+                                   save_path=save_path,
+                                   parallel_wandb_logging=parallel_wandb_logging)
+        loggers.on_run_begin()
+        loggers.log_config(config)
+        loggers.log_tags(config.logging.tags)
+        loggers.log_param("code_version", getCodeVersion())
+    else:
+        loggers = SilentLogger()
+
+    return loggers
+
+
+def finalize_experiment_run(
+    config: Configuration,
+    loggers,
+    params,
+    fixed_params,
+    mcmc_state,
+    opt_state,
+    clipping_state,
+    ema_params=None
+) -> None:
+    if jax.process_index() == 0:
+        loggers.log_checkpoint(config.optimization.n_epochs_total, params, fixed_params, mcmc_state, opt_state, clipping_state, ema_params)
+        delete_obsolete_checkpoints(config.optimization.n_epochs_total, config.optimization.checkpoints)
+        loggers.on_run_end()
 
 
 

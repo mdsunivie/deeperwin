@@ -1,3 +1,4 @@
+#%%
 import numpy as np
 from typing import List, Optional, Dict, Union
 import hashlib
@@ -6,29 +7,81 @@ import pandas as pd
 import ase
 from deeperwin.run_tools.geometry_utils import BOHR_IN_ANGSTROM
 import json
+from collections.abc import Iterable
 
 ROUND_R_DECIMALS = 5
 
+class NoIndentList:
+    def __init__(self, values):
+        self.values = values
+
+    def to_json(self):
+        return "[@@" + ", ".join([str(v) for v in self.values]) + "@@]"
 
 def dump_to_json(data, fname):
     def default_encoder(o):
         if hasattr(o, "to_json"):
             return o.to_json()
         return o.__dict__
+    
+    class CustomEncoder(json.JSONEncoder):
+        def encode(self, obj):
+            s = json.JSONEncoder(default=default_encoder, indent=2).encode(obj)
+            s = s.replace('"[@@', '[').replace('@@]"', ']')
+            return s
+        
+        def iterencode(self, o):
+            yield self.encode(o)
 
     with open(fname, "w") as f:
-        json.dump(data, f, default=default_encoder, indent=2)
+        json.dump(data, f, cls=CustomEncoder)
+
+class PeriodicLattice:
+    def __init__(self, lattice_prim, supercell=None, k_twist=None):
+        if supercell is None:
+            supercell = [1, 1, 1]
+        if k_twist is None:
+            k_twist = [0, 0, 0]
+        assert len(k_twist) == 3
+        self.lattice_prim = np.array(lattice_prim, float)
+        self.supercell = np.array(supercell, int)
+        self.k_twist = np.array(k_twist, float)
+
+    def __repr__(self):
+        return f"<PeriodicLattice, {'x'.join([str(n) for n in self.supercell])}>"
+
+    def to_json(self):
+        return dict(
+            lattice_prim = NoIndentList(np.round(self.lattice_prim, ROUND_R_DECIMALS).tolist()),
+            supercell = NoIndentList(self.supercell.tolist()),
+            k_twist = NoIndentList(np.round(self.k_twist, ROUND_R_DECIMALS).tolist()),
+        )
+    
+    def to_bytes(self):
+        lattice = np.round(self.lattice_prim, ROUND_R_DECIMALS).tobytes()
+        k_twist = np.round(self.k_twist, ROUND_R_DECIMALS).tobytes()
+        supercell = self.supercell.tobytes()
+        return lattice + supercell + k_twist
 
 class Geometry:
-    def __init__(self, R, Z, charge=0, spin=None, comment="", name=""):
+    def __init__(self, R, Z, charge=0, spin=None, periodic=None, comment="", name="", E_ref=None, E_ref_source=None):
         self.R = np.array(R)
         self.Z = np.array(Z, int)
+        assert self.R.shape[0] == len(self.Z)
+        assert self.R.shape[1] == 3
+
         self.charge = int(charge)
         if spin is None:
             spin = (sum(Z) - charge) % 2
         self.spin = int(spin)
+        if isinstance(periodic, dict):
+            self.periodic = PeriodicLattice(**periodic)
+        else:
+            self.periodic = periodic
         self.comment = comment
         self.name = name
+        self.E_ref = E_ref
+        self.E_ref_source = E_ref_source
 
     @property
     def n_el(self):
@@ -48,7 +101,10 @@ class Geometry:
         Z = np.array(self.Z, int).data.tobytes()
         charge = np.array(self.charge, int).data.tobytes()
         spin = np.array(self.spin, int).data.tobytes()
-        return hashlib.md5(R + Z + charge + spin).hexdigest()
+        byte_string = R + Z + charge + spin
+        if self.periodic is not None:
+            byte_string += self.periodic.to_bytes()
+        return hashlib.md5(byte_string).hexdigest()
 
     @property
     def datset_entry(self):
@@ -58,23 +114,40 @@ class Geometry:
         return len(self.R)
 
     def to_json(self):
-        return dict(name=self.name,
+        data_dict = dict(name=self.name,
                     comment=self.comment,
-                    charge=self.charge,
-                    spin=self.spin,
-                    R=np.array(self.R, float).round(ROUND_R_DECIMALS).tolist(),
-                    Z=np.array(self.Z, int).round(ROUND_R_DECIMALS).tolist(),
+                    R=NoIndentList(np.array(self.R, float).round(ROUND_R_DECIMALS).tolist()),
+                    Z=NoIndentList(np.array(self.Z, int).round(ROUND_R_DECIMALS).tolist()),
                     )
+        if self.charge != 0:
+            data_dict['charge'] = self.charge
+        if self.spin != 0:
+            data_dict['spin'] = self.spin
+        if self.periodic is not None:
+            data_dict['periodic'] = self.periodic.to_json()
+        if self.E_ref is not None:
+            data_dict['E_ref'] = self.E_ref
+        if self.E_ref_source is not None:
+            data_dict['E_ref_source'] = self.E_ref_source
+        return data_dict
 
-    def as_changes_dict(self):
+    def as_changes_dict(self, **extra_changes):
         n_el = int(sum(self.Z) - self.charge)
-        return dict(
+        data_dict = dict(
             R=self.R.tolist(),
             Z=self.Z.tolist(),
             n_electrons = n_el,
             n_up = int(n_el // 2 + self.spin),
             name=self.name,
-            comment=self.datset_entry)
+            comment=self.datset_entry,
+            E_ref = self.E_ref,
+            E_ref_source = self.E_ref_source,
+            **extra_changes)
+        if self.periodic is not None:
+            data_dict['periodic'] = dict(lattice_prim=self.periodic.lattice_prim.tolist(),
+                                        supercell=self.periodic.supercell.tolist(),
+                                        k_twist=self.periodic.k_twist.tolist())
+        return data_dict
 
     def as_ase(self):
         return ase.Atoms(self.Z, self.R * BOHR_IN_ANGSTROM)
@@ -84,31 +157,45 @@ class Geometry:
         return build_pyscf_molecule(self.R, self.Z, self.charge, self.spin, basis_set)
 
     def __repr__(self):
-        return f"<Geometry {self.name}, {self.datset_entry}, {self.n_el} el>"
+        return f"<Geometry {self.name}, {self.datset_entry}, {self.n_el} el{', pbc' if self.periodic is not None else ''}>"
 
 
 
 class GeometryDataset:
-    def __init__(self, geometries=None, datasets=None, name=""):
+    def __init__(self, geometries=None, datasets=None, weights=None, name=""):
         self.name = name
         self.geometries = []
         self.datasets = []
+        self.weights = []
         self.add_dataset(datasets)
-        self.add_geometry(geometries)
+        self.add_geometry(geometries, weight=weights)
 
-    def add_geometry(self, geometry):
+    def to_json(self):
+        data = dict(name=self.name,
+                    geometries=self.geometries)
+        if any([w is not None for w in self.weights]):
+            data['weights'] = NoIndentList(self.weights)
+        if self.datasets:
+            data['datasets'] = self.datasets
+        return data
+
+    def add_geometry(self, geometry, weight=None):
         if geometry is None:
             return
         if isinstance(geometry, list):
-            for g in geometry:
-                self.add_geometry(g)
+            if not isinstance(weight, Iterable):
+                weight = [weight for _ in range(len(geometry))]
+            assert len(weight) == len(geometry), f"Number of weights ({len(weight)}) does not match number of geometries ({len(geometry)})"
+            for g, w in zip(geometry, weight):
+                self.add_geometry(g, w)
         elif isinstance(geometry, str):
             self.geometries.append(geometry)
+            self.weights.append(weight)
         elif isinstance(geometry, Geometry):
-            self.add_geometry(geometry.datset_entry)
+            self.add_geometry(geometry.datset_entry, weight)
         else:
             geometry = Geometry(**geometry.__dict__)
-            self.add_geometry(geometry)
+            self.add_geometry(geometry, weight)
 
     def add_dataset(self, dataset):
         if dataset is None:
@@ -134,12 +221,28 @@ class GeometryDataset:
             geom_hashes += all_datasets[d].get_hashes(all_datasets)
         geom_hashes += [g.split("__")[0] for g in self.geometries]
         return geom_hashes
+    
+
+    def get_weights(self, all_datasets=None):
+        weights = []
+        if self.datasets and all_datasets is None:
+            all_datasets = load_datasets()
+        for d in self.datasets:
+            weights += all_datasets[d].get_weights(all_datasets)
+        weights += [w for w in self.weights]
+        return weights
 
 
-    def get_geometries(self, all_geometries=None, all_datasets=None):
+    def get_geometries(self, all_geometries=None, all_datasets=None, include_weights=False):
         all_geometries = all_geometries or load_geometries()
-        geometries = [all_geometries[h] for h in self.get_hashes(all_datasets)]
-        return geometries
+        hashes = self.get_hashes(all_datasets)
+        if include_weights:
+            weights = self.get_weights(all_datasets)
+            assert len(weights) == len(hashes), f"Number of weights ({len(weights)}) does not match number of geometries ({len(hashes)})"
+            output = [(all_geometries[h], w) for h, w in zip(hashes, weights)]
+        else:
+            output = [all_geometries[h] for h in hashes]
+        return output
 
 
     def as_ase(self, all_geometries=None):
@@ -255,7 +358,7 @@ def save_geometries(geometries, geom_db_fname=None, overwite_existing=False):
     n_added = 0
     for h, g in geometries.items():
         if (h in all_geoms) and (not overwite_existing):
-            print(f"Skipping existing geometry: {h}")
+            # print(f"Skipping existing geometry: {h}")
             n_skipped += 1
             continue
         else:
@@ -282,9 +385,10 @@ def save_datasets(datasets, dataset_db_fname=None, overwite_existing=False):
     for dataset in datasets:
         if dataset.name in all_datasets:
             if overwite_existing:
-                print(f"Overwriting existing dataset: {dataset.name}")
+                pass
+                # print(f"Overwriting existing dataset: {dataset.name}")
             else:
-                print(f"Skipping existing dataset: {dataset.name}")
+                # print(f"Skipping existing dataset: {dataset.name}")
                 n_skipped += 1
                 continue
         n_added += 1
@@ -312,26 +416,46 @@ def expand_geometry_list(geometries, geometry_db=None, datasets_db=None):
             result.append(geometry_db[geom_id].as_changes_dict())
         elif geom_id in datasets_db:
             # geom_id is actually a dataset_id -> Loop through all geometries in dataset
-            for geometry in datasets_db[geom_id].get_geometries(geometry_db):
-                result.append(geometry.as_changes_dict())
+            for geometry, weight in datasets_db[geom_id].get_geometries(geometry_db, include_weights=True):
+                result.append(geometry.as_changes_dict(weight_for_shared=weight))
         else:
             raise KeyError(f"Could not find geometry/dataset: {geom_id}")
     return result
 
+def merge_geometry_database(geom_fname_new, ds_fname_new, overwrite_existing=False, geom_fname_existing=None, ds_fname_existing=None):
+    new_geoms = load_geometries(geom_fname_new)
+    new_datasets = load_datasets(ds_fname_new)
+    save_geometries(new_geoms, geom_fname_existing, overwrite_existing)
+    save_datasets(new_datasets.values(), ds_fname_existing, overwrite_existing)
 
 if __name__ == '__main__':
     geom_fname = "/home/mscherbela/tmp/test.json"
+    ds_fname = "/home/mscherbela/tmp/test_ds.json"
 
+    periodic = PeriodicLattice(lattice_prim=np.eye(3), supercell=[2,2,2], k_twist=[0.5,0.3333,0])
     R = np.eye(3)
     Z = [1,2,3]
-    g1 = Geometry(R=R, Z=Z, comment="test1")
+    g1 = Geometry(R=R, Z=Z, periodic=periodic, comment="test1", E_ref=12.34, E_ref_source="pooma")
     g2 = Geometry(R=2*R, Z=Z, comment="test2")
-    dump_to_json({g.hash: g for g in [g1, g2]}, geom_fname)
+
+    ds = GeometryDataset(geometries=[g1, g2], weights=[1,2], name="ds_dummy")
+    # dump_to_json({g.hash: g for g in [g1, g2]}, geom_fname)
 
     print("Loading...")
     all_geoms = load_geometries()
     all_datasets = load_datasets()
     print("Done!")
+
+    all_geoms[g1.hash] = g1
+
+    save_geometries(all_geoms, geom_fname)
+    save_datasets(ds, ds_fname)
+
+    all_geoms_reread = load_geometries(geom_fname)
+    periodic_geoms = {h:g for h,g in all_geoms_reread.items() if g.periodic is not None}
+
+    expand_geometry_list([ds], all_geoms, ds)
+    print(periodic_geoms)
 
     # dump_to_json(all_geoms, "/home/mscherbela/develop/deeperwin_jaxtest/datasets/db/geometries.json")
     # dump_to_json(all_datasets, "/home/mscherbela/develop/deeperwin_jaxtest/datasets/db/datasets.json")

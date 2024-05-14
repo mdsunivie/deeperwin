@@ -1,7 +1,7 @@
 import itertools
 from typing import List, Tuple, Dict
 import warnings
-from deeperwin.configuration import set_with_flattened_key, Configuration
+from deeperwin.configuration import set_with_flattened_key, Configuration, build_flattend_dict, build_physical_configs_from_changes
 import copy
 from deeperwin.run_tools.dispatch import dispatch_job, build_experiment_name, setup_experiment_dir, dump_config_dict, idx_to_job_name
 from deeperwin.run_tools.geometry_database import expand_geometry_list
@@ -47,16 +47,12 @@ def prepare_multiple_geometries_on_multiple_jobs(args: List[str], exp_dir: str, 
     job_config_dicts = []
 
     dump_config_dict(exp_dir, exp_config_dict)
-    for idx, p in enumerate(exp_config_dict["physical"]["changes"]):
+    physical_config_dicts = build_physical_configs_from_changes(exp_config_dict["physical"], parse=False)
+    for idx, phys_config in enumerate(physical_config_dicts):
         job_name = idx_to_job_name(idx)
         job_config_dict = copy.deepcopy(exp_config_dict)
-        for k in p.keys():
-            job_config_dict["physical"][k] = copy.deepcopy(p[k])
-        if not job_config_dict["physical"]["comment"]:
-            job_config_dict["physical"]["comment"] = str(idx)
-        job_config_dict["physical"]["changes"] = None
-        job_config_dict = set_with_flattened_key(job_config_dict, "experiment_name",
-                                                "".join(exp_dir.split("/")[-1:]) + "_" + job_name)
+        job_config_dict["physical"] = phys_config
+        job_config_dict["experiment_name"] = "".join(exp_dir.split("/")[-1:]) + "_" + job_name
         # only final sub-folder name should be part of experiment name
         job_dirs.append(setup_job_dir(exp_dir, job_name))
         job_config_dicts.append(job_config_dict)
@@ -96,8 +92,8 @@ def setup_calculations(args: List[str]):
 
     # load and parse config
     with open(args.input) as f:
-        raw_config = yaml.safe_load(f)
-    Configuration.parse_obj(raw_config) # check validity of input config
+        raw_config = yaml.YAML(typ='safe', pure=True).load(f)
+    Configuration.model_validate(raw_config) # check validity of input config
 
     # load cli parameters
     all_config_changes = dict()
@@ -118,9 +114,9 @@ def setup_calculations(args: List[str]):
         config_changes = {k: v for k, v in zip(all_config_changes.keys(), changed_config_values)}
         config_dict, parsed_config = Configuration.update_configdict_and_validate(raw_config, config_changes)
         experiment_dir = build_experiment_name(config_changes, parsed_config.experiment_name)
-        if isinstance(config_dict['physical'], (str, list)):
+        if "physical" in config_dict and isinstance(config_dict['physical'], (str, list)):
             config_dict['physical'] = dict(changes=expand_geometry_list(config_dict['physical']))
-            parsed_config = Configuration.parse_obj(config_dict)
+            parsed_config = Configuration.model_validate(config_dict)
         try:
             experiment_dirs.append(setup_experiment_dir(experiment_dir, force=args.force))
             experiment_config_dicts.append(config_dict)
@@ -149,12 +145,13 @@ def setup_calculations(args: List[str]):
         elif wandb_sweep:
             job_dirs, job_config_dicts, command = prepare_wandb_sweep_jobs(args, exp_dir, exp_config_dict)
         else: # n_molecules == 1
-            exp_config_dict['physical'] = exp_config.physical.create_geometry_list(exp_config_dict['physical'].get('changes'))[0].dict()
+            if "physical" in exp_config_dict:
+                exp_config_dict['physical'] = exp_config.physical.create_geometry_list(exp_config_dict['physical'].get('changes'))[0].dict()
             job_dirs, job_config_dicts, command = prepare_single_job(args, exp_dir, exp_config_dict)
 
         for job_dir, job_config_dict in zip(job_dirs, job_config_dicts):
             dump_config_dict(job_dir, job_config_dict)
-            job_config = Configuration.parse_obj(job_config_dict)
+            job_config = Configuration.model_validate(job_config_dict)
             all_job_dirs.append(job_dir)
             all_job_configs.append(job_config)
             all_commands.append(command)

@@ -14,14 +14,17 @@
 
 """Curvature blocks for FermiNet."""
 from typing import Any, Mapping, Optional, Sequence, Union
-import chex
+
 import jax
 import jax.numpy as jnp
 import kfac_jax
 import numpy as np
 
 
-vmap_psd_inv_cholesky = jax.vmap(kfac_jax.utils.psd_inv_cholesky, (0, None), 0)
+Array = kfac_jax.utils.Array
+Scalar = kfac_jax.utils.Scalar
+Numeric = kfac_jax.utils.Numeric
+
 vmap_matmul = jax.vmap(jnp.matmul, in_axes=(0, 0), out_axes=0)
 
 
@@ -38,18 +41,17 @@ class RepeatedDenseBlock(kfac_jax.DenseTwoKroneckerFactored):
     """Dense block that is repeatedly applied to multiple inputs (e.g. vmap)."""
 
     # @property
-    def fixed_scale(self) -> Union[float, jnp.ndarray]:
+    def fixed_scale(self) -> Numeric:
         (x_shape,) = self.inputs_shapes
         return float(kfac_jax.utils.product(x_shape) // (x_shape[0] * x_shape[-1]))
 
     def update_curvature_matrix_estimate(
         self,
         state: kfac_jax.TwoKroneckerFactored.State,
-        estimation_data: Mapping[str, Sequence[chex.Array]],
-        ema_old: chex.Numeric,
-        ema_new: chex.Numeric,
+        estimation_data: Mapping[str, Sequence[Array]],
+        ema_old: Numeric,
+        ema_new: Numeric,
         batch_size: int,
-        pmap_axis_name: Optional[str],
     ) -> kfac_jax.TwoKroneckerFactored.State:
         estimation_data = dict(**estimation_data)
         (x,) = estimation_data["inputs"]
@@ -58,10 +60,10 @@ class RepeatedDenseBlock(kfac_jax.DenseTwoKroneckerFactored):
         estimation_data["inputs"] = (x.reshape([-1, x.shape[-1]]),)
         estimation_data["outputs_tangent"] = (dy.reshape([-1, dy.shape[-1]]),)
         batch_size = x.size // x.shape[-1]
-        return super().update_curvature_matrix_estimate(state, estimation_data, ema_old, ema_new, batch_size, pmap_axis_name)
+        return super().update_curvature_matrix_estimate(state, estimation_data, ema_old, ema_new, batch_size)
 
 
-def _dense(x: chex.Array, params: Sequence[chex.Array]) -> chex.Array:
+def _dense(x: Array, params: Sequence[Array]) -> Array:
     """Example of a dense layer function."""
     w, *opt_b = params
     y = jnp.matmul(x, w)

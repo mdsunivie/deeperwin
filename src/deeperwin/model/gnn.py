@@ -1,10 +1,13 @@
+from typing import Optional
 import jax
-import haiku as hk
 import jax.numpy as jnp
+import haiku as hk
+from kfac_jax import register_scale_and_shift
 from deeperwin.model.mlp import MLP, get_activation
 from deeperwin.model.attention import Attention
-from deeperwin.configuration import DenseGNNConfig, MLPConfig, MessagePassingConfig
-from typing import Optional
+from deeperwin.configuration import DenseGNNConfig, MLPConfig, MessagePassingConfig, ExpScaling
+
+
 
 def _residual(x, x_old):
     if x.shape == x_old.shape:
@@ -67,6 +70,7 @@ class DenseGNN(hk.Module):
         if config.edge_embedding_depth > 0:
             self.edge_embedding = MLP([config.edge_embedding_width]*config.edge_embedding_depth,
                                       mlp_config,
+                                      use_bias=config.use_edge_bias,
                                       linear_out=False,
                                       name="edge_embedding")
 
@@ -116,6 +120,23 @@ class DenseGNN(hk.Module):
                                 name=f"mlp_{n}")(nodes_rec)
 
         if self.config.final_mpnn:
-                nodes_rec, edges = self.mpnn_layers[-1](nodes_rec, nodes_snd, edges, mask)
+            nodes_rec, edges = self.mpnn_layers[-1](nodes_rec, nodes_snd, edges, mask)
         return nodes_rec, edges
 
+
+class ScaleFeatures(hk.Module):
+    def __init__(self, config: ExpScaling, lin_out_dim, name=None):
+        super().__init__(name=name)
+
+        self.config = config
+        self.init = hk.initializers.RandomNormal(config.std_scaling, config.mean_scaling)
+        self.linear_no_bias = hk.Linear(output_size=lin_out_dim, with_bias=False)
+
+    def __call__(self, dist):
+        scale = hk.get_parameter("zeta", shape=[self.config.nb_feat], init=self.init)
+        exp = dist / scale
+        exp = register_scale_and_shift(exp, dist, scale=scale, shift=None)
+
+        env = self.linear_no_bias(jnp.exp(- exp**2))
+
+        return env

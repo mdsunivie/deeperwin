@@ -3,17 +3,17 @@ File containing a regular Multi-Layer Perceptron (MLP) implemented in haiku.
 """
 
 
-from typing import Iterable, Optional, Callable, Literal
+from typing import Iterable, Optional, Callable
 import jax
 import jax.numpy as jnp
 import numpy as np
 import haiku as hk
-from jax import numpy as jnp
-from kfac_jax import register_scale_and_shift
+from deeperwin.configuration import MLPConfig
 
-from deeperwin.configuration import (
-    MLPConfig,
-)
+def residual_update(update, old=None):
+    if (old is None) or (old.shape != update.shape):
+        return update
+    return (old + update) / np.sqrt(2.0)
 
 class MLP(hk.Module):
     def __init__(
@@ -21,20 +21,22 @@ class MLP(hk.Module):
         output_sizes: Iterable[int],
         config: MLPConfig = None,
         output_bias: bool = True,
-        ln_aft_act: bool = False,
-        ln_bef_act: bool = False,
-        linear_out: bool = False,
-        residual=False,
+        ln_aft_act: bool = None,
+        ln_bef_act: bool = None,
+        linear_out: bool = None,
+        residual=None,
+        use_bias=True,
         name: Optional[str] = None,
     ):
         super().__init__(name=name)
         config = config or MLPConfig()
         self.output_sizes = output_sizes
-        self.output_bias = output_bias
-        self.ln_aft_act = ln_aft_act
-        self.ln_bef_act = ln_bef_act
+        self.use_bias = use_bias
+        self.output_bias = output_bias if self.use_bias else False
+        self.ln_aft_act = ln_aft_act if (ln_aft_act is not None) else False
+        self.ln_bef_act = ln_bef_act if (ln_bef_act is not None) else (config.use_layer_norm)
+        self.residual = residual if (residual is not None) else (config.use_residual)
         self.linear_out = linear_out
-        self.residual = residual
         self.activation = get_activation(config.activation)
         self.init_w = hk.initializers.VarianceScaling(1.0, config.init_weights_scale, config.init_weights_distribution)
         self.init_b = hk.initializers.TruncatedNormal(config.init_bias_scale)
@@ -42,17 +44,27 @@ class MLP(hk.Module):
     def __call__(self, x):
         for i, output_size in enumerate(self.output_sizes):
             is_output_layer = i == (len(self.output_sizes) - 1)
-            y = hk.Linear(output_size, self.output_bias or not is_output_layer, self.init_w, self.init_b, f"linear_{i}")(x)
+
+            # LayerNorm
             if self.ln_bef_act:
-                y = hk.LayerNorm(axis=-1, create_scale=True, create_offset=True)(y)
+                y = hk.LayerNorm(axis=-1, create_scale=True, create_offset=True)(x)
+            else:
+                y = x
+
+            # Linear
+            if is_output_layer:
+                y = hk.Linear(output_size, self.output_bias, self.init_w, self.init_b, f"linear_{i}")(y)
+            else:
+                y = hk.Linear(output_size, self.use_bias, self.init_w, self.init_b, f"linear_{i}")(y)
+
+            # Activation
             if not (is_output_layer and self.linear_out):
                 y = self.activation(y)
-            if self.ln_aft_act:
+            if self.ln_aft_act: # TODO: eventually remove this option
                 y = hk.LayerNorm(axis=-1, create_scale=True, create_offset=True)(y)
-            if self.residual and (x.shape == y.shape):
-                x = (y + x) / np.sqrt(2.0)
-            else:
-                x = y
+
+            # Residual
+            x = residual_update(y, x) if self.residual else y
         return x
 
 

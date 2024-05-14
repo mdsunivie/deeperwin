@@ -14,19 +14,19 @@ def disable_slave_loggers(logger):
 def configure_hardware(
     config,
 ) -> None:
+    print(f"CUDA_VISIBLE_DEVICES={os.environ.get('CUDA_VISIBLE_DEVICES')}")
     if config.computation.n_nodes > 1:
         init_multi_host_on_slurm(config.computation.n_nodes)
 
     if not config.computation.n_local_devices:
         config.computation.n_local_devices = jax.local_device_count()
     else:
-        assert jax.local_device_count() == config.computation.n_local_devices
+        assert jax.local_device_count() == config.computation.n_local_devices, f"{jax.local_device_count()}, {config.computation.n_local_devices}"
 
     used_hardware = xla_bridge.get_backend().platform
     if config.computation.require_gpu and (used_hardware == "cpu"):
         raise ValueError("Required GPU, but no GPU available: Aborting.")
 
-    print(f"CUDA_VISIBLE_DEVICES={os.environ.get('CUDA_VISIBLE_DEVICES')}")
     print(f"Process: {jax.process_index()}; Used hardware: {used_hardware}; Local device count: {jax.local_device_count()}; Global device count: {jax.device_count()}")
 
 
@@ -38,8 +38,13 @@ def init_multi_host_on_slurm(n_nodes=None):
         assert process_count == n_nodes, "Number of nodes requested does not match number of SLURM nodes"
 
     r = subprocess.run(["scontrol", "show", "hostnames", os.environ["SLURM_JOB_NODELIST"]],
-                       capture_output=True, encoding="utf-8")
+                       capture_output=True, encoding="utf-8", check=False)
     master_hostname = r.stdout.split("\n")[0]
+    # TODO: Fix this ugly hack
+    if master_hostname.startswith("jwb"):
+        # to get correct hostnames on Juwels
+        master_hostname += "i"
+
     process_id = int(os.environ["SLURM_NODEID"])
     if 'CUDA_VISIBLE_DEVICES' in os.environ:
         local_device_ids = [int(i) for i in os.environ['CUDA_VISIBLE_DEVICES'].split(',')]

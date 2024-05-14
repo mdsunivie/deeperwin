@@ -1,0 +1,92 @@
+# Following config gives an example to reuse a pre-trained checkpoint for periodic systems.
+# One example would be to pre-train on LiH in a smaller supercell and transfer to a larger one.
+
+experiment_name: EXPERIMENT_NAME
+
+
+physical: # Choose dataset name for system you want to transfer to
+
+reuse:
+  path: CHECKPOINT_PLACEHOLDER # The path to pre-trained checkpoints
+  mode: restart
+  path_phisnet:
+  reuse_config: False
+  reuse_opt_state: False
+  reuse_mcmc_state: False
+  randomize_mcmc_rng: False
+  reuse_clipping_state: False
+  reuse_trainable_params: True
+  reuse_ema_trainable_params: False
+  reuse_fixed_params: False 
+  reuse_modules:
+  continue_n_epochs: False
+  skip_burn_in: False
+  skip_pretraining: False
+  ignore_extra_settings: False
+  check_param_count: True
+
+pre_training:
+  n_epochs: 0
+
+optimization:
+  n_epochs: 0
+  shared_optimization:
+    use: False
+
+evaluation:
+  opt_epochs: []
+  mcmc:
+    n_inter_steps: 60
+    n_burn_in: 5_000
+  evaluate_final: True
+  calculate_energies: True
+  n_epochs: 1000
+  structure_factor_grid: [4, 4, 0]
+
+model:
+  name: moon
+  features:
+    name: moon
+    include_twist:
+       - el_el
+       - el_ion
+  embedding:
+    name: moon
+    envelope_power_output: 2
+    initial_scale_output: 10
+    el_ion_dim_collect: 128
+    ion_dim: 128
+    output_dim: 64
+  complex_wf: True
+  orbitals:
+    envelope_orbitals:
+    transferable_atomic_orbitals:
+      mlp:
+        activation: relu
+        use_residual: True
+        use_layer_norm: True
+      envelope_width: 32
+      envelope_depth: 2
+      backflow_width: 128
+      backflow_depth: 2
+      use_el_ion_embedding: True
+      use_exponentials: True
+      use_atom_positions: True
+      use_orbital_positions: True
+      use_atom_orbital_diff: True
+      twist_encoding:
+        - concat
+        - periodic
+    n_determinants: 8
+    determinant_schema: full_det
+  use_el_el_cusp_correction: True
+  jastrow:
+    use: True
+
+baseline:
+  name: periodic_hf
+  basis_set: cc-pVDZ
+  localization: boys
+  pyscf_options:
+    exp_to_discard: 0.1
+

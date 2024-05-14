@@ -1,16 +1,17 @@
 """
 Logic for Markov chain Monte Carlo (MCMC) steps.
 """
-
 import copy
 import functools
-from typing import Dict, Tuple
+from typing import Dict
 import jax
 import jax.numpy as jnp
 import numpy as np
 import chex
+from dataclasses import field
 
 from deeperwin.configuration import MCMCConfig, MCMCLangevinProposalConfig, PhysicalConfig, LocalStepsizeProposalConfig
+from deeperwin.utils.periodic import project_into_first_unit_cell
 from deeperwin.utils.utils import get_el_ion_distance_matrix, pmap, pmean, batch_rng_split, merge_from_devices
 from deeperwin.orbitals import initialize_walkers_with_exponential_radial_pdf
 
@@ -25,22 +26,43 @@ class MCMCState:
     log_psi_sqr: jnp.array = None
     walker_age: jnp.array = None  # [batch-size]; dtype=int
     rng_state: jnp.array = None
-    stepsize: jnp.array = jnp.array(1e-2)
-    step_nr: jnp.array = jnp.array(0, dtype=int)
-    acc_rate: jnp.array = jnp.array(0.0)
+    stepsize: jnp.array = field(default_factory=lambda: jnp.array(1e-2))
+    step_nr: jnp.array = field(default_factory=lambda: jnp.array(0, dtype=int))
+    acc_rate: jnp.array = field(default_factory=lambda: jnp.array(0.0))
 
     def build_batch(self, fixed_params: Dict):
         return self.r, self.R, self.Z, fixed_params
 
     @classmethod
-    def initialize_around_nuclei(cls, n_walkers, physical_config: PhysicalConfig, init_method, rng):
-        subkey, rng = jax.random.split(rng)
+    def initialize_around_nuclei(cls, n_walkers, physical_config: PhysicalConfig, init_method, spin_initialization, rng):
+        rng_r, rng_spin, rng = jax.random.split(rng, 3)
+
+        # Assign electrons to nuclei, according to the spin_initialization method
+        if spin_initialization == 'el_ion_mapping':
+            el_ion_mapping = np.array(physical_config.el_ion_mapping, int)
+        elif spin_initialization == 'random':
+            el_ion_mapping = np.concatenate([[i] * Z for i, Z in enumerate(physical_config.Z)])
+            rng_spin = jax.random.split(rng_spin, n_walkers)
+            el_ion_mapping = jax.vmap(lambda k: jax.random.permutation(k, el_ion_mapping))(rng_spin)
+        elif spin_initialization == 'ordered':
+            el_ion_mapping = np.concatenate([[i] * Z for i, Z in enumerate(physical_config.Z)])
+        elif spin_initialization == 'mixed':
+            el_ion_mapping = np.array(physical_config.el_ion_mapping, int)
+            el_ion_mapping = np.tile(el_ion_mapping, (n_walkers // 2, 1))
+            el_ion_map_ordered = np.concatenate([[i] * Z for i, Z in enumerate(physical_config.Z)])
+            el_ion_map_ordered = np.tile(el_ion_map_ordered, (n_walkers - len(el_ion_mapping), 1))
+            el_ion_mapping = np.concatenate([el_ion_mapping, el_ion_map_ordered], axis=0)
+        else:
+            raise NotImplementedError(f"Unknown spin initialization: {spin_initialization}")
+
+        # Place electrons around the assigned nuclei, based on the initialization method
         if init_method == 'gaussian':
-            r0 = np.array(jax.random.normal(subkey, [n_walkers, physical_config.n_electrons, 3]))
-            for i_el, i_nuc in enumerate(physical_config.el_ion_mapping):
-                r0[:, i_el, :] += np.array(physical_config.R[i_nuc])
+            r0 = jax.random.normal(rng_r, [n_walkers, physical_config.n_electrons, 3])
+            offset = np.array(physical_config.R)[el_ion_mapping]
+            r0 += offset
         elif init_method == 'exponential':
-            r0 = initialize_walkers_with_exponential_radial_pdf(subkey,
+            assert spin_initialization == 'el_ion_mapping', "Spin initialization '{spin_initialization}' currently not implemented for exponential initialization"
+            r0 = initialize_walkers_with_exponential_radial_pdf(rng_r,
                                                            physical_config.R,
                                                            physical_config.Z,
                                                            n_walkers,
@@ -57,13 +79,17 @@ class MCMCState:
                    rng_state=jax.random.split(rng, n_walkers))
 
     @classmethod
-    def resize_or_init(cls, mcmc_state, n_walkers, physical_config: PhysicalConfig, init_method, rng):
+    def resize_or_init(cls, mcmc_state, mcmc_config: MCMCConfig, physical_config: PhysicalConfig, rng):
         if mcmc_state:
             if mcmc_state.r.ndim == 4:
                 mcmc_state = mcmc_state.merge_devices()
-            mcmc_state = resize_nr_of_walkers(mcmc_state, n_walkers)
+            mcmc_state = resize_nr_of_walkers(mcmc_state, mcmc_config.n_walkers)
         else:
-            mcmc_state = cls.initialize_around_nuclei(n_walkers, physical_config, init_method, rng)
+            mcmc_state = cls.initialize_around_nuclei(mcmc_config.n_walkers, 
+                                                      physical_config, 
+                                                      mcmc_config.initialization, 
+                                                      mcmc_config.spin_initialization,
+                                                      rng)
         return mcmc_state
 
     def split_across_devices(self):
@@ -234,6 +260,27 @@ def _propose_step_local_approximated_langevin(state: MCMCState, config: MCMCLang
     log_q_ratio = jnp.sum(log_q_ratio, axis=-1)
     return new_state, log_q_ratio
 
+@functools.partial(jax.vmap, in_axes=(0, 0, None, None))
+def spin_swap(r, rng_state, n_up, p_swap):
+    n_el = r.shape[-2]
+    rng_state, key_select, key_up, key_dn = jax.random.split(rng_state, 4)
+    do_spin_swap = jax.random.uniform(key_select, ()) < p_swap
+    ind_up = jax.random.randint(key_up, (), 0, n_up)
+    ind_dn = jax.random.randint(key_dn, (), n_up, n_el)
+    ind_dn = jnp.where(do_spin_swap, ind_dn, ind_up)
+    r_up = r[..., ind_up, :]
+    r = r.at[..., ind_up, :].set(r[..., ind_dn, :])
+    r = r.at[..., ind_dn, :].set(r_up)
+    return r, rng_state
+
+@functools.partial(jax.vmap, in_axes=(0, 0, None))
+def spin_flip(r, rng_state, p_flip):
+    rng_state, subkey = jax.random.split(rng_state, 2)
+    do_spin_flip = jax.random.uniform(subkey, ()) < p_flip
+    # By reversing order of electrons, effectively all spins are flipped
+    r = jnp.where(do_spin_flip, r[..., ::-1, :], r)
+    return r, rng_state
+    
 
 class MetropolisHastingsMonteCarlo:
     """
@@ -262,15 +309,23 @@ class MetropolisHastingsMonteCarlo:
             self.propose = functools.partial(_propose_step_local_stepsize_one_el, config=self.config.proposal)
         else:
             raise NotImplementedError("Unknown MCMC proposal type")
-
+    
     def make_mcmc_step(self, func, state: MCMCState):
         # Propose a new state
         state_new, log_q_ratio = self.propose(state)
+        rng_state = state.rng_state
+        if self.config.p_spin_swap > 0:
+            # TODO: this assumes n_up == n_dn; if it is not, nothing bad should happen, 
+            # we would just swap electrons with the same spin. This is useless, but not harmful.
+            n_up = state_new.r.shape[-2] // 2
+            state_new.r, rng_state = spin_swap(state_new.r, rng_state, n_up, self.config.p_spin_swap)
+        if self.config.p_spin_flip > 0:
+            state_new.r, rng_state = spin_flip(state_new.r, rng_state, self.config.p_spin_flip)
+            
         state_new.log_psi_sqr = func(state_new)
-
         # Decide which samples to accept and which ones to reject
         p_accept = jnp.exp(state_new.log_psi_sqr - state.log_psi_sqr + log_q_ratio)
-        state_new.rng_state, subkeys = batch_rng_split(state.rng_state)
+        rng_state, subkeys = batch_rng_split(rng_state, 2)
         thr_accept = jax.vmap(lambda k: jax.random.uniform(k, ()))(subkeys)
         do_accept = p_accept > thr_accept
         do_accept = jnp.logical_or(do_accept, state_new.walker_age >= self.config.max_age)
@@ -286,6 +341,7 @@ class MetropolisHastingsMonteCarlo:
                                           self._adjust_stepsize,
                                           lambda x: x[0],
                                           (state.stepsize, state.acc_rate))
+        state_new.rng_state = rng_state
         return state_new
 
 
@@ -299,12 +355,19 @@ class MetropolisHastingsMonteCarlo:
 
     def _run_mcmc_steps(self, func, state, params, n_up, n_dn, fixed_params, n_steps):
         def partial_func(s):
-            return func(params, n_up, n_dn, *s.build_batch(fixed_params))
-        if state.log_psi_sqr is None:
-            state.log_psi_sqr = partial_func(state)
+            return func(params, n_up, n_dn, *s.build_batch(fixed_params))[1] # only use log_psi_squared and remove phase
+        
+        # TODO: technically we don't have to always reevaluate log-psi-squared, but we do it for simplicity; when updating params it is required, but during evaluation we could skip it
+        state.log_psi_sqr = partial_func(state)
         def _loop_body(i, _state):
-            return self.make_mcmc_step(partial_func, _state)
+            s = self.make_mcmc_step(partial_func, _state)
+            if "periodic" in fixed_params:
+                lattice = fixed_params["periodic"].lattice
+                inv_lattice = fixed_params["periodic"].rec / (2*np.pi)
+                s.r = project_into_first_unit_cell(s.r, lattice, inv_lattice)
+            return s
         return jax.lax.fori_loop(0, n_steps, _loop_body, state)
+    
 
     @functools.partial(pmap, static_broadcasted_argnums=(0,1,4,5))
     def run_inter_steps(self, func, state: MCMCState, params, n_up, n_dn, fixed_params):

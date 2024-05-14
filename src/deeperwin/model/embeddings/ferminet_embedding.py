@@ -3,13 +3,12 @@ File containing FermiNet embedding layer, including necessary symmetrical/convol
 
 """
 
-import jax.numpy as jnp
 import haiku as hk
-from deeperwin.configuration import (
-    EmbeddingConfigFermiNet,
-    MLPConfig,
-)
-from deeperwin.model.definitions import *
+import jax.numpy as jnp
+import jax
+
+from deeperwin.configuration import EmbeddingConfigFermiNet, MLPConfig
+from deeperwin.model.definitions import Embeddings, InputFeatures
 from deeperwin.model.mlp import MLP
 
 
@@ -168,7 +167,7 @@ class FermiNetEmbedding(hk.Module):
         self.config = config
         self.mlp_config = mlp_config
 
-    def _split_into_same_diff(self, features_el_el: jnp.DeviceArray, n_up: int):
+    def _split_into_same_diff(self, features_el_el: jax.Array, n_up: int):
         n_el = features_el_el.shape[-3] # [batch x n_el x n_el x features]
         batch_dims = features_el_el.shape[:-3]
         n_dn = n_el - n_up

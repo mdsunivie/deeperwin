@@ -29,9 +29,13 @@ def main(args=None):
     elif args.command == "train-phisnet":
         from deeperwin.run_tools.train_phisnet import train_phisnet
         train_phisnet(args.config_file)
-    elif args.command == "select-gpus":
-        from deeperwin.run_tools.available_gpus import assign_free_GPU_ids
-        print(assign_free_GPU_ids(n_gpus=args.n_gpus, sleep_seconds=args.sleep))
+    elif args.command == "merge-geom-db":
+        from deeperwin.run_tools.geometry_database import merge_geometry_database
+        merge_geometry_database(args.geom_fname, args.ds_fname)
+    elif args.command == "queue-with-dependency":
+        from deeperwin.run_tools.queue_with_dependencies import main as qmain
+        qmain(args)
+
 
 def _parse_input_args(args=None):
     # Main CLI-parser
@@ -88,19 +92,23 @@ def _parse_input_args(args=None):
                                 help="Overwrite directories if they already exist")
     parser_restart.add_argument('directory', help="Path to directory containing failed run and last checkpoint")
 
-    # Sub-parser for helper-tool that detects available GPUs (to be used to set CUDA_VISIBLE_DEVICES)
-    parser_available_gpus = subparsers.add_parser("select-gpus",
-                                         help="Setup and dispatch one or multiple DeepErwin calculations, e.g. for a parameter sweep")
-    parser_available_gpus.add_argument("--n-gpus", default=1, type=int, help="Number of GPUs required")
-    parser_available_gpus.add_argument("--sleep", default=0, type=int, help="Sleep for given number of seconds to avoid collisions before querying available gpus")
-
     # Sub-parser for herlper-tool which converts old checkpoints with incompatible naming schemes to newer versions
     parser_convert_chkpt = subparsers.add_parser("convert-checkpoint",
                                                  help="Convert a checkpoint from an old to a newer format to allow reuse with newer code versions")
     parser_convert_chkpt.add_argument("input_file", help="Filename of old checkpoint to convert")
     parser_convert_chkpt.add_argument("output_file", help="Target filename for converted checkpiont")
 
-   
+    parser_merge_geom_db = subparsers.add_parser("merge-geom-db",
+                                                 help="Merge two geometry databases, by adding all geometries and datasets from the second one to the first one")
+    parser_merge_geom_db.add_argument("geom_fname", help="Path to geometries.json file to be added")
+    parser_merge_geom_db.add_argument("ds_fname", help="Path to datasets.json file to be added")
+    parser_merge_geom_db.add_argument("--overwrite", action="store_true", help="Overwrites existing geometries/datasets with the same name. Default keeps the existing ones.")
+
+    from deeperwin.run_tools import queue_with_dependencies
+    parser_queue = subparsers.add_parser("queue-with-dependency",
+                                         help="Run consecutive configs using slurm dependency system")
+    parser_queue = queue_with_dependencies.get_parser(parser_queue)
+
     # Allowed args: None (uses sys.argv[1:]), list or string
     if args is not None:
         if isinstance(args, str):

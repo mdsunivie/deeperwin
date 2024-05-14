@@ -1,17 +1,19 @@
+# %%
 """
 DeepErwin hyperparameter and configuration management.
 """
 import copy
-from typing import Union, Optional, List, Tuple, Iterable, Any, Dict
+from typing import Union, Optional, List, Tuple, Iterable, Any, Dict, Sequence
 from typing_extensions import Literal
-import ruamel.yaml.comments
-from pydantic import BaseModel, validator, root_validator
+from pydantic import BaseModel, model_validator
 import numpy as np
 import pathlib
 import ruamel.yaml as yaml
+import ruamel.yaml.comments
 
-LocalizationType = Literal[None, "boys", "pm"]
+LocalizationType = Literal[None, "", "none", "boys", "pm"]
 ActivationType = Literal["tanh", "silu", "elu", "relu", "gelu"]
+
 
 class ConfigBaseclass(BaseModel):
     """Base class for all config models"""
@@ -19,25 +21,25 @@ class ConfigBaseclass(BaseModel):
     def save(self, file):
         data = to_prettified_yaml(self.dict())
         if isinstance(file, str):
-            with open(file, 'w') as f:
+            with open(file, "w") as f:
                 ruamel.yaml.YAML().dump(data, f)
         else:
             ruamel.yaml.YAML().dump(data, file)
 
     @classmethod
-    def load(cls, file) -> 'ConfigBaseclass':
+    def load(cls, file) -> "ConfigBaseclass":
         if isinstance(file, str):
             with open(file) as f:
                 data = ruamel.yaml.YAML().load(f)
         else:
             data = ruamel.yaml.YAML().load(file)
-        return cls.parse_obj(data)
+        return cls.model_validate(data)
 
     def as_flattened_dict(self):
         output_dict = {}
         for label in self.dict():
             subconfig = getattr(self, label)
-            if hasattr(subconfig, 'as_flattened_dict'):
+            if hasattr(subconfig, "as_flattened_dict"):
                 subdict = subconfig.as_flattened_dict()
                 for sublabel, subvalue in subdict.items():
                     output_dict[f"{label}.{sublabel}"] = subvalue
@@ -48,23 +50,24 @@ class ConfigBaseclass(BaseModel):
     @classmethod
     def from_flattened_dict(cls, config_dict, ignore_extra_settings=False):
         if ignore_extra_settings:
+
             class IgnoringConfig(cls):
                 class Config:
                     extra = "ignore"
+
             nested_dict = IgnoringConfig.from_flattened_dict(config_dict).dict()
         else:
             nested_dict = build_nested_dict(config_dict)
 
-        config = cls().parse_obj(nested_dict)
+        config = cls.model_validate(nested_dict)
         return config
 
-    @root_validator(allow_reuse=True)
-    def disable_unused_children(cls, values):
-        for element in values.keys():
-            if hasattr(values[element], 'use'):
-                if not values[element].use:
-                    values[element] = None
-        return values
+    @model_validator(mode="after")
+    def disable_unused_children(self):
+        for k, v in self:
+            if hasattr(v, "use") and not getattr(v, "use"):
+                setattr(self, k, None)
+        return self
 
     @classmethod
     def update_configdict_and_validate(cls, config_dict: dict, config_changes: Iterable[Tuple[str, Any]]):
@@ -73,17 +76,21 @@ class ConfigBaseclass(BaseModel):
         for key, value in config_changes.items():
             set_with_flattened_key(config_dict, key, value)
         # Parse the config dict and validate that all parameters are valid
-        parsed_config = cls.parse_obj(config_dict)
+        parsed_config = cls.model_validate(config_dict)
 
         # Second loop: Update the values using the parsed values to get correct type; Not strictly necessary,
         # but yields nicer looking input-config files
         for key, value in config_changes.items():
-            set_with_flattened_key(config_dict, key, get_with_flattened_key(parsed_config, key))
+            try:
+                set_with_flattened_key(config_dict, key, get_with_flattened_key(parsed_config, key))
+            except AttributeError:
+                print(f"Following key/value no longer present in parsed config. Skipping {key}={value}")
         return config_dict, parsed_config
 
     class Config:
         """The name 'Config' here is a pydantic term used to config the behaviour of the dataclass.
         It's not a config for the variational monte carlo code"""
+
         extra = "forbid"
 
 
@@ -112,6 +119,7 @@ class MessagePassingConfig(ConfigBaseclass):
     aggregation: Literal["sum", "mean"] = "sum"
     activation: Optional[ActivationType] = "silu"
 
+
 class MessagePassingConfigPhisnetFeatures(ConfigBaseclass):
     node_dim: int = 64
     edge_dim: int = 32
@@ -122,6 +130,7 @@ class MessagePassingConfigPhisnetFeatures(ConfigBaseclass):
     aggregation: Literal["sum", "mean"] = "sum"
     activation: Optional[ActivationType] = "silu"
 
+
 class MessagePassingConfigOrbFeatures(MessagePassingConfig):
     node_dim: int = 16
     edge_dim: int = 32
@@ -131,6 +140,7 @@ class MessagePassingConfigOrbFeatures(MessagePassingConfig):
     weighting: Literal["linear", "softmax"] = "linear"
     aggregation: Literal["sum", "mean"] = "sum"
     activation: Optional[ActivationType] = "silu"
+
 
 class DenseGNNConfig(ConfigBaseclass):
     n_iterations: int = 3
@@ -145,6 +155,13 @@ class DenseGNNConfig(ConfigBaseclass):
     use_edge_bias: bool = True
 
 
+class ExpScaling(ConfigBaseclass):
+    name: Literal["exp_scale"] = "exp_scale"
+    mean_scaling: float = 10
+    std_scaling: float = 1
+    nb_feat: int = 32
+
+
 class OrbFeatureDenseGNNConfig(DenseGNNConfig):
     n_iterations: int = 1
     attention: Optional[AttentionConfig] = None
@@ -152,19 +169,11 @@ class OrbFeatureDenseGNNConfig(DenseGNNConfig):
     use_edges_in_attention: bool = True
     mlp_depth: int = 1
     linear_out: bool = False
-    edge_embedding_depth: int = 1
     edge_embedding_width: int = 32
-
-
-class E3MACEGNNConfig(ConfigBaseclass):
-    n_iterations: int = 2
-    l_max: int = 2
-    L_max: int = 2
-    n_rbf: int = 32
-    rbf_max_dist: float = 5.0
-    radial_mlp_n_layers: int = 2
-    radial_mlp_width: int = 128
-    n_channels: int = 64
+    edge_embedding_depth: int = 1
+    mlp_edge_depth: int = 0
+    exp_scaling: Union[None, ExpScaling] = ExpScaling()
+    antisymmetrize: bool = False
 
 
 class TransformerConfig(ConfigBaseclass):
@@ -197,7 +206,10 @@ class TransformerConfig(ConfigBaseclass):
 
     use_residual_before_lin: bool = False
 
-    combine_attention_blocks: bool = False # computes ion attention & el attention in serial fashion if there is a sender input
+    combine_attention_blocks: bool = (
+        False  # computes ion attention & el attention in serial fashion if there is a sender input
+    )
+
 
 class MLPConfig(ConfigBaseclass):
     activation: Literal["tanh", "silu", "elu", "relu", "gelu"] = "tanh"
@@ -208,11 +220,17 @@ class MLPConfig(ConfigBaseclass):
 
     init_weights_distribution: Literal["normal", "truncated_normal", "uniform"] = "uniform"
 
+    use_residual: bool = False
+
+    use_layer_norm: bool = False
+
+
 class FeedForwardConfig(ConfigBaseclass):
     name: str = "mlp"
     n_layers: int = 1
     n_hidden_dim: int = 32
     mlp_config: MLPConfig = MLPConfig()
+
 
 class EdgeFeatureConfig(ConfigBaseclass):
     name: str = "edge_feature_transformer"
@@ -233,6 +251,7 @@ class EmbeddingConfigTransformer(ConfigBaseclass):
     """Configuration for the attention between ions. If None is provided, no ion-ion attention-based embedding is used."""
 
     edge_feature: Optional[EdgeFeatureConfig] = None
+
 
 class EmbeddingConfigAxialTranformer(ConfigBaseclass):
     name: Literal["axial_transformer"] = "axial_transformer"
@@ -323,7 +342,7 @@ class EmbeddingConfigFermiNet(ConfigBaseclass):
 
     use_schnet_bias_feat: bool = True
 
-    schnet_aggregation: str = 'sum'
+    schnet_aggregation: str = "sum"
 
     use_ln_aft_act: bool = False
 
@@ -331,26 +350,27 @@ class EmbeddingConfigFermiNet(ConfigBaseclass):
 
     use_deep_schnet_feat: bool = False
 
-    @validator("n_iterations", always=True)
-    def _set_n_iterations(cls, n, values):
-        if n is None:
-            try:
-                n = len(values['n_hidden_one_el'])
-            except TypeError:
-                raise ValueError(f"n_hidden_one_el must be a list of net-widths if n_iterations is not specified")
-        return n
+    @model_validator(mode="after")
+    def _set_n_hidden(self):
+        def _make_list(key, length):
+            if isinstance(getattr(self, key), int):
+                setattr(self, key, [getattr(self, key)] * length)
 
-    @root_validator
-    def _set_n_hidden(cls, values):
-        def _make_list(key, len):
-            if isinstance(values[key], int):
-                values[key] = [values[key]] * len
-        _make_list('n_hidden_one_el', values['n_iterations'])
-        _make_list('n_hidden_two_el', values['n_iterations']-1)
-        _make_list('n_hidden_el_ions', values['n_iterations'] - 1)
-        if len(values['n_hidden_one_el']) != (len(values['n_hidden_two_el']) + 1):
-            raise ValueError(f"Number of layers for 1-el-stream must be one more than nr of layers in 2-el-stream")
-        return values
+        _make_list("n_hidden_one_el", self.n_iterations)
+        _make_list("n_hidden_two_el", self.n_iterations - 1)
+        _make_list("n_hidden_el_ions", self.n_iterations - 1)
+        if len(self.n_hidden_one_el) != (len(self.n_hidden_two_el) + 1):
+            raise ValueError("Number of layers for 1-el-stream must be one more than nr of layers in 2-el-stream")
+        return self
+
+    @model_validator(mode="after")
+    def _set_n_iterations(self):
+        if self.n_iterations is None:
+            try:
+                self.n_iterations = len(self.n_hidden_one_el)
+            except TypeError as e:
+                raise ValueError("n_hidden_one_el must be a list of net-widths if n_iterations is not specified") from e
+        return self
 
 
 class PhisNetIonEmbeddingConfig(ConfigBaseclass):
@@ -358,16 +378,19 @@ class PhisNetIonEmbeddingConfig(ConfigBaseclass):
     ion_width: int = 64
     ion_depth: int = 1
     message_passing: Optional[MessagePassingConfigPhisnetFeatures] = MessagePassingConfigPhisnetFeatures()
+    use_edge_bias: bool = False
 
 
 class IonGNNConfig(DenseGNNConfig):
     name: Literal["ion_gnn"] = "ion_gnn"
+
 
 class EmbeddingConfigGNN(ConfigBaseclass):
     name: Literal["gnn"] = "gnn"
     gnn: DenseGNNConfig = DenseGNNConfig()
     ion_gnn: Union[None, IonGNNConfig, PhisNetIonEmbeddingConfig] = None
 
+    exp_scaling: Union[None, ExpScaling] = None
     ion_ion_width: int = 64
     ion_ion_depth: int = 3
     el_ion_width: int = 64
@@ -378,106 +401,58 @@ class EmbeddingConfigGNN(ConfigBaseclass):
     cutoff_distance: float = 5.0
 
 
-class MoonMPNN(ConfigBaseclass):
-    envelope_shape: int = 32
-    nb_layer: int = 2
-
-class EmbeddingConfigMoon(ConfigBaseclass):
-    name: Literal["moon"] = "moon"
-    n_iterations: int = 3
-    el_el_edge_dim: int = 32
-    el_ion_edge_dim: int = 32
-    nuclei_emb: int = 256
-    output_dim: int = 256
-
-    el_mpnn: MoonMPNN = MoonMPNN()
-    ion_mpnn: MoonMPNN = MoonMPNN()
+# class MoonMPNN(ConfigBaseclass):
+#     envelope_shape: int = 32
+#     nb_layer: int = 2
 
 
+# class EmbeddingConfigMoon(ConfigBaseclass):
+#     name: Literal["moon"] = "moon"
+#     n_iterations: int = 3
+#     el_el_edge_dim: int = 32
+#     el_ion_edge_dim: int = 32
+#     nuclei_emb: int = 256
+#     output_dim: int = 256
 
-class EmbeddingConfigE3MPNN(ConfigBaseclass):
-    name: Literal["e3mpnn"] = "e3mpnn"
-    l_max: int = 2
-    L_max: Optional[int] = None
-    interaction_dim: Optional[int] = None
-
-    create_el_features_from_ions: bool = False
-
-    n_iterations: int = 3
-    n_hidden_r_weights: List[int] = [32, 32]
-    readout_mlp_depth = 2
-    readout_mlp_width = 256
-    use_gate_nonlinearity: bool = False
-
-    use_radial_mlp: bool = False
-    radial_mlp_depth = 2
-    radial_mlp_width = 32
-
-    n_hidden_one_el = 128
-    n_hidden_two_el = 16
-    scalar_activation_one_el: Literal["gelu", "tanh"] = "gelu"
-    use_msg_mapping: bool = False
-
-    normalize_spherical_harmonics: bool = True
-    r_cut_sh_long_range: Optional[float] = None
-    r_cut_sh_short_range: Optional[float] = None
-    cut_l0_short_range: bool = False
-    skip_connection: Literal["no", "residual", "linear", "residual_or_linear"] = "linear"
-    use_trainable_residual_weight: bool = False
-    register_e3_linear: Literal["generic", "dense", None] = None
-    output_intermediate_features: bool = False
-
-    neighbor_normalization: Literal["sum", "sqrt", "mean"] = "sqrt"
+#     el_mpnn: MoonMPNN = MoonMPNN()
+#     ion_mpnn: MoonMPNN = MoonMPNN()
 
 
 class EmbeddingConfigDeepErwin4(EmbeddingConfigFermiNet):
     """DO NOT INTRODUCE NEW FIELDS HERE. This class is only used to provide alternative defaults"""
+
     name: Literal["dpe4"] = "dpe4"
     n_iterations: int = 4
     n_hidden_one_el: Union[List[int], int] = 256
     n_hidden_two_el: Union[List[int], int] = 32
     n_hidden_el_ions: Union[List[int], int] = 32
     use_el_ion_stream: bool = True
-    use_h_two_same_diff = True
-    emb_dim = 32
-    use_w_mapping = True
-    use_schnet_features = True
-    sum_schnet_features = False
-    use_average_h_one = True
-    use_average_h_two = False
-    use_h_one = True
-    use_linear_out = False
+    use_h_two_same_diff: bool = True
+    emb_dim: int = 32
+    use_w_mapping: bool = True
+    use_schnet_features: bool = True
+    sum_schnet_features: bool = False
+    use_average_h_one: bool = True
+    use_average_h_two: bool = False
+    use_h_one: bool = True
+    use_linear_out: bool = False
     neighbor_normalization: Literal["sum", "sqrt", "mean"] = "mean"
 
+class EmbeddingConfigMoon(ConfigBaseclass):
+    name: Literal["moon"] = "moon"
+    n_iterations: int = 3
+    n_hidden_spatial: List[int] = [16, 8]
+    el_el_dim: int = 32
+    el_ion_dim_collect: int = 256
+    ion_dim: int = 256
+    output_dim: int = 256
+    activation: ActivationType = "silu"
+    initial_scale_spatial: Union[float, List[float]] = 10.0
+    initial_scale_output: Union[float, List[float]] = [0.2, 2]
+    envelope_power_spatial: int = 2
+    envelope_power_output: int = 1
+    use_ion_ion_features: bool = False
 
-class EmbeddingConfigDeepErwin1(ConfigBaseclass):
-    name: Literal["dpe1"] = "dpe1"
-    """Identifier for this model-part. Fixed."""
-
-    embedding_dim: int = 64
-    """Dimensionality of embedding vectors, including intermediate network widths."""
-
-    n_iterations: int = 2
-    """Number of embedding iterations for SchNet"""
-
-    n_hidden_w: List[int] = [40, 40]
-    """Number of hidden neurons per layer of the w-Network within SchNet. The w-network takes pairwise features between particles as inputs and calculates the weight of each embedding dimension as output. If not specified the width/depth as specified in net_width/net_depth is used"""
-
-    deep_w = False
-    """Whether to process inter-particle features further or to use for every SchNet iteration the inter-particle distances"""
-
-    n_hidden_h: List[int] = [40, 40]
-    """Number of hidden neurons per layer of the h-Network within SchNet. The h-network takes the embedding of the previous iteration as input and computes a new embedding per particle, which is then weighted using the w-networks. If not specified the width/depth as specified in net_width/net_depth is used"""
-
-    n_hidden_g: List[int] = [40]
-    """Number of hidden neurons per layer of the g-Network within SchNet. The g-network applies a final non-linear transformation at the end of each SchNet round. If not specified the width as specified in net_width and depth = net_depth - 1 is used"""
-
-    use_linear_layer_w = True
-
-    use_res_net: bool = False
-    """Whether to use residuals for the networks"""
-
-    one_el_input: bool = False
 
 
 class CuspCorrectionConfig(ConfigBaseclass):
@@ -493,6 +468,69 @@ class CuspCorrectionConfig(ConfigBaseclass):
     """Scaling parameter for the electron-ion cusp corrections. No cusp correction is applied outside a radius :code:`r_cusp_el_ion_scale / Z`"""
 
 
+class PyscfMeanFieldOptionsConfig(ConfigBaseclass):
+    chkfile: Optional[str] = None
+    """File to save cell and meanfield objects. Only implemented for periodic
+    calculations, because pyscf is slow there."""
+
+    density_fit: bool = True
+    """Enables density fitting. Only implemented for periodic calculations,
+    because default plane wave fitting can quickly run out of memory."""
+
+    df_mesh: Optional[List[int]] = None
+    """Mesh for density fitting"""
+
+
+class PyscfOptionsConfig(ConfigBaseclass):
+    verbose: int = 0
+    output: Optional[str] = "/dev/null"
+    precision: float = 1e-8
+    exp_to_discard: Optional[float] = None
+    mf_options: PyscfMeanFieldOptionsConfig = PyscfMeanFieldOptionsConfig()
+
+
+class HartreeFockConfig(ConfigBaseclass):
+    name: Literal["hf"] = "hf"
+    """Identifier of the baseline calculation. Fixed."""
+
+    basis_set: str = "6-311G"
+    """Basis set to use for the Hartree-Fock / CASSCF calculation. See the documentation of pySCF for all available basis-sets."""
+
+    localization: LocalizationType = None
+
+    pyscf_options: PyscfOptionsConfig = PyscfOptionsConfig()
+    """Extra options for pyscf."""
+
+
+class PhisnetBaselineConfig(ConfigBaseclass):
+    name: Literal["phisnet"] = "phisnet"
+
+    basis_set: str = "6-311G"
+
+    localization: LocalizationType = None
+
+    atom_types: Optional[List[int]] = None
+
+
+class PeriodicMeanFieldConfig(ConfigBaseclass):
+    name: Literal["periodic_hf", "periodic_dft", "periodic_unrestricted_dft"] = "periodic_hf"
+
+    basis_set: Union[str, Dict] = "6-311G"
+
+    pseudo: Optional[Union[str, Dict]] = None
+
+    k_points: Optional[Union[Sequence[int], Sequence[Sequence[float]]]] = None
+    """
+    k-points to use for the mean field calculation. Can either be a list of 3D k-points, or a list of 3 integeres, which will be used to generate a gamma-centered k-mesh; 
+    If set to None, the k-points will be chosed based on the supercell of the physical config, i.e. for a primitive cell a gamma-calculation is performed, for an [n x n x n] supercell, a n x n x k-mesh is generated
+    """
+
+    pyscf_options: PyscfOptionsConfig = PyscfOptionsConfig()
+    """Extra options for pyscf."""
+
+    localization: LocalizationType = None
+
+
 class CASSCFConfig(ConfigBaseclass):
     name: Literal["casscf"] = "casscf"
     """Identifier of the baseline calculation. Fixed."""
@@ -500,14 +538,19 @@ class CASSCFConfig(ConfigBaseclass):
     basis_set: str = "6-311G"
     """Basis set to use for the Hartree-Fock / CASSCF calculation. See the documentation of pySCF for all available basis-sets."""
 
-    cusps: Optional[CuspCorrectionConfig] = CuspCorrectionConfig()
-    """Settings for the correction of wavefunction cusps when particles come close to each other"""
+    n_active_electrons: int = 4
 
-    only_hf: bool = False
-    """Only as HF orbitals as baseline method"""
+    n_active_orbitals: int = 8
 
     localization: LocalizationType = None
 
+    n_dets: Optional[int] = None
+
+    pyscf_options: PyscfOptionsConfig = PyscfOptionsConfig()
+    """Extra options for pyscf."""
+
+
+BaselineConfigType = Optional[Union[HartreeFockConfig, CASSCFConfig, PeriodicMeanFieldConfig, PhisnetBaselineConfig]]
 
 
 class InputFeatureConfig(ConfigBaseclass):
@@ -536,11 +579,13 @@ class InputFeatureConfig(ConfigBaseclass):
 
     use_el_spin: bool = False
 
-    coordinates: Literal["cartesian", "global_rot", "local_rot"] = "global_rot"
+    # TODO: remove deprecated
+    coordinates: Literal["cartesian"] = "cartesian"
     """How to preprocess the input coordinates: Cartesian = unprocessed; global_rot = one global rotation matrix for all electron and ion coordinates; local_rot = one rotation matrix for each ion, affecting all corresponding electron-ion differences"""
 
     n_ion_ion_rbf_features: int = 32
-    """Embed nuclear charges into vectors of length n_ion_features"""
+
+    n_ion_ion_mlp_features: int = 0
 
     ion_embed_type: Optional[Literal["lookup", "one-hot", "mlp"]] = "lookup"
 
@@ -577,34 +622,20 @@ class InputFeatureConfig(ConfigBaseclass):
     rmax: int = 5
     max_scale_gauss: float = 8.0
 
-    @root_validator
-    def local_coords_concatenation_validation(cls, values):
-        if values['coordinates'] == "local_rot" and not values['concatenate_el_ion_features']:
-            raise ValueError("Can't use local coordinate system if el_ion_features are not concatenated -> architecture not expressive enough")
-        return values
+    include_twist: Optional[List[Literal["el", "ion", "el_el", "el_ion", "ion_ion"]]] = None
 
-
-class InputFeatureConfigDPE1(InputFeatureConfig):
-    """DO NOT INTRODUCE NEW FIELDS HERE. This class is only used to provide alternative defaults"""
-    name: Literal["dpe1"] = "dpe1"
-    use_rbf_features: bool = True
-    n_rbf_features: int = 32
-    use_distance_features: bool = True
-    use_el_ion_differences: bool = False
-    use_el_el_differences: bool = False
-    n_el_ion_features:int = 0
-    concatenate_el_ion_features: bool = False
-    use_el_el_spin: bool = False
-    coordinates: Literal["cartesian", "global_rot", "local_rot"] = "cartesian"
-    log_scale_distances = False
-    use_el_spin = False
-    full_el_el_distance_matrix = True
-    n_ion_ion_rbf_features: int = 32
-
+    @model_validator(mode="after")
+    def local_coords_concatenation_validation(self):
+        if self.coordinates == "local_rot" and not self.concatenate_el_ion_features:
+            raise ValueError(
+                "Can't use local coordinate system if el_ion_features are not concatenated -> architecture not expressive enough"
+            )
+        return self
 
 
 class InputFeatureConfigFermiNet(InputFeatureConfig):
     """DO NOT INTRODUCE NEW FIELDS HERE. This class is only used to provide alternative defaults"""
+
     name: Literal["ferminet"] = "ferminet"
     use_rbf_features: bool = False
     n_rbf_features: int = 0
@@ -616,47 +647,42 @@ class InputFeatureConfigFermiNet(InputFeatureConfig):
     concatenate_el_ion_features: bool = True
     use_el_el_spin: bool = False
     coordinates: Literal["cartesian", "global_rot", "local_rot"] = "cartesian"
-    log_scale_distances = False
-    use_el_spin = False
-    full_el_el_distance_matrix = True
+    log_scale_distances: bool = False
+    use_el_spin: bool = False
+    full_el_el_distance_matrix: bool = True
     n_ion_ion_rbf_features: int = 32
-
+    ion_embed_type: Optional[Literal["lookup", "one-hot", "mlp"]] = None
 
 class InputFeatureConfigTransformer(InputFeatureConfigFermiNet):
     """DO NOT INTRODUCE NEW FIELDS HERE. This class is only used to provide alternative defaults"""
+
     name: Literal["transformer"] = "transformer"
     use_el_el_differences: bool = False
-    log_scale_distances = True
-    use_el_spin = True
-    full_el_el_distance_matrix = False
-    n_ion_ion_rbf_features: int = 32
-
-
-class InputFeatureConfigMACE(InputFeatureConfig):
-    """DO NOT INTRODUCE NEW FIELDS HERE. This class is only used to provide alternative defaults"""
-    name: Literal["mace"] = "mace"
+    log_scale_distances: bool = True
+    use_el_spin: bool = True
     full_el_el_distance_matrix: bool = False
-    use_rbf_features: bool = False
-    n_rbf_features: int = 0
-    n_bessel_features: int = 8
-    r_cut_bessel: float = 5.0
-    use_distance_features: bool = True
-    use_el_ion_differences: bool = False
-    use_el_el_differences: bool = False
-    n_el_ion_features: int = 0
-    concatenate_el_ion_features: bool = True
-    use_el_el_spin: bool = False
-    coordinates: Literal["cartesian", "global_rot", "local_rot"] = "cartesian"
     n_ion_ion_rbf_features: int = 32
 
 
 class InputFeatureConfigDPE4(InputFeatureConfigFermiNet):
     """DO NOT INTRODUCE NEW FIELDS HERE. This class is only used to provide alternative defaults"""
+
     name: Literal["dpe4"] = "dpe4"
     coordinates: Literal["cartesian", "global_rot", "local_rot"] = "cartesian"
     use_el_el_differences: bool = False
     full_el_el_distance_matrix: bool = True
     n_ion_ion_rbf_features: int = 32
+    ion_embed_type: Optional[Literal["lookup", "one-hot", "mlp"]] = "lookup"
+
+class InputFeatureConfigMoon(InputFeatureConfigFermiNet):
+    name: Literal["moon"] = "moon"
+    coordinates: Literal["cartesian", "global_rot", "local_rot"] = "cartesian"
+    use_el_el_differences: bool = True
+    concatenate_el_ion_features: bool = False
+    n_ion_ion_rbf_features: int = 0
+    n_ion_features: int = 32
+    n_ion_ion_mlp_features: int = 0
+    ion_embed_type: Optional[Literal["lookup", "one-hot", "mlp"]] = "lookup"
 
 
 class EnvelopeOrbitalsConfig(ConfigBaseclass):
@@ -673,40 +699,6 @@ class EnvelopeOrbitalsConfig(ConfigBaseclass):
     """Use a least-squares fit to initialized the scale- and decay-parameters for the envelopes instead of constant intialization"""
 
 
-class BaselineOrbitalsConfig(ConfigBaseclass):
-    baseline: CASSCFConfig = CASSCFConfig()
-    """Config-options for the underlying baseline calculation, typically a Complete-Active-Space Self-Consistent-Field (CASSCF) Calculation"""
-
-    use_trainable_scales: bool = True
-    """Scale the network outputs by a trainable float. Clever initialization of this scale can speed-up training, but in principle also introduces redundant parameters."""
-
-    use_bf_shift: bool = True
-    """Enable the backflow-shift, i.e. shift all electron coordinates by a neural network before calculating the CASSCF orbitals"""
-
-    use_trainable_shift_decay_radius: bool = True
-    """Backflow-shift decays to 0 close the the nuclei to ensure correct cusp conditions. This flag specifies whether the radius in which the shift decays is a trainable parameter or fixed."""
-
-    register_scale = False
-    """Whether to register the parameterst that scale the output of the backflow networks as parameters for KFAC optimization"""
-
-    n_hidden_bf_factor: List[int] = [40, 20, 20]
-    """List of ints, specifying the number of hidden units per layer in the backflow-factor-network. If not provided, the width and depth set by *net_width* and *net_depth* are used."""
-
-    n_hidden_bf_shift: List[int] = [40, 40]
-    """List of ints, specifying the number of hidden units per layer in the backflow-shift-network. If not provided, the width and depth set by *net_width* and *net_depth* are used."""
-
-    use_bf_factor: bool = True
-    """Enable the backflow-factor, i.e. multiply the CASSCF orbitals with the output of a neural network"""
-
-    use_bf_factor_bias: bool = True
-    """Enable / disable bias terms for the final layer of the backflow-factor network"""
-
-    bf_factor_constant_bias: float = 1.0
-    """Bias to apply to the output of the backflow factor, i.e. phi = phi_HF x (backflow + bias). If bias is set to 1.0, NN-output of zero, yields to original HF-orbitals"""
-
-    output_shift: Literal[1, 3] = 1
-    """Dimensionality of the output for the backflow-shift network. Can either be scalar or 3-dimensional. Note that only a scalar output ensures rotational equivariance."""
-
 class TransferableAtomicOrbitalEmbedding(ConfigBaseclass):
     use: bool = True
 
@@ -717,6 +709,7 @@ class TransferableAtomicOrbitalEmbedding(ConfigBaseclass):
     tao_embed_dim: int = 64
 
     spin_adapted_network: bool = False
+
 
 class PhisNetModelConfig(ConfigBaseclass):
     n_iterations: int = 1
@@ -735,16 +728,9 @@ class PhisNetModelConfig(ConfigBaseclass):
     predict_energy: bool = False
     predict_forces: bool = False
 
+
 class TransferableAtomicOrbitalsConfig(ConfigBaseclass):
     name: Literal["taos"] = "taos"
-
-    basis_set: str = "STO-3G"
-    """Basis set to use for the Hartree-Fock calculation. See the documentation of pySCF for all available basis-sets."""
-
-    localization: LocalizationType = None
-
-    atom_types: Optional[List[int]] = None
-    """List of elements to generate features for, identified by their nuclear charges Z."""
 
     envelope_width: int = 64
 
@@ -754,118 +740,51 @@ class TransferableAtomicOrbitalsConfig(ConfigBaseclass):
 
     backflow_depth: int = 2
 
-    envelope_activation: ActivationType = "tanh"
-
-    backflow_activation: ActivationType = "tanh"
-
-    embedding_network: Optional[TransferableAtomicOrbitalEmbedding] = None
-    """Network to embed orb. coeff. shared between backflow and envelope network"""
-
     symmetrize_exponent_mlp: bool = False
 
     antisymmetrize_backflow_mlp: bool = False
 
     use_prefactors: bool = False
 
+    use_exponentials: bool = True
+
+    use_el_ion_embedding: bool = False
+
     use_squared_envelope_input: bool = False
 
-    activation: Optional[ActivationType] = "tanh"
+    mlp: MLPConfig = MLPConfig()
 
     orb_feature_gnn: Optional[OrbFeatureDenseGNNConfig] = None
 
     n_rbf_features_orb_gnn: int = 16
 
-    el_feature_dim: Optional[int] = None
-
-    product_mode: Literal["full", "cpd", "tucker", "el_downmap", "orb_downmap"] = "full"
-
-    product_rank: int = 128
-
-    tucker_rank_el: int = 128
-
-    tucker_rank_orb: int = 64
-
-    edge_emb: bool = False
-
     phisnet_model: Optional[PhisNetModelConfig] = None
 
-
-class E3SymmetricTensorProductMLPConfig(ConfigBaseclass):
-    depth: int
-    l_max: int
-    n_channels: int
-    order: int = 2
-    use_activation: bool
-    gate_activation: ActivationType
-    scalar_activation: ActivationType
-
-class E3BackflowMLPConfig(E3SymmetricTensorProductMLPConfig):
-    depth: int = 2
-    l_max: int = 2
-    n_channels: int = 64
-    order: int = 2
-    use_activation: bool = True
-    gate_activation: ActivationType = "silu"
-    scalar_activation: ActivationType = "silu"
-
-
-class E3EnvelopeMLPConfig(E3SymmetricTensorProductMLPConfig):
-    depth: int = 2
-    l_max: int = 2
-    n_channels: int = 64
-    order: int = 2
-    use_activation: bool = True
-    gate_activation: ActivationType = "silu"
-    scalar_activation: ActivationType = "silu"
-
-
-class E3OrbitalTransformerConfig(ConfigBaseclass):
-    attention_irreps: str = "32x0e+16x1o"
-    n_heads: int = 4
-    n_iterations: int = 2
-    orb_order_encoding_dim: int = 8
-
-
-
-class E3TransferableAtomicOrbitalsConfig(ConfigBaseclass):
-    name: Literal["e3_taos"] = "e3_taos"
-
-    basis_set: str = "STO-3G"
-    """Basis set to use for the Hartree-Fock calculation. See the documentation of pySCF for all available basis-sets."""
-
-    localization: LocalizationType = None
-
     atom_types: Optional[List[int]] = None
-    """List of elements to generate features for, identified by their nuclear charges Z."""
 
-    #orb_feature_gnn: E3MACEGNNConfig = E3MACEGNNConfig()
+    #twist_encoding: Optional[Literal["concat", "concat_periodic"]] = None
+    twist_encoding: Optional[List[Literal["concat", "periodic"]]] = None
 
-    orb_transformer: E3OrbitalTransformerConfig = E3OrbitalTransformerConfig()
+    use_separate_ion_sum_for_envelopes: bool = False
 
-    backflow: E3BackflowMLPConfig = E3BackflowMLPConfig()
+    use_atom_positions: bool = False
 
-    envelope: E3EnvelopeMLPConfig = E3EnvelopeMLPConfig()
+    use_orbital_positions: bool = False
 
-    symmetrize_exponent_mlp: bool = True
+    use_atom_orbital_diff: bool = False
 
-    antisymmetrize_backflow_mlp: bool = True
 
-    backflow_l_max_out: int = 1
+class PeriodicEnvelopeOrbitalsConfig(ConfigBaseclass):
+    use: bool = True
 
-    n_virtual_orbitals: Optional[int] = None
-
-    use_layer_norm: bool = True
-
+    n_k_points_min: int = 50
 
 
 class OrbitalsConfig(ConfigBaseclass):
-    baseline_orbitals: Optional[BaselineOrbitalsConfig] = None
-    """Orbitals containing a baked-in baselin model (e.g. Hartree-Fock or CASSCF) which gets modified by 2 neural networks: backflow shifts and backflow factors"""
-
     envelope_orbitals: Optional[EnvelopeOrbitalsConfig] = EnvelopeOrbitalsConfig()
     """Orbitals containing only a simple, parametrized envelope, multiplied by a neural network"""
 
-    transferable_atomic_orbitals: Union[None, TransferableAtomicOrbitalsConfig, E3TransferableAtomicOrbitalsConfig] = None
+    transferable_atomic_orbitals: Union[None, TransferableAtomicOrbitalsConfig] = None
     """Orbitals being composed of atom-wise contributions, conditioned on orbital descriptors such as Hartree-Fock basis coefficients"""
 
     n_determinants: int = 32
@@ -874,18 +793,16 @@ class OrbitalsConfig(ConfigBaseclass):
     determinant_schema: Literal["full_det", "block_diag", "restricted_closed_shell"] = "full_det"
     """How to construct slater determinants from a set of predicted (spin) orbitals"""
 
+    periodic_orbitals: Union[None, PeriodicEnvelopeOrbitalsConfig] = None
+    """Periodic envelope for solids"""
+
+    use_bloch_envelopes: bool = False
+
 class OrbitalsConfigFermiNet(OrbitalsConfig):
-    baseline_orbitals: Optional[BaselineOrbitalsConfig] = None
     envelope_orbitals: Optional[EnvelopeOrbitalsConfig] = EnvelopeOrbitalsConfig()
-    transferable_atomic_orbitals: Union[None, TransferableAtomicOrbitalsConfig, E3TransferableAtomicOrbitalsConfig] = None
+    transferable_atomic_orbitals: Union[None, TransferableAtomicOrbitalsConfig] = None
     n_determinants: int = 32
     determinant_schema: Literal["full_det", "block_diag", "restricted_closed_shell"] = "full_det"
-
-class OrbitalsConfigDPE1(OrbitalsConfig):
-    baseline_orbitals: Optional[BaselineOrbitalsConfig] = BaselineOrbitalsConfig()
-    envelope_orbitals: Optional[EnvelopeOrbitalsConfig] = None
-    n_determinants: int = 20
-    determinant_schema: Literal["full_det", "block_diag", "restricted_closed_shell"] = "block_diag"
 
 
 class JastrowConfig(ConfigBaseclass):
@@ -898,15 +815,20 @@ class JastrowConfig(ConfigBaseclass):
     """Use separate functions for J(spin_up) and J(spin_down)"""
 
 
-
-
 class ModelConfig(ConfigBaseclass):
     """Configuration for the primary wavefunction model, which maps electron coordinate to psi"""
 
     features: InputFeatureConfig
     """Config-options for mapping raw inputs (r,R,Z) to some symmetrized input features"""
 
-    embedding: Union[EmbeddingConfigDeepErwin4, EmbeddingConfigFermiNet, EmbeddingConfigDeepErwin1, EmbeddingConfigE3MPNN, EmbeddingConfigTransformer, EmbeddingConfigAxialTranformer, None]
+    embedding: Union[
+        EmbeddingConfigDeepErwin4,
+        EmbeddingConfigFermiNet,
+        EmbeddingConfigTransformer,
+        EmbeddingConfigAxialTranformer,
+        EmbeddingConfigMoon,
+        None,
+    ]
     """Config-options for mapping symmetrized input features to high-dimensional embeddings of electrons"""
 
     orbitals: OrbitalsConfig
@@ -930,7 +852,7 @@ class ModelConfig(ConfigBaseclass):
     max_n_dn_orbitals: Optional[int] = None
     """Optional field to request n amount of dn orbitals from deeperwin, the orbitals will be truncated down for smaller systems """
 
-    Z_max: Optional[int] = None    # 18=Argon
+    Z_max: Optional[int] = None  # 18=Argon
     """Optional field to define the max Z a model can compute wavefunctions on"""
 
     Z_min: Optional[int] = 1
@@ -942,56 +864,72 @@ class ModelConfig(ConfigBaseclass):
     use_cache: bool = True
     """Cache parts of the network which are constant across electron-samples of the same geometry, such as purely geometry dependent networks."""
 
+    complex_wf: bool = False
+    """Use complex-valued output of network."""
 
-class ModelConfigDeepErwin1(ModelConfig):
-    """DO NOT INTRODUCE NEW FIELDS HERE. This class is only used to provide alternative defaults"""
-    name: Literal["dpe1"] = "dpe1"
-    features: Union[InputFeatureConfigDPE1, InputFeatureConfigFermiNet] = InputFeatureConfigDPE1()
-    embedding: Union[EmbeddingConfigDeepErwin1, EmbeddingConfigDeepErwin4, EmbeddingConfigFermiNet, None] = EmbeddingConfigDeepErwin1()
-    orbitals: OrbitalsConfigDPE1 = OrbitalsConfigDPE1()
-    jastrow: Optional[JastrowConfig] = JastrowConfig()
-    use_el_el_cusp_correction = True
+    kfac_register_complex: bool = False
+    """Register log psi instead of log |psi| with kfac."""
+
 
 class ModelConfigDeepErwin4(ModelConfig):
     """DO NOT INTRODUCE NEW FIELDS HERE. This class is only used to provide alternative defaults"""
+
     name: Literal["dpe4"] = "dpe4"
-    features: Union[InputFeatureConfigDPE4, InputFeatureConfigFermiNet, InputFeatureConfigDPE1] = InputFeatureConfigDPE4()
-    embedding: Union[EmbeddingConfigDeepErwin4, EmbeddingConfigFermiNet, EmbeddingConfigDeepErwin1, EmbeddingConfigGNN, EmbeddingConfigAxialTranformer, None] = EmbeddingConfigDeepErwin4()
+    features: Union[InputFeatureConfigDPE4, InputFeatureConfigFermiNet] = InputFeatureConfigDPE4()
+    embedding: Union[
+        EmbeddingConfigDeepErwin4, EmbeddingConfigFermiNet, EmbeddingConfigGNN, EmbeddingConfigAxialTranformer, EmbeddingConfigMoon, None
+    ] = EmbeddingConfigDeepErwin4()
+    orbitals: OrbitalsConfigFermiNet = OrbitalsConfigFermiNet()
+    jastrow: Optional[JastrowConfig] = None
+    use_el_el_cusp_correction: bool = False
+
+
+class ModelConfigMoon(ModelConfig):
+    """DO NOT INTRODUCE NEW FIELDS HERE. This class is only used to provide alternative defaults"""
+
+    name: Literal["moon"] = "moon"
+    features: Union[InputFeatureConfigDPE4, InputFeatureConfigFermiNet, InputFeatureConfigMoon] = InputFeatureConfigMoon()
+    embedding: Union[
+        EmbeddingConfigDeepErwin4, EmbeddingConfigFermiNet, EmbeddingConfigGNN, EmbeddingConfigAxialTranformer, EmbeddingConfigMoon, None
+    ] = EmbeddingConfigMoon()
     orbitals: OrbitalsConfigFermiNet = OrbitalsConfigFermiNet()
     jastrow: Optional[JastrowConfig] = None
     use_el_el_cusp_correction: bool = False
 
 class ModelConfigFermiNet(ModelConfig):
     """DO NOT INTRODUCE NEW FIELDS HERE. This class is only used to provide alternative defaults"""
-    name: Literal["ferminet"] = "ferminet"
-    features: Union[InputFeatureConfigFermiNet, InputFeatureConfigDPE1] = InputFeatureConfigFermiNet()
-    embedding: Union[EmbeddingConfigFermiNet, EmbeddingConfigDeepErwin4, EmbeddingConfigDeepErwin1, None] = EmbeddingConfigFermiNet()
-    orbitals: OrbitalsConfigFermiNet = OrbitalsConfigFermiNet()
-    jastrow: Optional[JastrowConfig] = None
-    use_el_el_cusp_correction = False
 
-class ModelConfigE3MPNN(ModelConfig):
-    """DO NOT INTRODUCE NEW FIELDS HERE. This class is only used to provide alternative defaults"""
-    name: Literal["e3mpnn"] = "e3mpnn"
-    features: Union[InputFeatureConfigMACE, InputFeatureConfigFermiNet, InputFeatureConfigDPE1] = InputFeatureConfigMACE()
-    embedding: EmbeddingConfigE3MPNN = EmbeddingConfigE3MPNN()
+    name: Literal["ferminet"] = "ferminet"
+    features: InputFeatureConfigFermiNet = InputFeatureConfigFermiNet()
+    embedding: Union[EmbeddingConfigFermiNet, EmbeddingConfigDeepErwin4, EmbeddingConfigMoon, None] = EmbeddingConfigFermiNet()
     orbitals: OrbitalsConfigFermiNet = OrbitalsConfigFermiNet()
     jastrow: Optional[JastrowConfig] = None
-    use_el_el_cusp_correction = False
+    use_el_el_cusp_correction: bool = False
+
 
 class ModelConfigTransformer(ModelConfig):
     """DO NOT INTRODUCE NEW FIELDS HERE. This class is only used to provide alternative defaults"""
+
     name: Literal["transformer"] = "transformer"
-    features: Union[InputFeatureConfigTransformer, InputFeatureConfigFermiNet, InputFeatureConfigDPE1] = InputFeatureConfigTransformer()
-    embedding: Union[EmbeddingConfigTransformer, EmbeddingConfigFermiNet, EmbeddingConfigDeepErwin4, EmbeddingConfigDeepErwin1, EmbeddingConfigAxialTranformer, None] = EmbeddingConfigTransformer()
+    features: Union[InputFeatureConfigTransformer, InputFeatureConfigFermiNet] = InputFeatureConfigTransformer()
+    embedding: Union[
+        EmbeddingConfigTransformer,
+        EmbeddingConfigFermiNet,
+        EmbeddingConfigDeepErwin4,
+        EmbeddingConfigAxialTranformer,
+        None,
+    ] = EmbeddingConfigTransformer()
     orbitals: OrbitalsConfigFermiNet = OrbitalsConfigFermiNet()
     jastrow: Optional[JastrowConfig] = None
-    use_el_el_cusp_correction = True
+    use_el_el_cusp_correction: bool = True
 
-EmbeddingConfigType = Union[EmbeddingConfigDeepErwin4, EmbeddingConfigFermiNet, EmbeddingConfigDeepErwin1, EmbeddingConfigTransformer, None]
+
+EmbeddingConfigType = Union[EmbeddingConfigDeepErwin4, EmbeddingConfigFermiNet, EmbeddingConfigTransformer, EmbeddingConfigMoon, None]
+
 
 class MCMCSimpleProposalConfig(ConfigBaseclass):
     name: Literal["normal", "cauchy", "normal_one_el"] = "normal"
+
 
 class MCMCLangevinProposalConfig(ConfigBaseclass):
     name: Literal["langevin"] = "langevin"
@@ -1014,6 +952,7 @@ class LocalStepsizeProposalConfig(ConfigBaseclass):
     r_max: float = 1
     """Max stepsize for electron move"""
 
+
 class MCMCConfig(ConfigBaseclass):
     """Config for Markov-Chain-Monte-Carlo integration"""
 
@@ -1032,6 +971,15 @@ class MCMCConfig(ConfigBaseclass):
     n_walkers: int = 2048
     """Number of walkers for optimization"""
 
+    spin_initialization: Literal["el_ion_mapping", "random", "ordered", "mixed"] = "el_ion_mapping"
+    """How to distribute spins across atoms.
+
+    el_ion_mapping: Use the el_ion_mapping provided in PhysicalConfig, which in turn typically defaults to Hundts rule / AFM order.
+    random: Randomly distribute spin-up electrons across atoms, and fill the rest with spin-down electrons.
+    ordered: Put all spin-up electrons on the first atoms and all spin-down on the last atoms. E.g. yields FM order for Hydrogen chains.
+    mixed: 50% of the batch are initialized according to el_ion_mapping and 50% are initialized 'ordered'
+    """
+
     initialization: Literal["gaussian", "exponential"] = "exponential"
     """Initial radial distribution of electrons around ions."""
 
@@ -1044,26 +992,37 @@ class MCMCConfig(ConfigBaseclass):
     max_stepsize_scale: float = 1.0
     """Maximum stepsize. For spatially adaptive stepsize-schemes this only defines a factor which may be modified by the adaptive scheme"""
 
-    proposal: Union[MCMCSimpleProposalConfig, LocalStepsizeProposalConfig, MCMCLangevinProposalConfig] = MCMCSimpleProposalConfig()
+    proposal: Union[
+        MCMCSimpleProposalConfig, LocalStepsizeProposalConfig, MCMCLangevinProposalConfig
+    ] = MCMCSimpleProposalConfig()
     """Type of proposal function to use for MCMC steps"""
 
+    p_spin_swap: float = 0.0
+    """Probability of swapping the spin of two electrons during an MCMC step"""
+
+    p_spin_flip: float = 0.0
+    """Probability of flipping the spin of all electrons during an MCMC step"""
+
+
 class MCMCConfigPreTrain(MCMCConfig):
-    n_inter_steps = 1
-    n_burn_in = 0
-    stepsize_update_interval = 1000
-    max_age = 20
+    n_inter_steps: int = 1
+    n_burn_in: int = 0
+    stepsize_update_interval: int = 1000
+    max_age: int = 20
+
 
 class MCMCConfigOptimization(MCMCConfig):
-    n_inter_steps = 20
-    n_burn_in = 1000
-    stepsize_update_interval = 100
-    max_age = 20
+    n_inter_steps: int = 20
+    n_burn_in: int = 1000
+    stepsize_update_interval: int = 100
+    max_age: int = 20
+
 
 class MCMCConfigEvaluation(MCMCConfig):
-    n_inter_steps = 20
-    n_burn_in = 500
-    stepsize_update_interval = 100
-    max_age = 100
+    n_inter_steps: int = 20
+    n_burn_in: int = 500
+    stepsize_update_interval: int = 100
+    max_age: int = 100
 
 
 class ClippingConfig(ConfigBaseclass):
@@ -1072,6 +1031,7 @@ class ClippingConfig(ConfigBaseclass):
     center: Literal["mean", "median"] = "mean"
     from_previous_step: bool = True
     clip_by: float = 5.0
+    clip_imag_around_0: bool = False
 
 
 class ConstantLRSchedule(ConfigBaseclass):
@@ -1093,9 +1053,11 @@ class InverseLRScheduleConfig(ConfigBaseclass):
     warmup: int = 0
     minimum: float = 0.0
 
+
 class NoamLRScheduleConfig(ConfigBaseclass):
     name: Literal["noam"] = "noam"
     warmup_steps: int = 20
+
 
 class _InverseLRScheduleConfigForKFACwithAdam(InverseLRScheduleConfig):
     decay_time: float = 1000
@@ -1103,34 +1065,50 @@ class _InverseLRScheduleConfigForKFACwithAdam(InverseLRScheduleConfig):
 
 
 class StandardOptimizerConfig(ConfigBaseclass):
-    name: Literal["adam", "rmsprop_momentum", "sgd", 'lion', 'lamb'] = "adam"  # add others optimizers that don't need further configs here
+    name: Literal[
+        "adam", "rmsprop_momentum", "sgd", "lion", "lamb"
+    ] = "adam"  # add others optimizers that don't need further configs here
 
     learning_rate: float = 1e-3
 
-    lr_schedule: Union[InverseLRScheduleConfig, ConstantLRSchedule, NoamLRScheduleConfig, ExponentialLRSchedule] = InverseLRScheduleConfig()
+    lr_schedule: Union[
+        InverseLRScheduleConfig, ConstantLRSchedule, NoamLRScheduleConfig, ExponentialLRSchedule
+    ] = InverseLRScheduleConfig()
     """Schedule for the learning rate decay"""
 
     scaled_modules: Optional[List[str]] = None
     """List of parameters for which the learning rate is being scaled."""
 
-    scale_lr = 1.0
+    scale_lr: float = 1.0
     """Factor which to apply to the learning rates of specified modules"""
+
 
 class _OptimizerConfigAdamForPretraining(StandardOptimizerConfig):
     name: Literal["adam"] = "adam"
     learning_rate: float = 3e-4
-    lr_schedule : Union[ConstantLRSchedule, InverseLRScheduleConfig, NoamLRScheduleConfig, ExponentialLRSchedule] = ConstantLRSchedule()
+    lr_schedule: Union[
+        ConstantLRSchedule, InverseLRScheduleConfig, NoamLRScheduleConfig, ExponentialLRSchedule
+    ] = ConstantLRSchedule()
+
 
 class _OptimizerConfigSGD(StandardOptimizerConfig):
     name: Literal["adam", "rmsprop_momentum", "sgd"] = "sgd"
-    learning_rate = 1.0
-    lr_schedule: Union[InverseLRScheduleConfig, ConstantLRSchedule, NoamLRScheduleConfig, ExponentialLRSchedule] = ConstantLRSchedule()
+    learning_rate: float = 1.0
+    lr_schedule: Union[
+        InverseLRScheduleConfig, ConstantLRSchedule, NoamLRScheduleConfig, ExponentialLRSchedule
+    ] = ConstantLRSchedule()
 
 
 class _OptimizerConfigAdamForKFAC(StandardOptimizerConfig):
     name: Literal["adam", "rmsprop_momentum", "sgd"] = "adam"
-    learning_rate = 2e-3
-    lr_schedule: Union[_InverseLRScheduleConfigForKFACwithAdam, InverseLRScheduleConfig, ConstantLRSchedule, NoamLRScheduleConfig, ExponentialLRSchedule] = _InverseLRScheduleConfigForKFACwithAdam()
+    learning_rate: float = 2e-3
+    lr_schedule: Union[
+        _InverseLRScheduleConfigForKFACwithAdam,
+        InverseLRScheduleConfig,
+        ConstantLRSchedule,
+        NoamLRScheduleConfig,
+        ExponentialLRSchedule,
+    ] = _InverseLRScheduleConfigForKFACwithAdam()
 
 
 class OptimizerConfigKFAC(ConfigBaseclass):
@@ -1139,19 +1117,23 @@ class OptimizerConfigKFAC(ConfigBaseclass):
 
     learning_rate: float = 0.1
 
-    lr_schedule: Union[InverseLRScheduleConfig, ConstantLRSchedule, NoamLRScheduleConfig, ExponentialLRSchedule] = InverseLRScheduleConfig()
+    lr_schedule: Union[
+        InverseLRScheduleConfig, ConstantLRSchedule, NoamLRScheduleConfig, ExponentialLRSchedule
+    ] = InverseLRScheduleConfig()
     """Schedule for the learning rate decay"""
 
     momentum: float = 0.0
-    norm_constraint_mode: Literal['fisher', 'fisher_scaled', 'precond_grad', 'precond_grad_scaled'] = 'fisher_scaled'
+    norm_constraint_mode: Literal["fisher", "fisher_scaled", "precond_grad", "precond_grad_scaled"] = "fisher_scaled"
     norm_constraint: float = 3e-3
     scale_nc_by_std_dev: bool = False
     min_clip_nc: float = 3.0
     max_clip_nc: float = 8.0
     damping: float = 1e-3
     l2_reg: float = 0.0
-    damping_schedule: Union[ConstantLRSchedule, InverseLRScheduleConfig, NoamLRScheduleConfig, ExponentialLRSchedule] = ConstantLRSchedule()
-    estimation_mode: Literal['fisher_gradients', 'fisher_exact'] = 'fisher_exact'
+    damping_schedule: Union[
+        ConstantLRSchedule, InverseLRScheduleConfig, NoamLRScheduleConfig, ExponentialLRSchedule
+    ] = ConstantLRSchedule()
+    estimation_mode: Literal["fisher_gradients", "fisher_exact"] = "fisher_exact"
     register_generic: bool = False
     update_inverse_period: int = 1
     """Period of how often the fisher matrix is being updated (in batches). e.g. update_inverse_period==1 means that it is updated after every gradient step."""
@@ -1167,44 +1149,25 @@ class _OptimizerConfigKFACwithAdam(OptimizerConfigKFAC):
     name: Literal["kfac_adam"] = "kfac_adam"
     learning_rate: float = 1.0
     norm_constraint: float = 6e-5
-    lr_schedule: Union[_InverseLRScheduleConfigForKFACwithAdam, InverseLRScheduleConfig, ConstantLRSchedule, NoamLRScheduleConfig] = _InverseLRScheduleConfigForKFACwithAdam()
+    lr_schedule: Union[
+        _InverseLRScheduleConfigForKFACwithAdam, InverseLRScheduleConfig, ConstantLRSchedule, NoamLRScheduleConfig
+    ] = _InverseLRScheduleConfigForKFACwithAdam()
     internal_optimizer: Union[_OptimizerConfigAdamForKFAC, StandardOptimizerConfig] = _OptimizerConfigAdamForKFAC()
 
-
-class BFGSOptimizerConfig(ConfigBaseclass):
-    name: Literal["slbfgs"] = "slbfgs"
-    """Identifier of optimizer. Fixed."""
-
-    internal_optimizer: StandardOptimizerConfig = StandardOptimizerConfig()
-    """Configuration for built-in optimizer to update the parameters, usinge the preconditioned gradients calculated by BFGS. 
-    Use these internal optimizers to easily implement features like momentum."""
-
-    memory_length: int = 2000
-    """Number of gradients to keep in memory to build-up the hessian. Longer memory yields a higher-rank hessian, potentially increasing accuracy, but also slightly increases run-time cost."""
-
-    hessian_regularization: float = 100.0
-    """Amount of Tikhonov regularization to apply"""
-
-    norm_constraint: float = 5e-4
-    """Maximum of the norm of the preconditioned gradients. If the norm of the preconditioned gradients exceeds this norm_constraint, it will be scaled down to meet this norm."""
-
-    use_variance_reduction: bool = False
-    """Recalculate 2 batches at the end of each epoch to reduce stochastic MCMC noise in the gradients. Improves accuracy at the expense of 2 additional batches per epoch"""
-
-    update_hessian_every_n_epochs: int = 1
-    """How often to update the hessian. More frequent update (= smaller setting) is preferrable, but can be expensive when using use_variance_reduction=True"""
 
 class SRCGOptimizerConfig(ConfigBaseclass):
     name: Literal["srcg"] = "srcg"
     """Identifier of optimizer. Fixed."""
 
     learning_rate: float = 0.1
-    lr_schedule: Union[InverseLRScheduleConfig, ConstantLRSchedule, NoamLRScheduleConfig, ExponentialLRSchedule] = InverseLRScheduleConfig()
+    lr_schedule: Union[
+        InverseLRScheduleConfig, ConstantLRSchedule, NoamLRScheduleConfig, ExponentialLRSchedule
+    ] = InverseLRScheduleConfig()
     damping: float = 1e-3
     damping_schedule: Union[ConstantLRSchedule, InverseLRScheduleConfig, ExponentialLRSchedule] = ConstantLRSchedule()
     max_update_norm: float = 0.1
 
-    internal_optimizer: Union[_OptimizerConfigSGD, StandardOptimizerConfig]  = _OptimizerConfigSGD()
+    internal_optimizer: Union[_OptimizerConfigSGD, StandardOptimizerConfig] = _OptimizerConfigSGD()
     center_gradients: bool = True
     preconditioner: Optional[Literal["variance"]] = None
     preconditioner_ema: float = 0.0
@@ -1220,21 +1183,40 @@ class ForceEvaluationConfig(ConfigBaseclass):
     R_core: float = 0.5
     use_antithetic_sampling: bool = False
 
+class DensityEvaluationConfig(ConfigBaseclass):
+    calculate_density: bool = True
+    calculate_pair_density: bool = False
+    r_min: List[float] = [0.0, 0.0, 0.0]
+    r_max: List[float] = [1.0, 1.0, 1.0]
+    n_grid: List[int] = [50, 50, 50]
+
 
 class EvaluationConfig(ConfigBaseclass):
-    mcmc: MCMCConfigEvaluation = MCMCConfigEvaluation()
-    n_epochs: int = 10_000
-    calculate_energies: bool = True
-    forces: Optional[ForceEvaluationConfig] = None
-
-class IntermediateEvaluationConfig(EvaluationConfig):
-    mcmc: MCMCConfigEvaluation = MCMCConfigEvaluation()
-    n_epochs: int = 1000
-    calculate_energies: bool = True
-    forces: Optional[ForceEvaluationConfig] = None
-
     opt_epochs: List[int] = []
-    """List of epochs at which to run an intermediate evaluation to accurately assess wavefunction accuracy."""
+    """List of optimization epochs at which to run an intermediate evaluation to assess wavefunction accuracy."""
+    
+    evaluate_final: bool = True
+    """Whether to always run an evaluation at the end of the optimization."""
+
+    mcmc: MCMCConfigEvaluation = MCMCConfigEvaluation()
+
+    n_epochs: int = 500
+    calculate_energies: bool = True
+    forces: Optional[ForceEvaluationConfig] = None
+    localization_metric: Literal[None, 'min_abs', 'all_abs', 'all'] = 'min_abs'
+    """Controls detail of localization calculation for periodic systems.
+    None: Don't calculate localization
+    min_abs: minimal absolute value over spatial dimensions.
+    all_abs: absolute value for each spatial dimension.
+    all: real and imaginary components for each spatial dimension."""
+
+    structure_factor_grid: Optional[List[int]] = None
+    """Number of grid points per dimension for structure factor calculation. If None, no structure factor is calculated."""
+
+    density: Optional[DensityEvaluationConfig] = None
+
+    max_batch_size: Optional[int] = None
+
 
 class DistortionConfig(ConfigBaseclass):
     max_age: int = 20
@@ -1268,7 +1250,7 @@ class SharedOptimizationConfig(ConfigBaseclass):
 
     orbital_method: Literal["truncate"] = "truncate"
 
-    scheduling_method: Literal["round_robin", "stddev"] = "round_robin"
+    scheduling_method: Literal["round_robin", "stddev", "weight", "var_per_el"] = "round_robin"
     """Method to vary between geometries during weight-sharing"""
 
     n_initial_round_robin_per_geom: int = 10
@@ -1290,7 +1272,9 @@ class CheckpointConfig(ConfigBaseclass):
 class OptimizationConfig(ConfigBaseclass):
     mcmc: MCMCConfigOptimization = MCMCConfigOptimization()
 
-    optimizer: Union[OptimizerConfigKFAC, _OptimizerConfigKFACwithAdam, StandardOptimizerConfig, BFGSOptimizerConfig, SRCGOptimizerConfig] = OptimizerConfigKFAC()
+    optimizer: Union[
+        OptimizerConfigKFAC, _OptimizerConfigKFACwithAdam, StandardOptimizerConfig, SRCGOptimizerConfig
+    ] = OptimizerConfigKFAC()
     """Which optimizer to use and its corresponding sub-options"""
 
     n_epochs: int = 60_000
@@ -1310,9 +1294,6 @@ class OptimizationConfig(ConfigBaseclass):
     clipping: ClippingConfig = ClippingConfig()
     """Config for clipping the local energies in the loss function. Clipping significantly improves optimization stability."""
 
-    intermediate_eval: IntermediateEvaluationConfig = IntermediateEvaluationConfig()
-    """Config for running intermediate evaluation runs during wavefunction optimization to obtain accurate estimates of current accuracy"""
-
     shared_optimization: Optional[SharedOptimizationConfig] = None
     """Config for shared optimization of multiple wavefunctions using weight-sharing between them"""
 
@@ -1322,7 +1303,7 @@ class OptimizationConfig(ConfigBaseclass):
     params_ema_factor: float = 0.95
     """Factor to regulate the length of memory for trainable parameters"""
 
-    init_clipping_with_None: bool = False
+    max_batch_size: Optional[int] = None
 
     @property
     def n_epochs_total(self):
@@ -1373,6 +1354,9 @@ class RestartConfig(ConfigBaseclass):
     reuse_trainable_params: bool = True
     """Whether to re-use the trainable weights of the neural networks. Use *reuse_modules* to specify only specific parts of the model to be re-used."""
 
+    reuse_ema_trainable_params: bool = False
+    """Whether to re-use the trainable weights estimated from a running average of optimization steps. (experimental setting)"""
+
     reuse_fixed_params: bool = True
     """Whether to re-use fixed (i.e. non-trainable) params"""
 
@@ -1396,6 +1380,7 @@ class RestartConfig(ConfigBaseclass):
 
 class ReuseConfig(RestartConfig):
     """Do not introduce new fields here"""
+
     mode: Literal["reuse"] = "reuse"
     reuse_config: bool = False
     reuse_opt_state: bool = False
@@ -1412,17 +1397,89 @@ class ReuseConfig(RestartConfig):
     check_param_count: bool = True
 
 
+
+
+
+class PeriodicConfig(ConfigBaseclass):
+    lattice_prim: Optional[Sequence[Sequence[float]]] = None
+    """Primitive cell lattice; 3x3 matrix. Each row of this matrix is one lattice vector, each column corresponds to a cartesian dimension."""
+
+    supercell: Union[Sequence[int], int] = 1
+    """Number of primitive cells in the simulation cell in each (lattice) direction."""
+
+    truncation_limit: int = 100
+
+    gamma_option: Literal["optimized", "min_rec"] = "optimized"
+
+    k_twist: List[float] = [0.0, 0.0, 0.0]
+    """Twist vector for (twisted) periodic boundary conditions. 
+    The twist vector is given in units of the reciprocal lattice vectors of the supercell, e.g. [0.5, 0.0, 0.0] means that the phase os shifted by pi/L for a lattice constant L in the x-direction."""
+
+    include_heg_background: bool = False
+
+    lattice_const: Optional[float] = None
+
+    lattice_type: Literal[None, "sc", "bcc", "fcc"] = None
+
+    is_expanded: bool = False
+    """Whether the properties of the PhysicalConfig describe a primitive cell (False) or whether they have already been expanded to a supercell (True)"""
+
+    R_prim: Optional[Sequence[Sequence[float]]] = None
+
+    Z_prim: Optional[Sequence[int]] = None
+
+    charge_prim: Optional[int] = None
+
+    spin_prim: Optional[int] = None
+
+    @model_validator(mode="after")
+    def supercell_int_to_list(self):
+        if isinstance(self.supercell, int):
+            self.supercell = [self.supercell] * 3
+        return self
+
+    @model_validator(mode="after")
+    def lattice_from_predefined_lattice(self):
+        if (self.lattice_prim is not None) or (self.lattice_type is None):
+            return self
+        if self.lattice_type == "sc":
+            lattice = np.eye(3)
+        elif self.lattice_type == "bcc":
+            lattice = np.array([1, 1, -1], [1, 1, 1], [1, -1, 1]) / 2
+        elif self.lattice_type == "fcc":
+            lattice = np.array([[1, 1, 0], [0, 1, 1], [1, 0, 1]]) / 2
+        else:
+            raise ValueError(f"Unknown lattice type: {self.lattice_type}")
+        self.lattice_prim = (lattice * self.lattice_const).tolist()
+        return self
+
+    @property
+    def lattice(self) -> np.ndarray:
+        """Supercell lattice; 3x3 matrix. Each row of this matrix is one lattice vector, each column corresponds to a cartesian dimension."""
+        return np.diag(self.supercell) @ np.array(self.lattice_prim)
+
+    @property
+    def n_prim_cells(self) -> int:
+        """Number of primitive cells in the simulation cell"""
+        return int(np.prod(self.supercell))
+
+    def get_shifts(self):
+        ordinals = np.stack(np.meshgrid(*[np.arange(n) for n in self.supercell]), axis=-1).reshape([-1, 3])
+        return ordinals @ self.lattice_prim
+
+
 class PhysicalConfigChange(ConfigBaseclass):
     name: Optional[str] = None
-    R: Optional[List[List[float]]] = None
-    E_ref: Optional[float] = None
     comment: Optional[str] = None
+    R: Optional[List[List[float]]] = None
     Z: Optional[List[int]] = None
+    E_ref: Optional[float] = None
+    E_ref_source: Optional[str] = None
     el_ion_mapping: Optional[List[int]] = None
-    n_cas_orbitals: Optional[int] = None
-    n_cas_electrons: Optional[int] = None
     n_electrons: Optional[int] = None
     n_up: Optional[int] = None
+    periodic: Optional[PeriodicConfig] = None
+    weight_for_shared: Optional[float] = None
 
 class PhysicalConfig(ConfigBaseclass):
     def get_basic_params(self):
@@ -1445,7 +1502,7 @@ class PhysicalConfig(ConfigBaseclass):
 
     @staticmethod
     def _generate_el_ion_mapping(R, Z, n_el, n_up):
-        #TODO: This method appears to work well for neutral systems (n_el == sum(Z)),
+        # TODO: This method appears to work well for neutral systems (n_el == sum(Z)),
         # but appears to generate unbalenced distributions for charged molecules
         """Generates a list of electrons each mapped to one of the ions.
 
@@ -1504,6 +1561,31 @@ class PhysicalConfig(ConfigBaseclass):
     n_up: Optional[int] = None
     """Number of spin-up electrons"""
 
+    el_ion_mapping: Optional[List[int]] = None
+    """Initial position of electrons. len(el_ion_mapping) == n_electrons. For each electron the list-entry specifies the index of the nucleus where the electron should be initialized.
+    Note that the n_up first entries in this list correpsond to spin-up electrons and the remaining entries correspond to spin-down electrons"""
+
+    E_ref: Optional[float] = None
+    """Known ground-truth energy as reference for output. This value is not used in the actual calculation, but only to benchmark the achieved results."""
+
+    E_ref_source: Optional[str] = None
+    """Source of included reference energy"""
+
+    comment: Optional[str] = None
+    """Optional comment to keep track of molecules, geometries or experiments"""
+
+    changes: Optional[List[PhysicalConfigChange]] = None
+    """List of changes to be made to this physical-configuration to obtain different molecules. This can be used to calculate multiple geometries with similar settings, by specifying a base configuration (e.g. charge, spin, CASSCF-settings, etc) and only specifying the changes (e.g. in nuclear geometry) in the changes section."""
+
+    periodic: Optional[PeriodicConfig] = None
+    """Config to specify primitive cell and supercell in periodic boundary
+    conditions."""
+
+    weight_for_shared: Optional[float] = None
+    """How important this specific geometry is for a shared optimization. 
+    This can be used to weight geometries differently, e.g. to give more weight (and thus potentially more optimization steps) 
+    to geometries that are more difficult to optimize or that are more relevant due to symmetry considerations."""
+
     @property
     def n_dn(self):
         return self.n_electrons - self.n_up
@@ -1520,129 +1602,80 @@ class PhysicalConfig(ConfigBaseclass):
     def spin(self):
         return self.n_up - self.n_dn
 
-    el_ion_mapping: Optional[List[int]] = None
-    """Initial position of electrons. len(el_ion_mapping) == n_electrons. For each electron the list-entry specifies the index of the nucleus where the electron should be initialized.
-    Note that the n_up first entries in this list correpsond to spin-up electrons and the remaining entries correspond to spin-down electrons"""
-
-    n_cas_electrons: Optional[int] = None
-    """Number of active electrons to include in the CASSCF calculation. Other electrons will be kept fixed in their respective orbitals."""
-
-    n_cas_orbitals: Optional[int] = None
-    """Number of active orbitals to include in the CASSCF calculation. Other orbitals are kept as always occupied or always unoccupied, depending on their energy."""
-
-    E_ref: Optional[float] = None
-    """Known ground-truth energy as reference for output. This value is not used in the actual calculation, but only to benchmark the achieved results."""
-
-    E_ref_source: Optional[str] = None
-    """Source of included reference energy"""
-
-    comment: Optional[str] = None
-    """Optional comment to keep track of molecules, geometries or experiments"""
-    
-    changes: Optional[List[PhysicalConfigChange]] = None
-    """List of changes to be made to this physical-configuration to obtain different molecules. This can be used to calculate multiple geometries with similar settings, by specifying a base configuration (e.g. charge, spin, CASSCF-settings, etc) and only specifying the changes (e.g. in nuclear geometry) in the changes section."""
-
-    _PERIODIC_TABLE = {k: i + 1 for i, k in enumerate(
-        ['H', 'He', 'Li', 'Be', 'B', 'C', 'N', 'O', 'F', 'Ne', 'Na', 'Mg', 'Al', 'Si', 'P', 'S',
-         'Cl', 'Ar', 'K', 'Ca', 'Sc', 'Ti', 'V', 'Cr', 'Mn', 'Fe', 'Co', 'Ni', 'Cu', 'Zn', 'Ga', 'Ge', 'As', 'Se', 'Br', 'Kr'])}
-
-    _DEFAULT_MOLECULES = ruamel.yaml.YAML().load(pathlib.Path(__file__).parent.joinpath('molecules.yaml'))
-
-    @validator("R", always=True)
-    def populate_R(cls, v, values):
-        if (v is None) and values['name']:
-            if values['name'] in cls._PERIODIC_TABLE:
-                return [[0.0, 0.0, 0.0]]
-            else:
-                return cls._DEFAULT_MOLECULES[values['name']]['R']
+    def get_expanded_if_supercell(self):
+        if (self.periodic is None) or (self.periodic.is_expanded):
+            return self.model_copy()
         else:
-            return v
+            shifts = self.periodic.get_shifts()
+            n_el_sc = int(np.round(self.n_electrons * self.periodic.n_prim_cells))
 
-    @validator("Z", always=True)
-    def populate_Z(cls, Z, values):
-        if (Z is None) and values['name']:
-            if values['name'] in cls._PERIODIC_TABLE:
-                Z = [cls._PERIODIC_TABLE[values['name']]]
+            if self.el_ion_mapping is None:
+                el_ion_mapping = None
             else:
-                Z = cls._DEFAULT_MOLECULES[values['name']]['Z']
-        if (Z is not None) and (len(Z) != len(values['R'])):
-            raise ValueError(
-                f"List of nuclear charges Z has length {len(Z)}, but list of ion positions R has length {len(values['R'])}")
-        return Z
+                el_ion_mapping_up = self.el_ion_mapping[: self.n_up]
+                el_ion_mapping_dn = self.el_ion_mapping[self.n_up :]
 
-    @validator("n_electrons", always=True)
-    def populate_n_electrons(cls, v, values):
-        if v is None:
-            if values.get('name') in cls._DEFAULT_MOLECULES:
-                charge = cls._DEFAULT_MOLECULES[values['name']].get('charge', 0)
-            else:
-                charge = 0
-            if values.get('Z') is not None:
-                return int(sum(values['Z']) - charge)
-            else:
-                return 0
-        else:
-            return v
+                el_ion_mapping = []
+                for i in range(self.periodic.n_prim_cells):
+                    el_ion_mapping += [n + i * self.n_ions for n in el_ion_mapping_up]
+                for i in range(self.periodic.n_prim_cells):
+                    el_ion_mapping += [n + i * self.n_ions for n in el_ion_mapping_dn]
+            periodic = self.periodic.model_copy()
+            periodic.is_expanded = True
+            periodic.R_prim = self.R
+            periodic.Z_prim = self.Z
+            periodic.charge_prim = self.charge
+            periodic.spin_prim = self.spin
 
-    @validator("n_up", always=True)
-    def populate_n_up(cls, v, values):
-        if v is None:
-            if values.get('name') in cls._PERIODIC_TABLE:
-                spin = cls._get_spin_from_hunds_rule(values['Z'][0])
-            elif (values.get('name') in cls._DEFAULT_MOLECULES):
-                spin = cls._DEFAULT_MOLECULES[values['name']].get('spin') or 0
-            else:
-                spin = 0
-            n_el = values.get('n_electrons')
-            if n_el is not None:
-                return (values['n_electrons'] + spin + 1) // 2  # if there is an extra electrons, assign them to up
-            else:
-                return 0
-        else:
-            return v
+            return PhysicalConfig(
+                name=self.name,
+                R=np.concatenate([np.array(self.R) + shift for shift in shifts], axis=0),
+                Z=np.tile(self.Z, self.periodic.n_prim_cells),
+                n_electrons=n_el_sc,
+                el_ion_mapping=el_ion_mapping,
+                E_ref=self.E_ref,
+                E_ref_source=self.E_ref_source,
+                comment=self.comment,
+                changes=copy.deepcopy(self.changes),
+                periodic=periodic,
+            )
 
-    @validator("el_ion_mapping", always=True)
-    def populate_el_ion_mapping(cls, v, values):
-        if v is None:
-            if ('name' in cls._DEFAULT_MOLECULES) and ('el_ion_mapping' in cls._DEFAULT_MOLECULES[values['name']]):
-                v = cls._DEFAULT_MOLECULES[values['name']]['el_ion_mapping']
-            else:
-                if (values['R'] is not None) and (values['Z'] is not None) and (values['n_electrons'] is not None) and (values['n_up'] is not None):
-                    v = cls._generate_el_ion_mapping(values['R'], values['Z'], values['n_electrons'], values['n_up'])
-        elif len(v) != values['n_electrons']:
-            raise ValueError(
-                f"An initial ion-mapping must be supplied for all electrons. len(el_ion_mapping)={len(v)}, n_electrons={values['n_electrons']}")
-        return v
+    _PERIODIC_TABLE = {
+        k: i + 1
+        for i, k in enumerate("H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr".split(" "))
+    }
 
-    @validator("n_cas_electrons", always=True)
-    def populate_n_cas_electrons(cls, v, values):
-        if v is None:
-            if values['name'] in cls._DEFAULT_MOLECULES:
-                v = cls._DEFAULT_MOLECULES[values['name']].get('cas_n_active_electrons')
-        return v
+    _DEFAULT_MOLECULES = ruamel.yaml.YAML().load(pathlib.Path(__file__).parent.joinpath("molecules.yaml"))
 
-    @validator("n_cas_orbitals", always=True)
-    def populate_n_cas_orbitals(cls, v, values):
-        if v is None:
-            if values['name'] in cls._DEFAULT_MOLECULES:
-                v = cls._DEFAULT_MOLECULES[values['name']].get('cas_n_active_orbitals')
-        return v
-
-    @validator("E_ref", always=True)
-    def populate_E_ref(cls, v, values):
-        name = values['name']
-        if (v is None) and (name is not None):
-            if name in cls._DEFAULT_MOLECULES:
-                return cls._DEFAULT_MOLECULES[name].get('E_ref')
-        return v
-
-    @validator("E_ref_source", always=True)
-    def populate_E_ref_source(cls, v, values):
-        name = values['name']
-        if (v is None) and (name is not None):
-            if name in cls._DEFAULT_MOLECULES:
-                return cls._DEFAULT_MOLECULES[name].get('E_ref_source')
-        return v
+    @model_validator(mode="after")
+    def populate_physical_config_from_name(self):
+        mol = dict()
+        if self.name:
+            if self.name in self._PERIODIC_TABLE:
+                Z = self._PERIODIC_TABLE[self.name]
+                mol = dict(Z=[Z], R=[[0.0, 0.0, 0.0]], spin=self._get_spin_from_hunds_rule(Z))
+            elif self.name in self._DEFAULT_MOLECULES:
+                mol = self._DEFAULT_MOLECULES[self.name]
+        if self.Z is None:
+            self.Z = mol.get("Z")
+        if self.R is None:
+            self.R = mol.get("R")
+        if (self.n_electrons is None) and (self.Z is not None):
+            charge = mol.get("charge", 0)
+            self.n_electrons = sum(self.Z) - charge
+        if (self.n_up is None) and (self.n_electrons is not None):
+            spin = mol.get("spin", 0)
+            self.n_up = (self.n_electrons + spin + 1) // 2  # if there is an extra electrons, assign them to up
+        if self.el_ion_mapping is None:
+            if "el_ion_mapping" in mol:
+                self.el_ion_mapping = mol["el_ion_mapping"]
+            elif (self.R is not None) and (self.Z is not None) and (self.n_electrons is not None) and (self.n_up is not None):
+                self.el_ion_mapping = self._generate_el_ion_mapping(self.R, self.Z, self.n_electrons, self.n_up)
+        if self.E_ref is None:
+            self.E_ref = mol.get("E_ref")
+        if self.E_ref_source is None:
+            self.E_ref_source = mol.get("E_ref_source")
+        return self
 
     def create_geometry_list(self, phys_changes):
         if phys_changes is None:
@@ -1650,7 +1683,7 @@ class PhysicalConfig(ConfigBaseclass):
         ret = []
         for change in phys_changes:
             change = build_flattend_dict(change)
-            p = PhysicalConfig.update_configdict_and_validate(self.dict(), change)[1]
+            p = PhysicalConfig.update_configdict_and_validate(self.model_dump(), change)[1]
             p.changes = None
             ret.append(p)
         return ret
@@ -1671,16 +1704,21 @@ class WandBConfig(LoggerBaseConfig):
 class BasicLoggerConfig(LoggerBaseConfig):
     log_to_stdout: bool = True
     log_level: Union[int, Literal["CRITICAL", "FATAL", "ERROR", "WARN", "WARNING", "INFO", "DEBUG"]] = "DEBUG"
-    sublog_levels: Dict[str, Literal["CRITICAL", "FATAL", "ERROR", "WARN", "WARNING", "INFO", "DEBUG"]] = {"absl":"INFO",
-                                                                                                           "h5py":"INFO",
-                                                                                                           "jax.interpreters.pxla":"INFO",
-                                                                                                           "jax._src.dispatch":"INFO"}
+    sublog_levels: Dict[str, Literal["CRITICAL", "FATAL", "ERROR", "WARN", "WARNING", "INFO", "DEBUG"]] = {
+        "absl": "INFO",
+        "h5py": "INFO",
+        "jax.interpreters.pxla": "INFO",
+        "jax._src.dispatch": "INFO",
+        "jax._src.interpreters.pxla": "INFO",
+        "jax._src.xla_bridge": "INFO",
+    }
     n_skip_epochs: int = 9
     fname: Optional[str] = "log.out"
     blacklist: List[str] = ["update_norm(", "precon_grad_norm(", "grad_norm(", "param_norm("]
 
+
 class PickleLoggerConfig(LoggerBaseConfig):
-    fname: str = 'results.bz2'
+    fname: str = "results.bz2"
 
 
 class LoggingConfig(ConfigBaseclass):
@@ -1701,13 +1739,15 @@ class LoggingConfig(ConfigBaseclass):
 
 
 class DispatchConfig(ConfigBaseclass):
-    system: Literal["local", "local_background", "vsc3", "vsc4", "dgx", "auto"] = "auto"
+    system: Literal["local", "local_background", "local_slurm", "vsc3", "vsc4", "dgx", "leonardo", "auto", "juwels", "vega", "baskerville"] = "auto"
     """Which compute-cluster to use for this experiment. 'auto' detects whether the code is running on a known compute-cluster and selects the corresponding profile, or otherwise defaults to local execution"""
 
-    queue: Literal["default", "jupyter", "a40", "a100", "zen3_0512_a100x2", "zen2_0256_a40x2"] = "default"
+    queue: Literal["default", "jupyter", "a40", "a100", "zen3_0512_a100x2", "zen2_0256_a40x2", "booster"] = "default"
     """SLURM queue to use for job submission on compute clusters. Not relevant for local execution"""
 
-    qos: Literal[None, "gpus2", "gpus4", "gpus6"] = None
+    qos: Literal[
+        None, "gpus2", "gpus4", "gpus6", "boost_qos_dbg", "boost_qos_bprod", "boost_qos_lprod", "normal"
+    ] = None
     """Quality of Service for SLURM. None assigns the default value for the corresponding partition"""
 
     time: str = "3day"
@@ -1716,9 +1756,13 @@ class DispatchConfig(ConfigBaseclass):
     conda_env: str = "jax"
     """Conda environment to select in SLURM-job-script. Not relevant for local execution"""
 
+    memory: Optional[int] = None
+    """Required memory in GB. Only relevant for SLURM."""
+
     split_opt: Optional[List[int]] = None
 
     eval_epochs: Optional[int] = None
+
 
 class ComputationConfig(ConfigBaseclass):
     use_gpu: bool = True
@@ -1751,9 +1795,6 @@ class PreTrainingConfig(ConfigBaseclass):
     sampling_density: Literal["reference", "model"] = "model"
     """Which wavefunction to use for """
 
-    baseline: CASSCFConfig = CASSCFConfig()
-    """Physical baseline settings for pre-training"""
-
     checkpoints: CheckpointConfig = CheckpointConfig()
 
     off_diagonal_mode: Literal["reference", "ignore", "exponential"] = "reference"
@@ -1771,11 +1812,12 @@ class PreTrainingConfig(ConfigBaseclass):
 
     use_distortions_for_shared_opt: bool = True
 
+
 # TODO: Generate a simple overview graphics of the main config options; use the schema to autogenerate?
 class Configuration(ConfigBaseclass):
     """Root configuration for DeepErwin"""
 
-    physical: Union[None, PhysicalConfig, str, List[str]]
+    physical: Union[None, PhysicalConfig, str, List[str]] = None
     """The physical system/molecule being calculated"""
 
     pre_training: Optional[PreTrainingConfig] = PreTrainingConfig()
@@ -1787,8 +1829,11 @@ class Configuration(ConfigBaseclass):
     evaluation: EvaluationConfig = EvaluationConfig()
     """The evaluation of the wavefunction (after optimization)"""
 
-    model: Union[ModelConfigDeepErwin4, ModelConfigFermiNet, ModelConfigDeepErwin1, ModelConfigE3MPNN, ModelConfigTransformer] = ModelConfigDeepErwin4()
+    model: Union[ModelConfigDeepErwin4, ModelConfigFermiNet, ModelConfigTransformer, ModelConfigMoon] = ModelConfigDeepErwin4()
     """The actual wavefunction model mapping electron coordinates to psi"""
+
+    baseline: BaselineConfigType = HartreeFockConfig()
+    """A conventional baseline calculation, e.g. Hartree-Fock, to use as input to some wavefunction models (e.g. TAOs), as well as for pre-training"""
 
     logging: LoggingConfig = LoggingConfig()
     """The output of the code, e.g. logging to files, or online-services"""
@@ -1808,44 +1853,27 @@ class Configuration(ConfigBaseclass):
     experiment_name: Optional[str] = "deeperwin_experiment"
     """Experiment name to keep track of experiments"""
 
-    @root_validator
-    def experiment_has_name(cls, values):
-        if values['experiment_name'] is None:
-            if values['physical'] is None:
-                values['experiment_name'] = "exp"
+    @model_validator(mode="after")
+    def experiment_has_name(self):
+        if self.experiment_name is None:
+            if self.physical is None:
+                self.experiment_name = "exp"
             else:
-                values['experiment_name'] = values["physical"].name
-        return values
-
-    # @root_validator
-    # def no_reuse_while_shared(cls, values):
-    #     if (values['optimization'].shared_optimization is not None) and (values['reuse'] is not None):
-    #         raise ValueError("Re-using weights not currently supported for shared optimization")
-    #     return values
-
-    # @root_validator
-    # def no_concatenate_el_ion_feat_while_shared(cls, values):
-    #     """
-    #     Check for error in setting the features when training on multiple compounds
-    #     """
-    #     if (values['physical'] is not None) and isinstance(values['physical'], PhysicalConfig):
-    #         physical_configs = values['physical'].create_geometry_list()
-    #         if len(set([len(phys_config.Z) for phys_config in physical_configs])) > 1:
-    #             if values['model'].features.concatenate_el_ion_features or values['model'].features.n_one_el_features <= 0:
-    #                 raise ValueError("When optimizing multiple compounds at the same time, concatenate_el_ion_features must be False \
-    #                     and n_one_el_features must be bigger than zero (16/32 preferably)")
-    #     return values
+                self.experiment_name = self.physical.name
+        return self
 
     @classmethod
-    def load_configuration_file(cls, config_file: str) -> Tuple[Any, 'Configuration']:
+    def load_configuration_file(cls, config_file: str) -> Tuple[Any, "Configuration"]:
         with open(config_file, "r") as f:
             raw_config = yaml.YAML().load(f)
-        config: Configuration = cls.parse_obj(raw_config)
+        config: Configuration = cls.model_validate(raw_config)
         return raw_config, config
 
 
 class CheckpointConfigPhisNet(ConfigBaseclass):
-    checkpoint_metric: Literal["test_mo_occ_cosine_dist", "test_loss_mo", "test_loss", "test_mae_energy", "test_mae_forces"] = "test_loss"
+    checkpoint_metric: Literal[
+        "test_mo_occ_cosine_dist", "test_loss_mo", "test_loss", "test_mae_energy", "test_mae_forces"
+    ] = "test_loss"
     every_n_epochs: int = 50
 
 
@@ -1880,27 +1908,31 @@ class PhisNetTrainingConfiguration(ConfigBaseclass):
     eps_roothaan_mode: Literal["zero", "sqrt_eps", "tikhonov"] = "zero"
     loss_weights: PhisNetLossWeightsConfig = PhisNetLossWeightsConfig()
     load_checkpoint: Optional[str] = None
+    flip_forces: bool = False
+    copy_data_to_local: str = ""
+    n_atoms_max: int = 0
 
 
 def get_with_flattened_key(config: Configuration, key):
     if "." not in key:
         return getattr(config, key)
     else:
-        tokens = key.split('.')
+        tokens = key.split(".")
         parent_key = tokens[0]
         child_key = ".".join(tokens[1:])
         return get_with_flattened_key(getattr(config, parent_key), child_key)
 
+
 def set_with_flattened_key(config_dict, key, value):
-    if not type(value) == dict and "." not in key:
+    if not isinstance(value, dict) and "." not in key:
         config_dict[key] = value
-    elif type(value) == dict:
+    elif isinstance(value, dict):
         if key not in config_dict or config_dict[key] is None:
             config_dict[key] = {}
         for key_child, value_child in value.items():
             set_with_flattened_key(config_dict[key], key_child, value_child)
     else:
-        tokens = key.split('.')
+        tokens = key.split(".")
         parent_key = tokens[0]
         child_key = ".".join(tokens[1:])
         if (parent_key not in config_dict) or (config_dict[parent_key] is None):
@@ -1908,10 +1940,11 @@ def set_with_flattened_key(config_dict, key, value):
         set_with_flattened_key(config_dict[parent_key], child_key, value)
     return config_dict
 
+
 def build_nested_dict(flattened_dict):
     root_dict = {}
     for k, value in flattened_dict.items():
-        key_tokens = k.split('.')
+        key_tokens = k.split(".")
         d = root_dict
         for i, key in enumerate(key_tokens):
             if i == len(key_tokens) - 1:
@@ -1922,11 +1955,12 @@ def build_nested_dict(flattened_dict):
             d = d[key]  # traverse further
     return root_dict
 
+
 def build_flattend_dict(nested_dict):
     flattened_dict = dict()
     for key, value in nested_dict.items():
         if isinstance(value, dict):
-            flattened_dict.update({key + "." + k: v for k,v in build_flattend_dict(value).items()})
+            flattened_dict.update({key + "." + k: v for k, v in build_flattend_dict(value).items()})
         else:
             flattened_dict[key] = value
     return flattened_dict
@@ -1948,16 +1982,36 @@ def to_prettified_yaml(data):
 
     return _convert_data(data)
 
-if __name__ == '__main__':
-    import pathlib
-    c = Configuration.parse_obj(dict(physical=dict(name='LiH'), model=dict(name="dpe4")))
-    p = pathlib.Path(__file__).parent.joinpath("../../sample_configs/config_schema.json").resolve()
-    print("Updating: ", p)
-    with open(p, 'w') as f:
-        f.write(c.schema_json())
+def build_physical_configs_from_changes(raw_physical_config_dict, parse=True):
+    changes = raw_physical_config_dict.get("changes")
+    output_configs = []
+    if (changes is None) or len(changes) == 0:
+        output_configs = [raw_physical_config_dict]
+    else:
+        for idx, change_dict in enumerate(changes):
+            config_dict = copy.deepcopy(raw_physical_config_dict)
+            for k, v in build_flattend_dict(change_dict).items():
+                set_with_flattened_key(config_dict, k, v)
+            if not config_dict.get("comment"):
+                config_dict["comment"] = str(idx)
+            config_dict["changes"] = None
+            output_configs.append(config_dict)
+    if parse:
+        output_configs = [PhysicalConfig.model_validate(c) for c in output_configs]
+    return output_configs
 
-    phys = PhysicalConfig.parse_obj(dict(name="H2",
-                                         changes=[dict(R=[[0, 0, 0], [0, 0, 2]]),
-                                                  dict(R=[[0, 0, 0], [0, 0, 3]])]
-                                         )
-                                    )
+
+if __name__ == "__main__":
+    # import pathlib
+    # c = Configuration.model_validate(dict(physical=dict(name='LiH'), model=dict(name="dpe4")))
+    # p = pathlib.Path(__file__).parent.joinpath("../../sample_configs/config_schema.json").resolve()
+    # print("Updating: ", p)
+    # with open(p, 'w') as f:
+    #     f.write(c.schema_json())
+
+    phys = PhysicalConfig.model_validate(
+        dict(name="H2", changes=[dict(R=[[0, 0, 0], [0, 0, 2]]), dict(R=[[0, 0, 0], [0, 0, 3]])])
+    )
+    phys = PeriodicConfig.from_flattened_dict({"lattice_prim": [[1, 0, 0], [0, 1, 0], [0, 0, 1]], "supercell": 2})
+
+# %%
