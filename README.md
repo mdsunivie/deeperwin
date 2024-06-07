@@ -42,7 +42,7 @@ To use the checkpoints please checkout the code version [Transferable atomic orb
 
 ## Installation
 
-DeepErwin is a python3 package and has been tested on Linux and macOS.
+DeepErwin is a python3 package and has been tested on Ubuntu and macOS.
 To get the most up-to-date version of the code, we recommend to checkout our repository from github:
 https://github.com/mdsunivie/deeperwin
 
@@ -112,12 +112,14 @@ Instead of setting all these parameters manually, you can just specify them usin
         name: LiH
 ```
 
-You can also partially overwrite settings, e.g. to calculate a modified geometry of a molecule. For example to calculate a streteched LiH molecule with a bond-length of 3.5 bohr use this configuration:
+You can also partially overwrite settings, e.g. to calculate a modified geometry of a molecule. For example to calculate a streteched LiH molecule with a bond-length of 3.5 bohr and 5000 optimization steps use this configuration:
 
 ```yaml
     physical:
         name: LiH
         R: [[0,0,0],[3.5,0,0]]
+    optimization:
+        n_epochs: 5000
 ```
 
 To run an actual calculation, run the python package as an executable:
@@ -127,7 +129,6 @@ To run an actual calculation, run the python package as an executable:
 ```
 
 This will combine your supplied configuration with default values for all other settings and dump it as *full_config.yml*. It will then run a calculation in the current directory, writing its output to the standard output and logfile.
-
 You can also set-up factorial sweeps of config-options, by using ```deeperwin setup``` with the -p flag.
 The following call will set-up 12 subdirectories (4 molecules x 3 learning-rates) and start calculations for all of them.
 If you run this on a SLURM-cluster, the jobs will not be executed directly, but instead SLURM-jobs will be submitted for parallel computation.
@@ -141,6 +142,8 @@ The code runs best on a GPU, but will in principle also work on a CPU. It will g
 * **GPU.out** containing a detailed debug log of all steps of the calculation
 * **full_config.yml** containing all configuration options used for this calculation: Your provided options, as well as all default options. Take a look at this file to see all the available config options for DeepErwin
 * **checkpoint** files containing a compressed, pickled representation of all data (including history and model weights)
+  
+A single run for LiH and 5000 steps should take less than an hour on a single GPU.
 
 
 ## Major configuration options
