@@ -218,6 +218,6 @@ We have gathered additional example configs in the folder sample_configs.
 # About
 
 DeepErwin is a collaborative effort of Michael Scherbela, Leon Gerard, Rafael Reisenhofer, Philipp Marquetand, and Philipp Grohs.\
-The code was written by Michael Scherbela, Leon Gerard, and Rafael Reisenhofer.\
+The code was written by Michael Scherbela, Leon Gerard, and Rafael Reisenhofer with contributions from Halvard Sutterud.\
 If you have any questions, freel free to reach out via [e-mail](mailto:deeperwin.datascience@univie.ac.at).
 
