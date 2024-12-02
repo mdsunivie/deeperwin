@@ -5,7 +5,7 @@
 /dist/
 /results.bz2
 /full_config.yml
-/wandb
+wandb
 /src/deeperwin.egg-info/
 /doc/build/
 settings.json
@@ -16,3 +16,9 @@ chkpt*.zip
 prechkpt*.zip
 src/scratchpad/bond_basis/tmp*
 src/analysis/gao_shared/tmp*
+tmp*
+vim_sesh
+.coverage
+GPU*.out
+GPU*.csv
+.ipynb_checkpoints
