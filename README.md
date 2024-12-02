@@ -46,23 +46,18 @@ DeepErwin is a python3 package and has been tested on Ubuntu and macOS.
 To get the most up-to-date version of the code, we recommend to checkout our repository from github:
 https://github.com/mdsunivie/deeperwin
 
-To install deeperwin and all its dependencies after you cloned our codebase:
+We recommend to use the package manager uv, to install deeperwin all all its (sub-)dependencies. Install uv, if not already installed, by [following the instructions](https://docs.astral.sh/uv/getting-started/installation/) or use
 ```bash
-    pip install -e .
+    curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
-To install the kfac fork we are using:
+
+To install deeperwin and all its dependencies after you cloned our codebase go the the repository root and run:
 ```bash
-    git checkout master
-    git pull origin master
-    git submodule init
-    git submodule update
-    cd kfac_jax
-    pip install -e .
-```
-This will install the repository "in-place", so you can make changes to the source code without having to reinstall the package.
-If you need CUDA support to run the JAX code on GPUs (recommended), additionally install the prepackaged jax[cuda] wheel:
-```bash
-    pip install --upgrade "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+    # Create a new virtual environment, with deeperwin and all dependencies
+    uv sync --frozen --extra gpu
+
+    # Activate this environment
+    source .venv/bin/activate
 ```
 
 ## Running a simple calculation
@@ -214,10 +209,14 @@ or for a whole group of molecules:
 This can be useful when pre-training a wavefunction across hundreds of geometries of various compounds, preventing the need to define each geometry manually in a yaml file as it was done in the section "Optimization using weight-sharing".
 We have gathered additional example configs in the folder sample_configs.
 
+## Example config files
+
+Check out the folder sample_configs for example config files. These files are potentially good starting point for your own calculations.
+
 
 # About
 
-DeepErwin is a collaborative effort of Michael Scherbela, Leon Gerard, Rafael Reisenhofer, Philipp Marquetand, and Philipp Grohs.\
-The code was written by Michael Scherbela, Leon Gerard, and Rafael Reisenhofer with contributions from Halvard Sutterud.\
+DeepErwin is a collaborative effort of Michael Scherbela, Leon Gerard, Rafael Reisenhofer, Philipp Marquetand, and Philipp Grohs. \
+The code was written by Michael Scherbela, Leon Gerard, and Rafael Reisenhofer, Halvard Sutterud contributed to the parts related to periodic systems. \
 If you have any questions, freel free to reach out via [e-mail](mailto:deeperwin.datascience@univie.ac.at).
 

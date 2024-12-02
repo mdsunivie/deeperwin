@@ -2,6 +2,7 @@
 """
 DeepErwin hyperparameter and configuration management.
 """
+
 import copy
 from typing import Union, Optional, List, Tuple, Iterable, Any, Dict, Sequence
 from typing_extensions import Literal
@@ -438,6 +439,7 @@ class EmbeddingConfigDeepErwin4(EmbeddingConfigFermiNet):
     use_linear_out: bool = False
     neighbor_normalization: Literal["sum", "sqrt", "mean"] = "mean"
 
+
 class EmbeddingConfigMoon(ConfigBaseclass):
     name: Literal["moon"] = "moon"
     n_iterations: int = 3
@@ -452,7 +454,6 @@ class EmbeddingConfigMoon(ConfigBaseclass):
     envelope_power_spatial: int = 2
     envelope_power_output: int = 1
     use_ion_ion_features: bool = False
-
 
 
 class CuspCorrectionConfig(ConfigBaseclass):
@@ -559,9 +560,6 @@ class InputFeatureConfig(ConfigBaseclass):
     n_rbf_features: int
     """Number of radial basis functions to use as pairwise fature vector"""
 
-    n_bessel_features: int = 0
-    """Number of bessel function to evaluate as radial features"""
-
     r_cut_bessel: float = 5.0
     """Cut-off radius for the bessel functions"""
 
@@ -653,6 +651,7 @@ class InputFeatureConfigFermiNet(InputFeatureConfig):
     n_ion_ion_rbf_features: int = 32
     ion_embed_type: Optional[Literal["lookup", "one-hot", "mlp"]] = None
 
+
 class InputFeatureConfigTransformer(InputFeatureConfigFermiNet):
     """DO NOT INTRODUCE NEW FIELDS HERE. This class is only used to provide alternative defaults"""
 
@@ -673,6 +672,7 @@ class InputFeatureConfigDPE4(InputFeatureConfigFermiNet):
     full_el_el_distance_matrix: bool = True
     n_ion_ion_rbf_features: int = 32
     ion_embed_type: Optional[Literal["lookup", "one-hot", "mlp"]] = "lookup"
+
 
 class InputFeatureConfigMoon(InputFeatureConfigFermiNet):
     name: Literal["moon"] = "moon"
@@ -762,7 +762,7 @@ class TransferableAtomicOrbitalsConfig(ConfigBaseclass):
 
     atom_types: Optional[List[int]] = None
 
-    #twist_encoding: Optional[Literal["concat", "concat_periodic"]] = None
+    # twist_encoding: Optional[Literal["concat", "concat_periodic"]] = None
     twist_encoding: Optional[List[Literal["concat", "periodic"]]] = None
 
     use_separate_ion_sum_for_envelopes: bool = False
@@ -797,6 +797,7 @@ class OrbitalsConfig(ConfigBaseclass):
     """Periodic envelope for solids"""
 
     use_bloch_envelopes: bool = False
+
 
 class OrbitalsConfigFermiNet(OrbitalsConfig):
     envelope_orbitals: Optional[EnvelopeOrbitalsConfig] = EnvelopeOrbitalsConfig()
@@ -877,7 +878,12 @@ class ModelConfigDeepErwin4(ModelConfig):
     name: Literal["dpe4"] = "dpe4"
     features: Union[InputFeatureConfigDPE4, InputFeatureConfigFermiNet] = InputFeatureConfigDPE4()
     embedding: Union[
-        EmbeddingConfigDeepErwin4, EmbeddingConfigFermiNet, EmbeddingConfigGNN, EmbeddingConfigAxialTranformer, EmbeddingConfigMoon, None
+        EmbeddingConfigDeepErwin4,
+        EmbeddingConfigFermiNet,
+        EmbeddingConfigGNN,
+        EmbeddingConfigAxialTranformer,
+        EmbeddingConfigMoon,
+        None,
     ] = EmbeddingConfigDeepErwin4()
     orbitals: OrbitalsConfigFermiNet = OrbitalsConfigFermiNet()
     jastrow: Optional[JastrowConfig] = None
@@ -888,20 +894,30 @@ class ModelConfigMoon(ModelConfig):
     """DO NOT INTRODUCE NEW FIELDS HERE. This class is only used to provide alternative defaults"""
 
     name: Literal["moon"] = "moon"
-    features: Union[InputFeatureConfigDPE4, InputFeatureConfigFermiNet, InputFeatureConfigMoon] = InputFeatureConfigMoon()
+    features: Union[InputFeatureConfigDPE4, InputFeatureConfigFermiNet, InputFeatureConfigMoon] = (
+        InputFeatureConfigMoon()
+    )
     embedding: Union[
-        EmbeddingConfigDeepErwin4, EmbeddingConfigFermiNet, EmbeddingConfigGNN, EmbeddingConfigAxialTranformer, EmbeddingConfigMoon, None
+        EmbeddingConfigDeepErwin4,
+        EmbeddingConfigFermiNet,
+        EmbeddingConfigGNN,
+        EmbeddingConfigAxialTranformer,
+        EmbeddingConfigMoon,
+        None,
     ] = EmbeddingConfigMoon()
     orbitals: OrbitalsConfigFermiNet = OrbitalsConfigFermiNet()
     jastrow: Optional[JastrowConfig] = None
     use_el_el_cusp_correction: bool = False
+
 
 class ModelConfigFermiNet(ModelConfig):
     """DO NOT INTRODUCE NEW FIELDS HERE. This class is only used to provide alternative defaults"""
 
     name: Literal["ferminet"] = "ferminet"
     features: InputFeatureConfigFermiNet = InputFeatureConfigFermiNet()
-    embedding: Union[EmbeddingConfigFermiNet, EmbeddingConfigDeepErwin4, EmbeddingConfigMoon, None] = EmbeddingConfigFermiNet()
+    embedding: Union[EmbeddingConfigFermiNet, EmbeddingConfigDeepErwin4, EmbeddingConfigMoon, None] = (
+        EmbeddingConfigFermiNet()
+    )
     orbitals: OrbitalsConfigFermiNet = OrbitalsConfigFermiNet()
     jastrow: Optional[JastrowConfig] = None
     use_el_el_cusp_correction: bool = False
@@ -924,7 +940,13 @@ class ModelConfigTransformer(ModelConfig):
     use_el_el_cusp_correction: bool = True
 
 
-EmbeddingConfigType = Union[EmbeddingConfigDeepErwin4, EmbeddingConfigFermiNet, EmbeddingConfigTransformer, EmbeddingConfigMoon, None]
+EmbeddingConfigType = Union[
+    EmbeddingConfigDeepErwin4,
+    EmbeddingConfigFermiNet,
+    EmbeddingConfigTransformer,
+    EmbeddingConfigMoon,
+    None,
+]
 
 
 class MCMCSimpleProposalConfig(ConfigBaseclass):
@@ -993,7 +1015,9 @@ class MCMCConfig(ConfigBaseclass):
     """Maximum stepsize. For spatially adaptive stepsize-schemes this only defines a factor which may be modified by the adaptive scheme"""
 
     proposal: Union[
-        MCMCSimpleProposalConfig, LocalStepsizeProposalConfig, MCMCLangevinProposalConfig
+        MCMCSimpleProposalConfig,
+        LocalStepsizeProposalConfig,
+        MCMCLangevinProposalConfig,
     ] = MCMCSimpleProposalConfig()
     """Type of proposal function to use for MCMC steps"""
 
@@ -1065,14 +1089,17 @@ class _InverseLRScheduleConfigForKFACwithAdam(InverseLRScheduleConfig):
 
 
 class StandardOptimizerConfig(ConfigBaseclass):
-    name: Literal[
-        "adam", "rmsprop_momentum", "sgd", "lion", "lamb"
-    ] = "adam"  # add others optimizers that don't need further configs here
+    name: Literal["adam", "rmsprop_momentum", "sgd", "lion", "lamb"] = (
+        "adam"  # add others optimizers that don't need further configs here
+    )
 
     learning_rate: float = 1e-3
 
     lr_schedule: Union[
-        InverseLRScheduleConfig, ConstantLRSchedule, NoamLRScheduleConfig, ExponentialLRSchedule
+        InverseLRScheduleConfig,
+        ConstantLRSchedule,
+        NoamLRScheduleConfig,
+        ExponentialLRSchedule,
     ] = InverseLRScheduleConfig()
     """Schedule for the learning rate decay"""
 
@@ -1087,7 +1114,10 @@ class _OptimizerConfigAdamForPretraining(StandardOptimizerConfig):
     name: Literal["adam"] = "adam"
     learning_rate: float = 3e-4
     lr_schedule: Union[
-        ConstantLRSchedule, InverseLRScheduleConfig, NoamLRScheduleConfig, ExponentialLRSchedule
+        ConstantLRSchedule,
+        InverseLRScheduleConfig,
+        NoamLRScheduleConfig,
+        ExponentialLRSchedule,
     ] = ConstantLRSchedule()
 
 
@@ -1095,7 +1125,10 @@ class _OptimizerConfigSGD(StandardOptimizerConfig):
     name: Literal["adam", "rmsprop_momentum", "sgd"] = "sgd"
     learning_rate: float = 1.0
     lr_schedule: Union[
-        InverseLRScheduleConfig, ConstantLRSchedule, NoamLRScheduleConfig, ExponentialLRSchedule
+        InverseLRScheduleConfig,
+        ConstantLRSchedule,
+        NoamLRScheduleConfig,
+        ExponentialLRSchedule,
     ] = ConstantLRSchedule()
 
 
@@ -1118,7 +1151,10 @@ class OptimizerConfigKFAC(ConfigBaseclass):
     learning_rate: float = 0.1
 
     lr_schedule: Union[
-        InverseLRScheduleConfig, ConstantLRSchedule, NoamLRScheduleConfig, ExponentialLRSchedule
+        InverseLRScheduleConfig,
+        ConstantLRSchedule,
+        NoamLRScheduleConfig,
+        ExponentialLRSchedule,
     ] = InverseLRScheduleConfig()
     """Schedule for the learning rate decay"""
 
@@ -1131,7 +1167,10 @@ class OptimizerConfigKFAC(ConfigBaseclass):
     damping: float = 1e-3
     l2_reg: float = 0.0
     damping_schedule: Union[
-        ConstantLRSchedule, InverseLRScheduleConfig, NoamLRScheduleConfig, ExponentialLRSchedule
+        ConstantLRSchedule,
+        InverseLRScheduleConfig,
+        NoamLRScheduleConfig,
+        ExponentialLRSchedule,
     ] = ConstantLRSchedule()
     estimation_mode: Literal["fisher_gradients", "fisher_exact"] = "fisher_exact"
     register_generic: bool = False
@@ -1150,7 +1189,10 @@ class _OptimizerConfigKFACwithAdam(OptimizerConfigKFAC):
     learning_rate: float = 1.0
     norm_constraint: float = 6e-5
     lr_schedule: Union[
-        _InverseLRScheduleConfigForKFACwithAdam, InverseLRScheduleConfig, ConstantLRSchedule, NoamLRScheduleConfig
+        _InverseLRScheduleConfigForKFACwithAdam,
+        InverseLRScheduleConfig,
+        ConstantLRSchedule,
+        NoamLRScheduleConfig,
     ] = _InverseLRScheduleConfigForKFACwithAdam()
     internal_optimizer: Union[_OptimizerConfigAdamForKFAC, StandardOptimizerConfig] = _OptimizerConfigAdamForKFAC()
 
@@ -1161,7 +1203,10 @@ class SRCGOptimizerConfig(ConfigBaseclass):
 
     learning_rate: float = 0.1
     lr_schedule: Union[
-        InverseLRScheduleConfig, ConstantLRSchedule, NoamLRScheduleConfig, ExponentialLRSchedule
+        InverseLRScheduleConfig,
+        ConstantLRSchedule,
+        NoamLRScheduleConfig,
+        ExponentialLRSchedule,
     ] = InverseLRScheduleConfig()
     damping: float = 1e-3
     damping_schedule: Union[ConstantLRSchedule, InverseLRScheduleConfig, ExponentialLRSchedule] = ConstantLRSchedule()
@@ -1183,6 +1228,7 @@ class ForceEvaluationConfig(ConfigBaseclass):
     R_core: float = 0.5
     use_antithetic_sampling: bool = False
 
+
 class DensityEvaluationConfig(ConfigBaseclass):
     calculate_density: bool = True
     calculate_pair_density: bool = False
@@ -1194,7 +1240,7 @@ class DensityEvaluationConfig(ConfigBaseclass):
 class EvaluationConfig(ConfigBaseclass):
     opt_epochs: List[int] = []
     """List of optimization epochs at which to run an intermediate evaluation to assess wavefunction accuracy."""
-    
+
     evaluate_final: bool = True
     """Whether to always run an evaluation at the end of the optimization."""
 
@@ -1203,7 +1249,7 @@ class EvaluationConfig(ConfigBaseclass):
     n_epochs: int = 500
     calculate_energies: bool = True
     forces: Optional[ForceEvaluationConfig] = None
-    localization_metric: Literal[None, 'min_abs', 'all_abs', 'all'] = 'min_abs'
+    localization_metric: Literal[None, "min_abs", "all_abs", "all"] = "min_abs"
     """Controls detail of localization calculation for periodic systems.
     None: Don't calculate localization
     min_abs: minimal absolute value over spatial dimensions.
@@ -1215,7 +1261,10 @@ class EvaluationConfig(ConfigBaseclass):
 
     density: Optional[DensityEvaluationConfig] = None
 
-    max_batch_size: Optional[int] = None
+    max_batch_size: int = 64
+
+    forward_lap: bool = False
+    """Whether to use the forward laplacian method from the flux package to calculate the kinetic energy"""
 
 
 class DistortionConfig(ConfigBaseclass):
@@ -1273,7 +1322,10 @@ class OptimizationConfig(ConfigBaseclass):
     mcmc: MCMCConfigOptimization = MCMCConfigOptimization()
 
     optimizer: Union[
-        OptimizerConfigKFAC, _OptimizerConfigKFACwithAdam, StandardOptimizerConfig, SRCGOptimizerConfig
+        OptimizerConfigKFAC,
+        _OptimizerConfigKFACwithAdam,
+        StandardOptimizerConfig,
+        SRCGOptimizerConfig,
     ] = OptimizerConfigKFAC()
     """Which optimizer to use and its corresponding sub-options"""
 
@@ -1303,7 +1355,10 @@ class OptimizationConfig(ConfigBaseclass):
     params_ema_factor: float = 0.95
     """Factor to regulate the length of memory for trainable parameters"""
 
-    max_batch_size: Optional[int] = None
+    max_batch_size: int = 64
+
+    forward_lap: bool = False
+    """Whether to use the forward laplacian method from the flux package to calculate the kinetic energy"""
 
     @property
     def n_epochs_total(self):
@@ -1397,9 +1452,6 @@ class ReuseConfig(RestartConfig):
     check_param_count: bool = True
 
 
-
-
-
 class PeriodicConfig(ConfigBaseclass):
     lattice_prim: Optional[Sequence[Sequence[float]]] = None
     """Primitive cell lattice; 3x3 matrix. Each row of this matrix is one lattice vector, each column corresponds to a cartesian dimension."""
@@ -1481,13 +1533,29 @@ class PhysicalConfigChange(ConfigBaseclass):
     periodic: Optional[PeriodicConfig] = None
     weight_for_shared: Optional[float] = None
 
+
 class PhysicalConfig(ConfigBaseclass):
     def get_basic_params(self):
         return self.n_electrons, self.n_up, np.array(self.R), np.array(self.Z)
 
     @staticmethod
     def _get_spin_from_hunds_rule(Z):
-        n_orbitals = [1, 1, 3, 1, 3, 1, 5, 3, 1, 5, 3, 1, 7, 5]  # 1s, 2s, 2p, 3s, 3p, 4s, 5d, ...
+        n_orbitals = [
+            1,
+            1,
+            3,
+            1,
+            3,
+            1,
+            5,
+            3,
+            1,
+            5,
+            3,
+            1,
+            7,
+            5,
+        ]  # 1s, 2s, 2p, 3s, 3p, 4s, 5d, ...
         n_electrons = Z
         n_up = 0
         n_dn = 0
@@ -1642,7 +1710,11 @@ class PhysicalConfig(ConfigBaseclass):
 
     _PERIODIC_TABLE = {
         k: i + 1
-        for i, k in enumerate("H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr".split(" "))
+        for i, k in enumerate(
+            "H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr".split(
+                " "
+            )
+        )
     }
 
     _DEFAULT_MOLECULES = ruamel.yaml.YAML().load(pathlib.Path(__file__).parent.joinpath("molecules.yaml"))
@@ -1669,7 +1741,12 @@ class PhysicalConfig(ConfigBaseclass):
         if self.el_ion_mapping is None:
             if "el_ion_mapping" in mol:
                 self.el_ion_mapping = mol["el_ion_mapping"]
-            elif (self.R is not None) and (self.Z is not None) and (self.n_electrons is not None) and (self.n_up is not None):
+            elif (
+                (self.R is not None)
+                and (self.Z is not None)
+                and (self.n_electrons is not None)
+                and (self.n_up is not None)
+            ):
                 self.el_ion_mapping = self._generate_el_ion_mapping(self.R, self.Z, self.n_electrons, self.n_up)
         if self.E_ref is None:
             self.E_ref = mol.get("E_ref")
@@ -1698,7 +1775,12 @@ class WandBConfig(LoggerBaseConfig):
     entity: Optional[str] = None
     id: Optional[str] = None
     use_id: bool = False
-    blacklist: List[str] = ["update_norm(", "precon_grad_norm(", "grad_norm(", "param_norm("]
+    blacklist: List[str] = [
+        "update_norm(",
+        "precon_grad_norm(",
+        "grad_norm(",
+        "param_norm(",
+    ]
 
 
 class BasicLoggerConfig(LoggerBaseConfig):
@@ -1711,10 +1793,18 @@ class BasicLoggerConfig(LoggerBaseConfig):
         "jax._src.dispatch": "INFO",
         "jax._src.interpreters.pxla": "INFO",
         "jax._src.xla_bridge": "INFO",
+        "jax._src.cache_key": "INFO",
+        "jax._src.compiler": "INFO",
+        "jax._src.compilation_cache": "INFO",
     }
     n_skip_epochs: int = 9
     fname: Optional[str] = "log.out"
-    blacklist: List[str] = ["update_norm(", "precon_grad_norm(", "grad_norm(", "param_norm("]
+    blacklist: List[str] = [
+        "update_norm(",
+        "precon_grad_norm(",
+        "grad_norm(",
+        "param_norm(",
+    ]
 
 
 class PickleLoggerConfig(LoggerBaseConfig):
@@ -1739,14 +1829,41 @@ class LoggingConfig(ConfigBaseclass):
 
 
 class DispatchConfig(ConfigBaseclass):
-    system: Literal["local", "local_background", "local_slurm", "vsc3", "vsc4", "dgx", "leonardo", "auto", "juwels", "vega", "baskerville"] = "auto"
+    system: Literal[
+        "local",
+        "local_background",
+        "local_slurm",
+        "vsc3",
+        "vsc4",
+        "dgx",
+        "leonardo",
+        "auto",
+        "juwels",
+        "vega",
+        "baskerville",
+    ] = "auto"
     """Which compute-cluster to use for this experiment. 'auto' detects whether the code is running on a known compute-cluster and selects the corresponding profile, or otherwise defaults to local execution"""
 
-    queue: Literal["default", "jupyter", "a40", "a100", "zen3_0512_a100x2", "zen2_0256_a40x2", "booster"] = "default"
+    queue: Literal[
+        "default",
+        "jupyter",
+        "a40",
+        "a100",
+        "zen3_0512_a100x2",
+        "zen2_0256_a40x2",
+        "booster",
+    ] = "default"
     """SLURM queue to use for job submission on compute clusters. Not relevant for local execution"""
 
     qos: Literal[
-        None, "gpus2", "gpus4", "gpus6", "boost_qos_dbg", "boost_qos_bprod", "boost_qos_lprod", "normal"
+        None,
+        "gpus2",
+        "gpus4",
+        "gpus6",
+        "boost_qos_dbg",
+        "boost_qos_bprod",
+        "boost_qos_lprod",
+        "normal",
     ] = None
     """Quality of Service for SLURM. None assigns the default value for the corresponding partition"""
 
@@ -1829,7 +1946,12 @@ class Configuration(ConfigBaseclass):
     evaluation: EvaluationConfig = EvaluationConfig()
     """The evaluation of the wavefunction (after optimization)"""
 
-    model: Union[ModelConfigDeepErwin4, ModelConfigFermiNet, ModelConfigTransformer, ModelConfigMoon] = ModelConfigDeepErwin4()
+    model: Union[
+        ModelConfigDeepErwin4,
+        ModelConfigFermiNet,
+        ModelConfigTransformer,
+        ModelConfigMoon,
+    ] = ModelConfigDeepErwin4()
     """The actual wavefunction model mapping electron coordinates to psi"""
 
     baseline: BaselineConfigType = HartreeFockConfig()
@@ -1872,7 +1994,11 @@ class Configuration(ConfigBaseclass):
 
 class CheckpointConfigPhisNet(ConfigBaseclass):
     checkpoint_metric: Literal[
-        "test_mo_occ_cosine_dist", "test_loss_mo", "test_loss", "test_mae_energy", "test_mae_forces"
+        "test_mo_occ_cosine_dist",
+        "test_loss_mo",
+        "test_loss",
+        "test_mae_energy",
+        "test_mae_forces",
     ] = "test_loss"
     every_n_epochs: int = 50
 
@@ -1982,6 +2108,7 @@ def to_prettified_yaml(data):
 
     return _convert_data(data)
 
+
 def build_physical_configs_from_changes(raw_physical_config_dict, parse=True):
     changes = raw_physical_config_dict.get("changes")
     output_configs = []
@@ -2002,16 +2129,14 @@ def build_physical_configs_from_changes(raw_physical_config_dict, parse=True):
 
 
 if __name__ == "__main__":
-    # import pathlib
-    # c = Configuration.model_validate(dict(physical=dict(name='LiH'), model=dict(name="dpe4")))
-    # p = pathlib.Path(__file__).parent.joinpath("../../sample_configs/config_schema.json").resolve()
-    # print("Updating: ", p)
-    # with open(p, 'w') as f:
-    #     f.write(c.schema_json())
+    import pathlib
+    import json
 
-    phys = PhysicalConfig.model_validate(
-        dict(name="H2", changes=[dict(R=[[0, 0, 0], [0, 0, 2]]), dict(R=[[0, 0, 0], [0, 0, 3]])])
-    )
-    phys = PeriodicConfig.from_flattened_dict({"lattice_prim": [[1, 0, 0], [0, 1, 0], [0, 0, 1]], "supercell": 2})
+    c = Configuration.model_validate(dict(physical=dict(name="LiH"), model=dict(name="dpe4")))
+    p = pathlib.Path(__file__).parent.joinpath("../../sample_configs/config_schema.json").resolve()
+    print(f"Updating schema: {str(p)}")
+    with open(p, "w") as f:
+        f.write(json.dumps(c.model_json_schema()))
+
 
 # %%

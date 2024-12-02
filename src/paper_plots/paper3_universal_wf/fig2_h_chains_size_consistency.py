@@ -1,4 +1,4 @@
-#%%
+# %%
 from deeperwin.run_tools.geometry_database import load_energies, load_geometries, load_datasets
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -6,6 +6,7 @@ import matplotlib.gridspec as gridspec
 from paper_plots.paper3_universal_wf.plot_utils import plot_df
 import pandas as pd
 import numpy as np
+
 sns.set_theme(style="whitegrid")
 save_figs = True
 
@@ -13,14 +14,17 @@ E_MRCI_THERMODYNAMIC_LIMIT_AFQMC = -0.56569
 
 all_geometries = load_geometries()
 hashes_in_order = load_datasets()["HChain_equidist_2-28_1.80_14geoms"].get_hashes()
-experiments = ["HF_HChains_6-31G**",
-               "Gao_etal_2023_HChain_extensivity_Moon",
-               "Gao_etal_2023_HChain_extensivity_FermiNet",
-               "2023-03-09_gao_reuse_Hchains_from64k",
-               ]
+experiments = [
+    "HF_HChains_6-31G**",
+    "Gao_etal_2023_HChain_extensivity_Moon",
+    "Gao_etal_2023_HChain_extensivity_FermiNet",
+    "2023-03-09_gao_reuse_Hchains_from64k",
+]
+
 
 def get_n_atoms(geom_hash):
-    return hashes_in_order.index(geom_hash)*2 + 2
+    return hashes_in_order.index(geom_hash) * 2 + 2
+
 
 df_full = load_energies()
 df = df_full[df_full.geom.isin(hashes_in_order) & df_full.experiment.isin(experiments)]
@@ -36,15 +40,15 @@ for e in df.experiment.unique():
     if "Moon" in e:
         color_dict[e] = "C1"
         label_dict[e] = "GLOBE+Moon, zero-shot"
-        marker_dict[e] = '^'
+        marker_dict[e] = "^"
     elif "FermiNet" in e:
         color_dict[e] = "C2"
         label_dict[e] = "GLOBE+FermiNet, zero-shot"
-        marker_dict[e] = 'v'
+        marker_dict[e] = "v"
     elif e.startswith("HF_"):
         color_dict[e] = "dimgray"
         label_dict[e] = "Hartree-Fock"
-        marker_dict[e] = 's'
+        marker_dict[e] = "s"
     else:
         color_dict[e] = "C0"
         label_dict[e] = "Ours"
@@ -54,9 +58,8 @@ for e in df.experiment.unique():
         else:
             label_dict[e] += f", {n_finetune} steps"
         lw_dict[e] = 2.5
-        marker_dict[e] = 'o'
-ls_dict = {'2023-03-09_gao_reuse_Hchains_from64k_0':"-",
-           '2023-03-09_gao_reuse_Hchains_from64k_500': ":"}
+        marker_dict[e] = "o"
+ls_dict = {"2023-03-09_gao_reuse_Hchains_from64k_0": "-", "2023-03-09_gao_reuse_Hchains_from64k_500": ":"}
 df["E_per_atom"] = df.E / df.n_atoms
 df = df.sort_values(["experiment", "n_atoms"])
 
@@ -68,31 +71,35 @@ ax_H10 = fig.add_subplot(gs[1, 0])
 ax_TDL = fig.add_subplot(gs[1, 1])
 
 
-plot_df(ax_n_atoms,
-        df,
-        x="n_atoms",
-        y="E_per_atom",
-        experiment="experiment",
-        color_dict=color_dict,
-        lw_dict=lw_dict,
-        ls_dict = ls_dict,
-        label_dict=label_dict,
-        marker_dict=marker_dict,
-        experiment_order=experiments[:3] + ["2023-03-09_gao_reuse_Hchains_from64k_0", "2023-03-09_gao_reuse_Hchains_from64k_500"],
-        zorder=10
-        )
-ax_n_atoms.axhline(E_MRCI_THERMODYNAMIC_LIMIT_AFQMC,
-           color='brown',
-           label=f"Motta et al., AFQMC, n$_{{\\mathrm{{atoms}}}}$$\\rightarrow \\infty$",
-           ls='-')
+plot_df(
+    ax_n_atoms,
+    df,
+    x="n_atoms",
+    y="E_per_atom",
+    experiment="experiment",
+    color_dict=color_dict,
+    lw_dict=lw_dict,
+    ls_dict=ls_dict,
+    label_dict=label_dict,
+    marker_dict=marker_dict,
+    experiment_order=experiments[:3]
+    + ["2023-03-09_gao_reuse_Hchains_from64k_0", "2023-03-09_gao_reuse_Hchains_from64k_500"],
+    zorder=10,
+)
+ax_n_atoms.axhline(
+    E_MRCI_THERMODYNAMIC_LIMIT_AFQMC,
+    color="brown",
+    label="Motta et al., AFQMC, n$_{\\mathrm{atoms}}$$\\rightarrow \\infty$",
+    ls="-",
+)
 
 ax_n_atoms.set_xlabel("nr of H-atoms")
 ax_n_atoms.set_ylabel("energy per atom / Ha")
 ax_n_atoms.set_title("H$_6$, H$_{10}$ $\\rightarrow$ H-chains", fontsize=16)
 ax_n_atoms.set_xticks(np.arange(2, 30, 2))
 ax_n_atoms.legend(loc="upper left", framealpha=1.0)
-for n in [6,10]:
-    ax_n_atoms.axvline(n, label="Shared pre-training", color='k', ls='--', zorder=-1)
+for n in [6, 10]:
+    ax_n_atoms.axvline(n, label="Shared pre-training", color="k", ls="--", zorder=-1)
 
 
 df_zeroshot = df.query("n_atoms == 12 and epoch==0")[["experiment", "E_per_atom"]]
@@ -106,7 +113,7 @@ def extrapolate_to_tdl(n, E_per_atom, n_min=4, n_max=np.inf, extrapolation_degre
     include = (n >= n_min) & (n <= n_max)
     E_per_atom = np.array(E_per_atom)[include]
     n = n[include]
-    A = (1.0 / n)[:, None] ** np.arange(extrapolation_degree+1)
+    A = (1.0 / n)[:, None] ** np.arange(extrapolation_degree + 1)
     coeffs = np.linalg.lstsq(A, E_per_atom, rcond=None)[0]
     return coeffs[0], coeffs
 
@@ -121,7 +128,7 @@ all_geoms = load_geometries()
 
 df = df_all[df_all.experiment == "2023-03-09_gao_reuse_Hchains_from64k"]
 df["n_atoms"] = df.geom.apply(lambda x: all_geoms[x].n_atoms)
-df["R"] = df.geom.apply(lambda x: all_geoms[x].R[1,0] - all_geoms[x].R[0,0]).round(4)
+df["R"] = df.geom.apply(lambda x: all_geoms[x].R[1, 0] - all_geoms[x].R[0, 0]).round(4)
 df["E_per_atom"] = df.E / df.n_atoms
 df["method"] = df["source"] + "_" + df["epoch"].astype(float).apply("{:.0f}".format)
 
@@ -153,13 +160,13 @@ for ax, n_atoms in zip([ax_H10, ax_TDL], [10, -1]):
     x = np.arange(len(methods))
     for x_, method in enumerate(methods):
         label = method
-        ax.barh([x_], [df_filt.loc[method].error_per_atom], height=0.8, color='C0' if 'dpe' in method else 'dimgray')
+        ax.barh([x_], [df_filt.loc[method].error_per_atom], height=0.8, color="C0" if "dpe" in method else "dimgray")
     ax.set_yticks(x)
     ax.set_yticklabels(method_labels)
     ax.set_xlabel("$(E - E_\\mathrm{AFQMC})\,/\,\\mathrm{atom}\,/\,\\mathrm{mHa}$")
     ax.set_xlim(0, 3.7)
-    ax.grid(False, axis='y')
-    ax.axvline(1.6, color='k', linestyle='--', linewidth=1, zorder=-1)
+    ax.grid(False, axis="y")
+    ax.axvline(1.6, color="k", linestyle="--", linewidth=1, zorder=-1)
     ax.text(1.65, 0, "chem.\nacc.", ha="left", va="center", fontsize=10)
     if n_atoms == 10:
         ax.set_title(r"$R=1.8,\, N_\mathrm{atoms} = 10$", fontsize=16)
@@ -168,16 +175,18 @@ for ax, n_atoms in zip([ax_H10, ax_TDL], [10, -1]):
     fig.tight_layout()
 
 for ax, label in zip([ax_n_atoms, ax_H10, ax_TDL], "abc"):
-    ax.text(0.0, 1.01, f"{label}", transform=ax.transAxes, weight='bold', ha='left', va='bottom')
+    ax.text(0.0, 1.01, f"{label}", transform=ax.transAxes, weight="bold", ha="left", va="bottom")
 fig.tight_layout()
 if save_figs:
-    fig.savefig(f"/home/mscherbela/ucloud/results/03_paper_unversal_wavefuncion/figures/HChains_extensivity_and_MottaEtAl.png", dpi=400, bbox_inches="tight")
-    fig.savefig(f"/home/mscherbela/ucloud/results/03_paper_unversal_wavefuncion/figures/HChains_extensivity_and_MottaEtAl.pdf", bbox_inches="tight")
-
-
-
-
-
+    fig.savefig(
+        "/home/mscherbela/ucloud/results/03_paper_unversal_wavefuncion/figures/HChains_extensivity_and_MottaEtAl.png",
+        dpi=400,
+        bbox_inches="tight",
+    )
+    fig.savefig(
+        "/home/mscherbela/ucloud/results/03_paper_unversal_wavefuncion/figures/HChains_extensivity_and_MottaEtAl.pdf",
+        bbox_inches="tight",
+    )
 
 
 # %%

@@ -1,0 +1,81 @@
+experiment_name: transferable_H-chain
+physical:
+  changes: [{R: [[0.0, 0.0, 0.0], [1.8, 0.0, 0.0]], Z: [1, 1], n_electrons: 2, n_up: 1,
+      name: HChainPBC2, comment: 0cc90b5c0204776986a86e1ee0a36886__HChainPBC2_1.80_k=0.000,
+      E_ref: null, E_ref_source: null, periodic: {lattice_prim: [[3.6, 0.0, 0.0],
+          [0.0, 100.0, 0.0], [0.0, 0.0, 100.0]], supercell: [1, 1, 1], k_twist: [
+          0.0, 0.0, 0.0]}}, {R: [[0.0, 0.0, 0.0], [1.8, 0.0, 0.0]], Z: [1, 1], n_electrons: 2,
+      n_up: 1, name: HChainPBC2, comment: 9baef8dbc1fb3b11d224bd28a966666b__HChainPBC2_1.80_k=0.500,
+      E_ref: null, E_ref_source: null, periodic: {lattice_prim: [[3.6, 0.0, 0.0],
+          [0.0, 100.0, 0.0], [0.0, 0.0, 100.0]], supercell: [1, 1, 1], k_twist: [
+          0.5, 0.0, 0.0]}}]
+pre_training:
+  n_epochs: 100
+  mcmc:
+    n_burn_in: 100
+    n_inter_steps: 20
+    stepsize_update_interval: 100
+  sampling_density: reference
+optimization:
+  n_epochs: 500
+  optimizer:
+    learning_rate: 0.1
+    norm_constraint: 0.001
+    damping: 0.001
+  mcmc:
+    n_walkers: 512
+    n_inter_steps: 10
+    n_burn_in: 0
+  clipping:
+    name: hard
+    center: median
+    width_metric: mae
+  shared_optimization:
+    scheduling_method: weight
+  checkpoints:
+    keep_every_n_epochs: 5000
+evaluation:
+  opt_epochs: []
+  evaluate_final: true
+  n_epochs: 100
+model:
+  name: moon
+  features:
+    name: moon
+    include_twist: [el_el, el_ion]
+  embedding:
+    name: moon
+    envelope_power_output: 2
+    initial_scale_output: 10
+    el_ion_dim_collect: 64
+    ion_dim: 64
+    output_dim: 32
+  complex_wf: true
+  orbitals:
+    envelope_orbitals:
+    transferable_atomic_orbitals:
+      mlp:
+        activation: relu
+        use_residual: true
+        use_layer_norm: true
+      envelope_width: 16
+      envelope_depth: 2
+      backflow_width: 64
+      backflow_depth: 2
+      use_el_ion_embedding: true
+      use_exponentials: true
+      use_atom_positions: true
+      use_orbital_positions: true
+      use_atom_orbital_diff: true
+      twist_encoding: [concat, periodic]
+    n_determinants: 1
+    determinant_schema: full_det
+  use_el_el_cusp_correction: true
+  jastrow:
+    use: true
+baseline:
+  name: periodic_hf
+  basis_set: cc-pVDZ
+  localization: boys
+  pyscf_options:
+    exp_to_discard: 0.1

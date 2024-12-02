@@ -3,11 +3,11 @@ import numpy as np
 from deeperwin.configuration import Configuration
 import glob
 import matplotlib.pyplot as plt
-from deeperwin.orbitals import _get_electron_configuration, _get_effective_charge, _initialize_walkers_around_atom
-from deeperwin.utils.utils import generate_exp_distributed
+from deeperwin.orbitals import _initialize_walkers_around_atom
 import jax
 import seaborn as sns
 from wandb import Api
+
 sns.set_theme(style="whitegrid")
 
 
@@ -54,6 +54,7 @@ for run in wandb_runs:
     history = run.scan_history(keys=["eval_E_mean"])
     energies.append(np.array([x["eval_E_mean"] for x in history]))
 
+
 # %%
 def get_sampled_density_gaussian(n_samples):
     r = np.random.normal(size=[n_samples, 3])
@@ -87,8 +88,8 @@ density_exp_init *= normalization / (density_exp_init * volume).sum()
 density_gaussian_init = get_sampled_density_gaussian(10_000_000)
 density_gaussian_init *= normalization / (density_gaussian_init * volume).sum()
 
-ax_density.plot(r, density_gaussian_init, label=f"Gaussian init.", color="C0")
-ax_density.plot(r, density_exp_init, label=f"Exponential init.", color="C1")
+ax_density.plot(r, density_gaussian_init, label="Gaussian init.", color="C0")
+ax_density.plot(r, density_exp_init, label="Exponential init.", color="C1")
 ax_density.plot(r, density_final, label="Ground truth $\\psi^2$", color="k")
 ax_density.legend()
 ax_density.set_yscale("log")
@@ -101,7 +102,7 @@ energy_ax = axes[1]
 E_0 = np.mean(energies[1][-50:])
 for E, label in zip(energies, ["Gaussian init.", "Exponential init."]):
     energy_ax.plot(np.arange(len(E)) * n_inter_steps / 1000, E, label=label)
-energy_ax.axhline(E_0, color='k', label="Ground truth")
+energy_ax.axhline(E_0, color="k", label="Ground truth")
 energy_ax.legend()
 energy_ax.set_xlabel("MCMC steps / k")
 energy_ax.set_ylabel("Energy / Ha")
@@ -109,8 +110,8 @@ energy_ax.set_xlim([0, 11])
 energy_ax.set_ylim([-285, -280])
 
 for ax, letter in zip(axes, "ab"):
-    ax.text(x=0, y= 1.01, s=letter, transform=ax.transAxes, fontsize=14, fontweight="bold", ha="left", va="bottom")
-    
+    ax.text(x=0, y=1.01, s=letter, transform=ax.transAxes, fontsize=14, fontweight="bold", ha="left", va="bottom")
+
 fig.tight_layout()
 fname = f"/home/mscherbela/ucloud/results/04_paper_better_universal_wf/figures/fig2_electron_initialization_Glycine_Z{z}.png"
 fig.savefig(fname, dpi=300, bbox_inches="tight")

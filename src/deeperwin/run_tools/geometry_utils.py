@@ -5,6 +5,7 @@ from deeperwin.utils.utils import get_distance_matrix
 
 BOHR_IN_ANGSTROM = 0.529177249
 
+
 def distort_molecule(R, n, d_min_factor, d_max_factor, noise_scale):
     R_out = []
 
@@ -32,7 +33,9 @@ def distort_molecule(R, n, d_min_factor, d_max_factor, noise_scale):
     return np.array(R_out)
 
 
-def generate_geometry_variants(R_orig, n_variants, rotate=True, distort=True, include_orig=True, random_state: int = None, noise_scale=0.5):
+def generate_geometry_variants(
+    R_orig, n_variants, rotate=True, distort=True, include_orig=True, random_state: int = None, noise_scale=0.5
+):
     if random_state is not None:
         np.random.seed(random_state)
     if distort:

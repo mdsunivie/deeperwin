@@ -1,0 +1,87 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+
+name = "deeperwin"
+requires-python = ">=3.11"
+version = "1.3.0"
+authors = [
+    { name = "Michael Scherbela", email = "michael.scherbela@gmail.com" },
+    { name = "Leon Gerard", email = "leongerard@outlook.de" },
+    { name = "Rafael Reisenhofer" },
+]
+description = "A JAX based framework to calculate deep-learning VMC solutions to the Schrödinger equation"
+readme = "README.md"
+dependencies = [
+    # Jax + libraries
+    "jax[cpu]==0.4.23; extra != 'gpu'",
+    "numpy<2.0.0",
+    "dm-haiku>=0.0.12",
+    "optax>=0.2.2",
+    "chex>=0.1.86",
+    "pyscf>=2.3.0,<2.7.0", # UCASSCF is broken in pyscf 2.7.0; remove this version cap once fixed
+
+    # VMC
+    "folx>=0.2.6",
+    "kfac_jax",
+
+    # utilities
+    "ruamel.yaml >= 0.18",
+    "pydantic>=2.0.0",
+    "wandb>=0.18",
+    "pytest>=8.0",
+    "pytest-xdist>=3.0",
+    "pytest-env>=1.0",
+
+    # analysis
+    "pandas>=2.0",
+    "matplotlib>=3.9",
+    "seaborn>=0.13",
+    "ase>=3.0",
+]
+
+[project.optional-dependencies]
+gpu = ["jax[cuda12_pip]==0.4.23"]
+
+[project.scripts]
+deeperwin = "deeperwin.cli:main"
+dpe_sweep_agent = "deeperwin.sweep_agent:run_sweep_agent"
+copy_wandb = "deeperwin.run_tools.copy_wandb_run:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-n 10"
+env = ['CUDA_VISIBLE_DEVICES=""']
+
+[tool.ruff]
+line-length = 120
+exclude = [
+    "src/analysis",
+    "src/scratchpad",
+    "src/paper_plots",
+    "custom_kfac_jax",
+    "datasets",
+]
+
+[tool.ruff.lint]
+ignore = [
+    "E731", # allow assignign lambdas
+    "E741", # allow "ambiguous variable names", in particular the variable l for angular momentum
+]
+
+[tool.uv]
+constraint-dependencies = [
+    "nvidia-cudnn-cu12<9.0", # jax==0.4.23 misses version constraint cudnn<9.0; remove for higher jax versions
+    "nvidia-cudnn-cu11<9.0",
+    "scipy <=1.12.0,>= 1.6.0" # incompatibility with jax==0.4.23
+    ] 
+index-strategy = "unsafe-best-match"
+find-links = [
+    "https://storage.googleapis.com/jax-releases/jax_cuda_releases.html",
+]
+
+[tool.uv.sources]
+deeperwin = { editable = true, path = "." }
+kfac_jax = { editable = true, path = "./custom_kfac_jax" }

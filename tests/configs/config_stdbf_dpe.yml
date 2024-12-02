@@ -1,0 +1,43 @@
+experiment_name: reg_stdbf_dpe
+
+physical:
+  name: NH3
+
+optimization:
+  n_epochs: 1
+  optimizer:
+    learning_rate: 0.1
+  mcmc:
+    n_walkers: 12
+    n_inter_steps: 5
+    n_burn_in: 5
+    initialization: "exponential"
+  clipping:
+    name: hard
+    center: median
+    width_metric: mae
+
+evaluation:
+  n_epochs: 0
+
+model:
+  name: dpe4
+  embedding:
+    name: dpe4
+    use_h_two_same_diff: true
+    use_w_mapping: true
+    emb_dim: 2
+    n_hidden_one_el: 4
+    n_hidden_two_el: 2
+    n_hidden_el_ions: 2
+    n_iterations: 2
+  orbitals:
+    n_determinants: 2
+    envelope_orbitals:
+      initialization: constant
+  features:
+    concatenate_el_ion_features: false
+    n_el_ion_features: 4
+    init_with_el_ion_feat: True
+    use_el_el_differences: false
+    coordinates: cartesian

@@ -10,10 +10,12 @@ from ruamel.yaml import YAML
 from deeperwin.process_molecule import process_molecule
 import re
 
+
 def _get_current_run_nr():
     directories = "\n".join([d for d in os.listdir() if os.path.isdir(d)])
     run_nrs = [int(s) for s in re.findall(r"\brun_(\d*)", directories)]
     return max(run_nrs) + 1 if run_nrs else 0
+
 
 def run_sweep_agent():
     # Init wandb and get current parameter set
@@ -32,10 +34,12 @@ def run_sweep_agent():
 
     config_dict = set_with_flattened_key(config_dict, "logging.wandb.project", None)
     config_dict = set_with_flattened_key(config_dict, "logging.basic.fname", "erwin.log")
-    config_dict = set_with_flattened_key(config_dict, "experiment_name", f"{parsed_config.experiment_name}_{run_nr:03d}")
+    config_dict = set_with_flattened_key(
+        config_dict, "experiment_name", f"{parsed_config.experiment_name}_{run_nr:03d}"
+    )
     config_dict = set_with_flattened_key(config_dict, "dispatch.system", "local")
     config_fname = f"config_run{run_nr:03d}.yml"
-    with open(config_fname, 'w') as f:
+    with open(config_fname, "w") as f:
         yaml.dump(config_dict, f)
 
     # "Finish" this run before starting the actual run.
@@ -44,6 +48,6 @@ def run_sweep_agent():
     process_molecule(config_fname)
     os.chdir("..")
 
-if __name__ == '__main__':
-    run_sweep_agent()
 
+if __name__ == "__main__":
+    run_sweep_agent()

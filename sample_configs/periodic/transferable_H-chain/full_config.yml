@@ -1,0 +1,330 @@
+physical:
+  name:
+  R:
+  Z:
+  n_electrons:
+  n_up:
+  el_ion_mapping:
+  E_ref:
+  E_ref_source:
+  comment:
+  changes: [{name: HChainPBC2, comment: 0cc90b5c0204776986a86e1ee0a36886__HChainPBC2_1.80_k=0.000,
+      R: [[0.0, 0.0, 0.0], [1.8, 0.0, 0.0]], Z: [1, 1], E_ref: null, E_ref_source: null,
+      el_ion_mapping: null, n_electrons: 2, n_up: 1, periodic: {lattice_prim: [[3.6,
+            0.0, 0.0], [0.0, 100.0, 0.0], [0.0, 0.0, 100.0]], supercell: [1, 1, 1],
+        truncation_limit: 100, gamma_option: optimized, k_twist: [0.0, 0.0, 0.0],
+        include_heg_background: false, lattice_const: null, lattice_type: null, is_expanded: false,
+        R_prim: null, Z_prim: null, charge_prim: null, spin_prim: null}, weight_for_shared: null},
+    {name: HChainPBC2, comment: 9baef8dbc1fb3b11d224bd28a966666b__HChainPBC2_1.80_k=0.500,
+      R: [[0.0, 0.0, 0.0], [1.8, 0.0, 0.0]], Z: [1, 1], E_ref: null, E_ref_source: null,
+      el_ion_mapping: null, n_electrons: 2, n_up: 1, periodic: {lattice_prim: [[3.6,
+            0.0, 0.0], [0.0, 100.0, 0.0], [0.0, 0.0, 100.0]], supercell: [1, 1, 1],
+        truncation_limit: 100, gamma_option: optimized, k_twist: [0.5, 0.0, 0.0],
+        include_heg_background: false, lattice_const: null, lattice_type: null, is_expanded: false,
+        R_prim: null, Z_prim: null, charge_prim: null, spin_prim: null}, weight_for_shared: null}]
+  periodic:
+  weight_for_shared:
+pre_training:
+  use: true
+  mcmc:
+    n_inter_steps: 20
+    n_burn_in: 100
+    max_age: 20
+    stepsize_update_interval: 100
+    n_walkers: 2048
+    spin_initialization: el_ion_mapping
+    initialization: exponential
+    target_acceptance_rate: 0.5
+    min_stepsize_scale: 0.01
+    max_stepsize_scale: 1.0
+    proposal:
+      name: normal
+    p_spin_swap: 0.0
+    p_spin_flip: 0.0
+  n_epochs: 100
+  optimizer:
+    name: adam
+    learning_rate: 0.0003
+    lr_schedule:
+      name: fixed
+    scaled_modules:
+    scale_lr: 1.0
+  use_only_leading_determinant: true
+  sampling_density: reference
+  checkpoints:
+    replace_every_n_epochs: 1000
+    keep_every_n_epochs: 50000
+    additional_n_epochs: []
+    keep_epoch_0: false
+    log_only_zero_geom: false
+  off_diagonal_mode: reference
+  off_diagonal_exponent: 1.0
+  off_diagonal_scale: 1.0
+  use_distortions_for_shared_opt: true
+optimization:
+  mcmc:
+    n_inter_steps: 10
+    n_burn_in: 0
+    max_age: 20
+    stepsize_update_interval: 100
+    n_walkers: 512
+    spin_initialization: el_ion_mapping
+    initialization: exponential
+    target_acceptance_rate: 0.5
+    min_stepsize_scale: 0.01
+    max_stepsize_scale: 1.0
+    proposal:
+      name: normal
+    p_spin_swap: 0.0
+    p_spin_flip: 0.0
+  optimizer:
+    name: kfac
+    learning_rate: 0.1
+    lr_schedule:
+      name: inverse
+      decay_time: 6000.0
+      offset_time: 0
+      warmup: 0
+      minimum: 0.0
+    momentum: 0.0
+    norm_constraint_mode: fisher_scaled
+    norm_constraint: 0.001
+    scale_nc_by_std_dev: false
+    min_clip_nc: 3.0
+    max_clip_nc: 8.0
+    damping: 0.001
+    l2_reg: 0.0
+    damping_schedule:
+      name: fixed
+    estimation_mode: fisher_exact
+    register_generic: false
+    update_inverse_period: 1
+    n_burn_in: 0
+    min_damping: 0.0001
+    curvature_ema: 0.95
+    internal_optimizer:
+      name: sgd
+      learning_rate: 1.0
+      lr_schedule:
+        name: fixed
+      scaled_modules:
+      scale_lr: 1.0
+  n_epochs: 500
+  n_epochs_prev: 0
+  use_batch_reweighting: false
+  checkpoints:
+    replace_every_n_epochs: 1000
+    keep_every_n_epochs: 5000
+    additional_n_epochs: []
+    keep_epoch_0: false
+    log_only_zero_geom: false
+  clipping:
+    name: hard
+    width_metric: mae
+    center: median
+    from_previous_step: true
+    clip_by: 5.0
+    clip_imag_around_0: false
+  shared_optimization:
+    use: true
+    shared_modules:
+    orbital_method: truncate
+    scheduling_method: weight
+    n_initial_round_robin_per_geom: 10
+    max_age:
+    distortion:
+  stop_on_nan: true
+  params_ema_factor: 0.95
+  max_batch_size: 64
+  forward_lap: false
+evaluation:
+  opt_epochs: []
+  evaluate_final: true
+  mcmc:
+    n_inter_steps: 20
+    n_burn_in: 500
+    max_age: 100
+    stepsize_update_interval: 100
+    n_walkers: 2048
+    spin_initialization: el_ion_mapping
+    initialization: exponential
+    target_acceptance_rate: 0.5
+    min_stepsize_scale: 0.01
+    max_stepsize_scale: 1.0
+    proposal:
+      name: normal
+    p_spin_swap: 0.0
+    p_spin_flip: 0.0
+  n_epochs: 100
+  calculate_energies: true
+  forces:
+  localization_metric: min_abs
+  structure_factor_grid:
+  density:
+  max_batch_size: 64
+  forward_lap: false
+model:
+  features:
+    use_rbf_features: false
+    n_rbf_features: 0
+    r_cut_bessel: 5.0
+    full_el_el_distance_matrix: true
+    use_distance_features: true
+    use_el_ion_differences: true
+    use_el_el_differences: true
+    use_el_spin: false
+    coordinates: cartesian
+    n_ion_ion_rbf_features: 0
+    n_ion_ion_mlp_features: 0
+    ion_embed_type: lookup
+    n_ion_features: 32
+    concatenate_el_ion_features: false
+    use_el_ion_convolution: false
+    log_scale_distances: false
+    init_as_zeros: false
+    n_el_el_features: 32
+    n_el_el_layers: 2
+    el_el_gating_operation: none
+    exp_decay_el_el_edge: false
+    init_with_el_el_feat: false
+    n_el_ion_features: 32
+    n_el_ion_layers: 2
+    el_ion_gating_operation: none
+    exp_decay_el_ion_edge: false
+    init_with_el_ion_feat: false
+    rmax: 5
+    max_scale_gauss: 8.0
+    include_twist: [el_el, el_ion]
+    name: moon
+    use_el_el_spin: false
+  embedding:
+    name: moon
+    n_iterations: 3
+    n_hidden_spatial: [16, 8]
+    el_el_dim: 32
+    el_ion_dim_collect: 64
+    ion_dim: 64
+    output_dim: 32
+    activation: silu
+    initial_scale_spatial: 10.0
+    initial_scale_output: 10.0
+    envelope_power_spatial: 2
+    envelope_power_output: 2
+    use_ion_ion_features: false
+  orbitals:
+    envelope_orbitals:
+    transferable_atomic_orbitals:
+      name: taos
+      envelope_width: 16
+      envelope_depth: 2
+      backflow_width: 64
+      backflow_depth: 2
+      symmetrize_exponent_mlp: false
+      antisymmetrize_backflow_mlp: false
+      use_prefactors: false
+      use_exponentials: true
+      use_el_ion_embedding: true
+      use_squared_envelope_input: false
+      mlp:
+        activation: relu
+        init_bias_scale: 0.0
+        init_weights_scale: fan_avg
+        init_weights_distribution: uniform
+        use_residual: true
+        use_layer_norm: true
+      orb_feature_gnn:
+      n_rbf_features_orb_gnn: 16
+      phisnet_model:
+      atom_types:
+      twist_encoding: [concat, periodic]
+      use_separate_ion_sum_for_envelopes: false
+      use_atom_positions: true
+      use_orbital_positions: true
+      use_atom_orbital_diff: true
+    n_determinants: 1
+    determinant_schema: full_det
+    periodic_orbitals:
+    use_bloch_envelopes: false
+  mlp:
+    activation: tanh
+    init_bias_scale: 0.0
+    init_weights_scale: fan_avg
+    init_weights_distribution: uniform
+    use_residual: false
+    use_layer_norm: false
+  jastrow:
+    use: true
+    n_hidden: [40, 40]
+    differentiate_spins: false
+  use_el_el_cusp_correction: true
+  disable_determinant: false
+  max_n_up_orbitals:
+  max_n_dn_orbitals:
+  Z_max:
+  Z_min: 1
+  max_n_ions:
+  use_cache: true
+  complex_wf: true
+  kfac_register_complex: false
+  name: moon
+baseline:
+  name: periodic_hf
+  basis_set: cc-pVDZ
+  pseudo:
+  k_points:
+  pyscf_options:
+    verbose: 0
+    output: /dev/null
+    precision: 1e-08
+    exp_to_discard: 0.1
+    mf_options:
+      chkfile:
+      density_fit: true
+      df_mesh:
+  localization: boys
+logging:
+  tags: []
+  log_opt_state: true
+  basic:
+    n_skip_epochs: 9
+    log_to_stdout: true
+    log_level: DEBUG
+    sublog_levels:
+      absl: INFO
+      h5py: INFO
+      jax.interpreters.pxla: INFO
+      jax._src.dispatch: INFO
+      jax._src.interpreters.pxla: INFO
+      jax._src.xla_bridge: INFO
+      jax._src.cache_key: INFO
+      jax._src.compiler: INFO
+      jax._src.compilation_cache: INFO
+    fname: log.out
+    blacklist: [update_norm(, precon_grad_norm(, grad_norm(, param_norm(]
+  wandb:
+  pickle:
+    n_skip_epochs: 0
+    fname: results.bz2
+computation:
+  use_gpu: true
+  require_gpu: false
+  n_local_devices:
+  n_nodes: 1
+  rng_seed:
+  force_device_count: false
+  disable_jit: false
+  float_precision: float32
+  disable_tensor_cores: true
+  use_profiler: false
+dispatch:
+  system: auto
+  queue: default
+  qos:
+  time: 3day
+  conda_env: jax
+  memory:
+  split_opt:
+  eval_epochs:
+reuse:
+comment:
+experiment_name: transferable_H-chain

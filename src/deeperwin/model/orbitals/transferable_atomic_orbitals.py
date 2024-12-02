@@ -9,6 +9,7 @@ from deeperwin.model.mlp import get_rbf_features
 from deeperwin.model.gnn import DenseGNN, ScaleFeatures
 from deeperwin.utils.utils import build_complex
 
+
 class TAOBackflow(hk.Module):
     def __init__(
         self,
@@ -172,6 +173,7 @@ class TransferableAtomicOrbitals(hk.Module):
         exponents = [None, None]
         backflows = [None, None]
 
+        # TODO Michael+Leon: remove unused
         backflow_final_hidden = None
         backflow_dim = el_emb_dim
         backflow_n_dets = self.n_dets
@@ -237,8 +239,7 @@ class TransferableAtomicOrbitals(hk.Module):
         else:
             h_same = embeddings.el[..., slice_same, :]
             h_diff = embeddings.el[..., slice_diff, :]
-        
-        
+
         if self.sep_ion_sums:
             if self.config.use_el_ion_embedding:
                 # Sum over ions and embedding dimension
@@ -258,7 +259,7 @@ class TransferableAtomicOrbitals(hk.Module):
                 mo_same = jnp.einsum("...Ikda,...ia->...diIk", b_same, h_same)
                 mo_diff = jnp.einsum("...Ikda,...ia->...diIk", b_same, h_diff)
         return mo_same, mo_diff
-    
+
     def _get_envelope(self, diff_dist, exponent, slice_same, slice_diff):
         dist_el_ion_same = diff_dist.dist_el_ion[..., slice_same, :]
         dist_el_ion_diff = diff_dist.dist_el_ion[..., slice_diff, :]
@@ -282,8 +283,6 @@ class TransferableAtomicOrbitals(hk.Module):
             env_same = np.moveaxis(env_same, -1, -4)
             env_diff = np.moveaxis(env_diff, -1, -4)
         return env_same, env_diff
-        
-            
 
     def __call__(
         self,

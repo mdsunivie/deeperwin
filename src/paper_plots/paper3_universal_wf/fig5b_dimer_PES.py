@@ -1,7 +1,6 @@
 # %%
-from deeperwin.run_tools.geometry_database import load_energies, load_geometries, load_datasets, get_all_geometries
+from deeperwin.run_tools.geometry_database import load_energies, get_all_geometries
 import pandas as pd
-import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib.cm
@@ -38,10 +37,11 @@ df_ref = df[df.experiment == "2023-05-26_psiformer_indep"][["R", "E"]].rename(co
 df_ref["E_ref_rel"] = (df_ref.E_ref - df_ref.E_ref.min()) * 1000
 df = pd.merge(df, df_ref, on="R", how="left")
 
-dpe_epochs = [0, 
-              14000, 
-            #   56000
-              ]
+dpe_epochs = [
+    0,
+    14000,
+    #   56000
+]
 # dpe_epochs = [0, 4000, 16000, 64000]
 
 
@@ -60,11 +60,11 @@ for (
 
     if epoch == 0:
         label = "Our work (zero-shot)"
-        ls = '--'
+        ls = "--"
     else:
         n = (epoch / n_geoms) / 1000
         label = f"Our work ({n:.0f}k steps per geom.)"
-        ls = '-'
+        ls = "-"
     ax_absolute.plot(df_filt.R, df_filt.E, label=label, color=color, marker="o", ls=ls)
     ax_relative.plot(df_filt.R, E_relative, label=label, color=color, marker="o", ls=ls)
     ax_error.plot(df_filt.R, error_relative, label=label, color=color, marker="o", ls=ls)
@@ -97,14 +97,13 @@ for ax, ylabel, ylim, title, sublabel in zip(
     ax.set_ylabel(ylabel)
     ax.set_ylim(ylim)
     ax.set_title(title)
-    ax.text(0.0, 1.02, f"{sublabel}", transform=ax.transAxes, fontweight="bold", va='bottom', ha='left', fontsize=14)
+    ax.text(0.0, 1.02, f"{sublabel}", transform=ax.transAxes, fontweight="bold", va="bottom", ha="left", fontsize=14)
 fig.tight_layout()
 
 
 fname = "/home/mscherbela/ucloud/results/03_paper_unversal_wavefuncion/figures/C2_PES.png"
 fig.savefig(fname, dpi=300, bbox_inches="tight")
 fig.savefig(fname.replace(".png", ".pdf"), bbox_inches="tight")
-
 
 
 # %%

@@ -1,26 +1,36 @@
 """
 File containing input processing layer, including Pairwise Feature construction layer
 """
+
 import functools
 from typing import Literal, Optional, Tuple, Dict
 import jax
 import jax.numpy as jnp
 import numpy as np
 import haiku as hk
-import e3nn_jax as e3nn
 from deeperwin.configuration import InputFeatureConfig, MLPConfig
-from deeperwin.model.definitions import DiffAndDistances, InputFeatures, WavefunctionDefinition
+from deeperwin.model.definitions import (
+    DiffAndDistances,
+    InputFeatures,
+    WavefunctionDefinition,
+)
 from deeperwin.model.mlp import MLP, get_rbf_features, get_gauss_env_features
 from deeperwin.utils.utils import (
-    append_across_leading_dims, 
+    append_across_leading_dims,
     get_distance_matrix,
     get_el_ion_distance_matrix,
     get_periodic_distance_matrix,
     get_periodic_el_ion_distance_matrix,
 )
 
+
 class PairwiseFeatures(hk.Module):
-    def __init__(self, config: InputFeatureConfig, pair_type: Literal["el_el", "el_ion"], name=None):
+    def __init__(
+        self,
+        config: InputFeatureConfig,
+        pair_type: Literal["el_el", "el_ion"],
+        name=None,
+    ):
         super().__init__(name=name)
         self.config = config
         self.pair_type = pair_type
@@ -43,9 +53,6 @@ class PairwiseFeatures(hk.Module):
         if self.config.use_rbf_features:
             features_rbf = get_rbf_features(dist, self.config.n_rbf_features)
             features.append(features_rbf)
-        if self.config.n_bessel_features > 0:
-            bessel_features = e3nn.bessel(dist, self.config.n_bessel_features, self.config.r_cut_bessel)
-            features.append(bessel_features)
         if self.config.use_distance_features:
             if self.config.log_scale_distances:
                 features.append(jnp.log(1 + dist)[..., None])
@@ -62,7 +69,14 @@ class PairwiseFeatures(hk.Module):
 
 
 def init_particle_features(
-    feature_inter_particle, dist, nb_features, nb_layers, gating_operation, max_scale, mlp_config, name=None
+    feature_inter_particle,
+    dist,
+    nb_features,
+    nb_layers,
+    gating_operation,
+    max_scale,
+    mlp_config,
+    name=None,
 ):
     mlp_filter = MLP([nb_features] * nb_layers, mlp_config, name=name)
     msg = mlp_filter(feature_inter_particle)
@@ -96,7 +110,13 @@ class InputPreprocessor(hk.Module):
         self.Z_min = wavefunction_definition.Z_min
 
     def __call__(
-        self, n_up: int, n_dn: int, r: jnp.ndarray, R: jnp.ndarray, Z: jnp.ndarray, fixed_params: Dict = None
+        self,
+        n_up: int,
+        n_dn: int,
+        r: jnp.ndarray,
+        R: jnp.ndarray,
+        Z: jnp.ndarray,
+        fixed_params: Dict = None,
     ) -> Tuple[DiffAndDistances, InputFeatures]:
         Z = jnp.array(Z, int)
         if Z.ndim == 1:  # no batch-dim for Z => tile across batch
@@ -133,12 +153,20 @@ class InputPreprocessor(hk.Module):
         diff_el_ion, dist_el_ion = self.get_el_ion_distance_matrix(r, R)
 
         if self.config.coordinates == "local_rot":
-            diff_el_ion = jnp.einsum("Jni,...Ji->...Jn", fixed_params["input"]["local_rotations"], diff_el_ion)
+            diff_el_ion = jnp.einsum(
+                "Jni,...Ji->...Jn",
+                fixed_params["input"]["local_rotations"],
+                diff_el_ion,
+            )
 
         # Ion-ion features
         if self.config.n_ion_ion_rbf_features > 0:
             diff_ion_ion, dist_ion_ion = self.get_distance_matrix(R, full=True)  # use pairwise features
-            rbfs = get_rbf_features(dist_ion_ion, n_features=self.config.n_ion_ion_rbf_features, r_max=self.config.rmax)
+            rbfs = get_rbf_features(
+                dist_ion_ion,
+                n_features=self.config.n_ion_ion_rbf_features,
+                r_max=self.config.rmax,
+            )
             features_ion_ion = jnp.concatenate([diff_ion_ion, dist_ion_ion[..., None], rbfs], axis=-1)
         elif self.config.n_ion_ion_mlp_features > 0:
             diff_ion_ion, dist_ion_ion = self.get_distance_matrix(R, full=True)
@@ -150,6 +178,7 @@ class InputPreprocessor(hk.Module):
             features_ion_ion = jnp.concatenate([diff_ion_ion, dist_ion_ion[..., None]], axis=-1)
 
         # Ion features
+        # TODO Michael+Leon: remove mlp
         if self.config.ion_embed_type is None:
             features_ion = None
         elif self.config.ion_embed_type == "lookup":
@@ -247,7 +276,7 @@ class InputPreprocessor(hk.Module):
 
         if self.config.include_twist is not None:
             try:
-                k_twist = fixed_params['periodic'].k_twist
+                k_twist = fixed_params["periodic"].k_twist
             except AttributeError as e:
                 raise AttributeError("Could not find k_twist in fixed_params for input in features.") from e
             if "el" in self.config.include_twist:
@@ -262,7 +291,13 @@ class InputPreprocessor(hk.Module):
                 features_ion_ion = append_across_leading_dims(features_ion_ion, k_twist)
 
         diff_dist = DiffAndDistances(
-            diff_el_el, dist_el_el, diff_el_ion, dist_el_ion, diff_ion_ion, dist_ion_ion, nonperiodic_diff_el_ion
+            diff_el_el,
+            dist_el_el,
+            diff_el_ion,
+            dist_el_ion,
+            diff_ion_ion,
+            dist_ion_ion,
+            nonperiodic_diff_el_ion,
         )
         features = InputFeatures(features_el, features_ion, features_el_el, features_el_ion, features_ion_ion)
         return diff_dist, features

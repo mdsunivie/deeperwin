@@ -1,19 +1,15 @@
-from typing import Optional, Tuple, Type
-
 import haiku as hk
 import jax
-import numpy as np
 from jax import numpy as jnp
 
 from deeperwin.configuration import PeriodicEnvelopeOrbitalsConfig, MLPConfig
-from deeperwin.model import WavefunctionDefinition, MLP
-from kfac_jax import register_scale_and_shift, register_dense
-from deeperwin.curvature_tags_and_blocks import register_repeated_dense
+
 
 class CustomInitializer(hk.initializers.Initializer):
     """
     Initialize the parameter for the periodic envelope all to zero except for the first k-point.
     """
+
     def __init__(self, kpoint_pos):
         self.kpoint_pos = kpoint_pos
 
@@ -23,15 +19,16 @@ class CustomInitializer(hk.initializers.Initializer):
         # currently excepting the shape: [M x output]
         except_one = except_one.at[self.kpoint_pos, :].add(1.0)
         return jnp.zeros(shape) + except_one
-    
+
+
 class BlochWaveEnvelope(hk.Module):
     def __init__(self, determinant_schema, name: str = None):
         super().__init__(name)
         self.determinant_schema = determinant_schema
 
     def _get_bloch(self, r, k_points_occ):
-        phase = 1.j * (r @ k_points_occ)
-        phase = phase[..., None, :, :] # add dummy determinant axis => [batch x det x el x orb]
+        phase = 1.0j * (r @ k_points_occ)
+        phase = phase[..., None, :, :]  # add dummy determinant axis => [batch x det x el x orb]
         return jnp.exp(phase)
 
     def __call__(self, diff_el_ion, k_points, k_twist, n_up, n_dn):
@@ -39,7 +36,7 @@ class BlochWaveEnvelope(hk.Module):
         k_points_up = k_points[0][:, :n_up] - k_twist[:, None]
         k_points_dn = k_points[1][:, :n_dn] - k_twist[:, None]
 
-        diff_el_mean_ion = jnp.mean(diff_el_ion, axis=-2) # mean over all ions
+        diff_el_mean_ion = jnp.mean(diff_el_ion, axis=-2)  # mean over all ions
         if self.determinant_schema != "block_diag":
             # concat along orbital axis
             k_points_up = jnp.concatenate([k_points_up, k_points_dn], axis=-1)
@@ -49,36 +46,35 @@ class BlochWaveEnvelope(hk.Module):
         mo_dn = self._get_bloch(diff_el_mean_ion[..., n_up:, :], k_points_dn)
         return mo_up, mo_dn
 
+
 class PeriodicEnvelopeOrbitals(hk.Module):
     """
     Class representing a set of enveloped (spin) orbitals
     """
+
     def __init__(
-        self,
-        config: PeriodicEnvelopeOrbitalsConfig,
-        mlp_config: MLPConfig,
-        n_dets: int,
-        determinant_schema: str
+        self, config: PeriodicEnvelopeOrbitalsConfig, mlp_config: MLPConfig, n_dets: int, determinant_schema: str
     ) -> None:
         super().__init__()
-        del mlp_config # not used yet
+        del mlp_config  # not used yet
 
         self.config = config
         self.n_dets = n_dets
         self.determinant_schema = determinant_schema
-        assert determinant_schema == "full_det", "PeriodicEnvelopeOrbitals currently only supports full_det determinant_schema"
+        assert (
+            determinant_schema == "full_det"
+        ), "PeriodicEnvelopeOrbitals currently only supports full_det determinant_schema"
 
         self._nu_up_init = CustomInitializer(kpoint_pos=0)
         self._nu_dn_init = CustomInitializer(kpoint_pos=0)
 
-
     def __call__(self, diff_el_ion, kpoints, n_up: int, n_dn: int):
         n_el = n_up + n_dn
-        diff_el_mean_ion = jnp.mean(diff_el_ion, axis=-2) # mean over all ions
+        diff_el_mean_ion = jnp.mean(diff_el_ion, axis=-2)  # mean over all ions
 
         # diff_el_mean_ion: [bs x n_el x 3]; kpoints: [M x 3]
         # phase_coord: [bs x n_el x M]
-        phase_coord = 1.j*(diff_el_mean_ion @ kpoints.T) # split into sin and cos
+        phase_coord = 1.0j * (diff_el_mean_ion @ kpoints.T)  # split into sin and cos
         basis = jnp.exp(phase_coord)
         basis_up = basis[..., :n_up, :]
         basis_dn = basis[..., n_up:, :]
@@ -96,10 +92,10 @@ class PeriodicEnvelopeOrbitals(hk.Module):
         mo_up = jnp.dot(basis_up, nu_up)
         mo_dn = jnp.dot(basis_dn, nu_dn)
 
-        #mo_up = register_repeated_dense(mo_up, basis_up, nu_up, None)
-        #mo_dn = register_repeated_dense(mo_dn, basis_dn, nu_dn, None)
-        #mo_up = register_scale_and_shift(mo_up, basis_up, scale=nu_up, shift=None)
-        #mo_dn = register_scale_and_shift(mo_dn, basis_dn, scale=nu_dn, shift=None)
+        # mo_up = register_repeated_dense(mo_up, basis_up, nu_up, None)
+        # mo_dn = register_repeated_dense(mo_dn, basis_dn, nu_dn, None)
+        # mo_up = register_scale_and_shift(mo_up, basis_up, scale=nu_up, shift=None)
+        # mo_dn = register_scale_and_shift(mo_dn, basis_dn, scale=nu_dn, shift=None)
 
         # mo_up: [bs x n_up x n_dets x n_el (orbitals for full-det)]
         mo_up = jnp.reshape(mo_up, mo_up.shape[:-1] + (self.n_dets, n_el))

@@ -6,13 +6,14 @@ from jax import numpy as jnp
 import chex
 from deeperwin.configuration import PeriodicConfig
 
+
 def get_kpoints_in_sphere(rec_lattice, n_kpoints_min):
     """
     References: https://github.com/deepmind/ferminet/blob/main/ferminet/pbc/envelopes.py
     """
     dk = 1e-5
     # Generate ordinals of the lowest min_kpoints kpoints
-    max_k = int(jnp.ceil(n_kpoints_min + dk) ** (1 / 3.))
+    max_k = int(jnp.ceil(n_kpoints_min + dk) ** (1 / 3.0))
     ordinals = sorted(range(-max_k, max_k + 1), key=abs)
     ordinals = jnp.asarray(list(itertools.product(ordinals, repeat=3)))
 
@@ -22,9 +23,10 @@ def get_kpoints_in_sphere(rec_lattice, n_kpoints_min):
 
     return kpoints[k_norms <= k_norms[n_kpoints_min - 1] + dk]
 
+
 def get_kpoint_grid(rec_lattice, n_k_per_dim, map_to_first_bz=True):
     n_k_per_dim = np.array(n_k_per_dim, int)
-    ordinals = np.meshgrid(*[np.arange(n) for n in n_k_per_dim], indexing='ij')
+    ordinals = np.meshgrid(*[np.arange(n) for n in n_k_per_dim], indexing="ij")
     ordinals = np.stack(ordinals, axis=-1).reshape(-1, 3)
     k_frac = ordinals / n_k_per_dim
     k_vecs = k_frac @ rec_lattice.T  # rec lattice shape: [dim x vec]
@@ -32,12 +34,14 @@ def get_kpoint_grid(rec_lattice, n_k_per_dim, map_to_first_bz=True):
         k_vecs = map_to_first_brillouin_zone(k_vecs, rec_lattice)
     return k_vecs
 
+
 def cartesian_to_fractional(r, *, inv_lattice):
     return r @ inv_lattice
 
 
 def fractional_to_cartesian(r_frac, *, lattice):
     return r_frac @ lattice
+
 
 def is_commensurable(lattice, k_points):
     """
@@ -61,6 +65,7 @@ def project_into_first_unit_cell(r, lattice, inv_lattice=None, around_origin=Fal
     r = fractional_to_cartesian(r_frac, lattice=lattice)
     return r
 
+
 def map_to_first_voronoi_cell(r, lattice, n_max=5):
     """lattice shape: [vec x dim]"""
     r = project_into_first_unit_cell(r, lattice, around_origin=True)
@@ -73,6 +78,7 @@ def map_to_first_voronoi_cell(r, lattice, n_max=5):
     r_norm = jnp.linalg.norm(r_shifted, axis=-1)
     r_wigner = r_shifted[jnp.argmin(r_norm, axis=-1), :]
     return r_wigner
+
 
 def map_to_first_brillouin_zone(k_points, rec_lattice):
     """rec_lattice shape: [dim x vec]"""
@@ -105,13 +111,15 @@ class LatticeParams:
         volume = jnp.abs(jnp.linalg.det(lattice))
 
         if periodic_config.gamma_option == "min_rec":
-            smallestheight = jnp.amin(1 / jnp.linalg.norm(rec.T / 2 * jnp.pi, axis=1)) # norm over lattice vectors
-            gamma = (5.0 / smallestheight) ** 2 # (2.8 / volume ** (1 / 3)) ** 2
+            smallestheight = jnp.amin(1 / jnp.linalg.norm(rec.T / 2 * jnp.pi, axis=1))  # norm over lattice vectors
+            gamma = (5.0 / smallestheight) ** 2  # (2.8 / volume ** (1 / 3)) ** 2
         else:
             gamma = (2.8 / volume ** (1 / 3)) ** 2
 
         # lattice vectors
-        ordinals = sorted(range(-periodic_config.truncation_limit, periodic_config.truncation_limit + 1), key=abs) #  ordinals in units of vec, rec.shape = [dim x vec]
+        ordinals = sorted(
+            range(-periodic_config.truncation_limit, periodic_config.truncation_limit + 1), key=abs
+        )  #  ordinals in units of vec, rec.shape = [dim x vec]
         ordinals = np.meshgrid(ordinals, ordinals, ordinals)
         ordinals = np.stack(ordinals, axis=-1).reshape([-1, 3])
         lat_vectors = ordinals @ lattice
@@ -123,7 +131,7 @@ class LatticeParams:
 
         # compute real space ewald without final summation
         displacements = jnp.linalg.norm(ordinals_shifted @ lattice + 0.0001, axis=-1)
-        weight = jax.scipy.special.erfc(gamma ** 0.5 * displacements) / displacements
+        weight = jax.scipy.special.erfc(gamma**0.5 * displacements) / displacements
 
         # remove lat vectors with a contribution less than eps
         bigweight = weight > 1e-12
@@ -133,7 +141,7 @@ class LatticeParams:
 
         # reciprocal vectors
         rec_vectors = ordinals[1:] @ rec.T
-        rec_vec_square = jnp.einsum('ij,ij->i', rec_vectors, rec_vectors)
+        rec_vec_square = jnp.einsum("ij,ij->i", rec_vectors, rec_vectors)
 
         rec_vectors_weight = 4 * jnp.pi * jnp.exp(-rec_vec_square / (4 * gamma))
         rec_vectors_weight /= volume * rec_vec_square
@@ -142,19 +150,21 @@ class LatticeParams:
 
         # madelung const
         madelung_const = (
-                jnp.sum(jax.scipy.special.erfc(gamma ** 0.5 * lat_vec_norm) / lat_vec_norm)
-                - 2 * gamma ** 0.5 / jnp.pi ** 0.5)
+            jnp.sum(jax.scipy.special.erfc(gamma**0.5 * lat_vec_norm) / lat_vec_norm) - 2 * gamma**0.5 / jnp.pi**0.5
+        )
 
         # rec_vectors_weight = 4 * jnp.pi * jnp.exp(-rec_vec_square / (4 * gamma))
         # rec_vectors_weight /= volume * rec_vec_square
-        madelung_const += (jnp.sum(rec_vectors_weight) - jnp.pi / (volume * gamma))
+        madelung_const += jnp.sum(rec_vectors_weight) - jnp.pi / (volume * gamma)
 
-        return cls(rec=rec,
-                   lattice=lattice,
-                   volume=volume,
-                   gamma=gamma,
-                   madelung_const=madelung_const,
-                   lat_vectors=lat_vectors,
-                   rec_vectors=rec_vectors,
-                   rec_vectors_weights=rec_vectors_weight,
-                   k_twist=k_twist)
+        return cls(
+            rec=rec,
+            lattice=lattice,
+            volume=volume,
+            gamma=gamma,
+            madelung_const=madelung_const,
+            lat_vectors=lat_vectors,
+            rec_vectors=rec_vectors,
+            rec_vectors_weights=rec_vectors_weight,
+            k_twist=k_twist,
+        )

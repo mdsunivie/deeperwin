@@ -1,17 +1,19 @@
-#%%
-from deeperwin.run_tools.geometry_database import load_energies, load_geometries, load_datasets
+# %%
+from deeperwin.run_tools.geometry_database import load_energies, load_geometries
 import pandas as pd
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
+
 sns.set_theme(style="whitegrid")
+
 
 def extrapolate_to_tdl(n, E_per_atom, n_min=4, n_max=np.inf, extrapolation_degree=2):
     n = np.array(n)
     include = (n >= n_min) & (n <= n_max)
     E_per_atom = np.array(E_per_atom)[include]
     n = n[include]
-    A = (1.0 / n)[:, None] ** np.arange(extrapolation_degree+1)
+    A = (1.0 / n)[:, None] ** np.arange(extrapolation_degree + 1)
     coeffs = np.linalg.lstsq(A, E_per_atom, rcond=None)[0]
     return coeffs[0], coeffs
 
@@ -26,7 +28,7 @@ all_geoms = load_geometries()
 
 df = df_all[df_all.experiment == "2023-03-09_gao_reuse_Hchains_from64k"]
 df["n_atoms"] = df.geom.apply(lambda x: all_geoms[x].n_atoms)
-df["R"] = df.geom.apply(lambda x: all_geoms[x].R[1,0] - all_geoms[x].R[0,0]).round(4)
+df["R"] = df.geom.apply(lambda x: all_geoms[x].R[1, 0] - all_geoms[x].R[0, 0]).round(4)
 df["E_per_atom"] = df.E / df.n_atoms
 df["method"] = df["source"] + "_" + df["epoch"].astype(float).apply("{:.0f}".format)
 
@@ -40,7 +42,7 @@ df = pd.concat([df, pd.DataFrame(dpe_tdl_data), df_motta], ignore_index=True)
 df = pd.merge(df, df_ref, on=["n_atoms", "R"], how="left")
 df["error_per_atom"] = (df.E_per_atom - df.E_ref_per_atom) * 1000
 
-#%%
+# %%
 plt.close("all")
 fig, axes = plt.subplots(1, 2, figsize=(13, 6))
 
@@ -57,7 +59,7 @@ for ax, n_atoms in zip(axes, [10, -1]):
     for x_, method in enumerate(methods):
         if method not in df_filt.index:
             continue
-        ax.barh([x_], [df_filt.loc[method].error_per_atom], height=0.8, color='C1' if 'dpe' in method else 'C0')
+        ax.barh([x_], [df_filt.loc[method].error_per_atom], height=0.8, color="C1" if "dpe" in method else "C0")
     ax.set_yticks(x)
     ax.set_yticklabels(methods)
     ax.set_xlabel("$(E - E_\\mathrm{AFQMC}) / \\mathrm{atom}\, [mHa]$")
@@ -68,7 +70,7 @@ for ax, n_atoms in zip(axes, [10, -1]):
         ax.set_title(r"$R=1.8,\, N_\mathrm{atoms} \rightarrow \infty$")
     fig.tight_layout()
 
-#%%
+# %%
 
 plt.close("all")
 fig, (ax_n_atoms, ax_extrapolation, ax_finetuning) = plt.subplots(1, 3, figsize=(14, 6))
@@ -92,8 +94,8 @@ for i, epoch in enumerate(epochs):
     x_fit = np.linspace(np.min(1 / df_dpe.n_atoms), np.max(1 / df_dpe.n_atoms), 100)
     y_fit = coeffs[0] + coeffs[1] * x_fit + coeffs[2] * x_fit**2
     ax_extrapolation.plot(x_fit, y_fit, color=f"C{i}", alpha=0.5)
-    ax_extrapolation.plot([0], coeffs[0], color=f"C{i}", marker='s')
-    ax_extrapolation.plot([0], [E_tdl_ref], color="k", marker='s')
+    ax_extrapolation.plot([0], coeffs[0], color=f"C{i}", marker="s")
+    ax_extrapolation.plot([0], [E_tdl_ref], color="k", marker="s")
 
 ax_n_atoms.axhline(E_tdl_ref, color="k", linestyle="--", label="AFQMC")
 ax_n_atoms.legend()

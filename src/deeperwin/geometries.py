@@ -3,14 +3,14 @@ from typing import Dict, Tuple
 import scipy
 from jax import numpy as jnp
 from deeperwin.configuration import Configuration, PhysicalConfig, DistortionConfig
-from deeperwin.loggers import LoggerCollection, WavefunctionLogger
+from deeperwin.loggers import WavefunctionLogger
 from deeperwin.mcmc import MCMCState
 from deeperwin.run_tools.dispatch import idx_to_job_name
 from deeperwin.utils.utils import LOGGER, get_el_ion_distance_matrix, setup_job_dir, PERIODIC_TABLE, ANGSTROM_IN_BOHR
 from deeperwin.loggers import initialize_training_loggers
 import numpy as np
-import haiku as hk
 import dataclasses
+
 
 @dataclass
 class GeometryDataStore:
@@ -18,6 +18,7 @@ class GeometryDataStore:
     Data class to store all optimization related data for
     each unique geometry/compound seen during training
     """
+
     idx: int = None
     physical_config: PhysicalConfig = None
     physical_config_original: PhysicalConfig = None
@@ -34,12 +35,14 @@ class GeometryDataStore:
     last_epoch_optimized: int = 0
     weight: float = None
 
-
     def init_wave_function_logger(self, config: Configuration) -> None:
         job_name = idx_to_job_name(self.idx)
         job_dir = setup_job_dir(".", job_name)
         loggers = initialize_training_loggers(config, True, self.idx, job_dir, True)
-        self.wavefunction_logger = WavefunctionLogger(loggers, prefix="opt", n_step=config.optimization.n_epochs_prev, smoothing=0.05)
+        self.wavefunction_logger = WavefunctionLogger(
+            loggers, prefix="opt", n_step=config.optimization.n_epochs_prev, smoothing=0.05
+        )
+
 
 def parse_xyz(xyz_content):
     """
@@ -60,10 +63,11 @@ def parse_xyz(xyz_content):
     for i, l in enumerate(lines[2:]):
         if i == n_atoms:
             break
-        atom_type, x, y,z = l.split()
+        atom_type, x, y, z = l.split()
         Z.append(PERIODIC_TABLE.index(atom_type) + 1)
         R.append([float(x) * ANGSTROM_IN_BOHR, float(y) * ANGSTROM_IN_BOHR, float(z) * ANGSTROM_IN_BOHR])
     return np.array(R), np.array(Z, int), comment
+
 
 def parse_coords(coords_content):
     lines = coords_content.split("\n")
@@ -84,18 +88,20 @@ def parse_coords(coords_content):
             R.append([float(x), float(y), float(z)])
     return np.array(R), np.array(Z, int)
 
+
 def distort_geometry(g: GeometryDataStore, config: DistortionConfig):
     R_old = np.array(g.physical_config.R)
     R_orig = np.array(g.physical_config_original.R)
     if g.n_distortions < config.reset_every_n_distortions:
-        R_new = get_distortion(g.fixed_params['hessian'],
-                            R_old,
-                            R_orig @ g.rotation,
-                            energy_per_mode=config.distortion_energy,
-                            min_stiffness=config.min_stiffness,
-                            bias_towards_orig=config.bias_towards_orig,
-                            min_dist_factor=config.min_distance_factor,
-                            )
+        R_new = get_distortion(
+            g.fixed_params["hessian"],
+            R_old,
+            R_orig @ g.rotation,
+            energy_per_mode=config.distortion_energy,
+            min_stiffness=config.min_stiffness,
+            bias_towards_orig=config.bias_towards_orig,
+            min_dist_factor=config.min_distance_factor,
+        )
         g.n_distortions += 1
     else:
         LOGGER.info(f"Resetting geometry {g.idx} to original geometry.")
@@ -111,14 +117,16 @@ def distort_geometry(g: GeometryDataStore, config: DistortionConfig):
     g.rotation = g.rotation @ U
     g.mcmc_state.r = r_new
     g.mcmc_state.R = R_new
-    g.clipping_state = (None, None) # this would do basically psiformer clipping with v18 config
+    g.clipping_state = (None, None)  # this would do basically psiformer clipping with v18 config
 
     # Reset distortion count for max age
     g.n_opt_epochs_last_dist = 0
     return g
 
 
-def get_distortion(hessian, R, R_orig, energy_per_mode=0.05, min_stiffness=0.2, bias_towards_orig=0.1, min_dist_factor=0.8):
+def get_distortion(
+    hessian, R, R_orig, energy_per_mode=0.05, min_stiffness=0.2, bias_towards_orig=0.1, min_dist_factor=0.8
+):
     try:
         eigvals, eigvecs = np.linalg.eigh(hessian)
         eigvals = np.maximum(eigvals, min_stiffness)
@@ -133,7 +141,7 @@ def get_distortion(hessian, R, R_orig, energy_per_mode=0.05, min_stiffness=0.2, 
 
     # Scale displacement to have the desired energy per mode => Move more along soft modes
     dx *= np.sqrt(energy_per_mode / eigvals)
-    delta_R = np.einsum("ki,ni->nk",eigvecs, dx).reshape([n_trials, -1, 3])
+    delta_R = np.einsum("ki,ni->nk", eigvecs, dx).reshape([n_trials, -1, 3])
 
     # Add bias towards the original positions (computed in normal mode basis)
     delta_R += (R_orig - R) * bias_towards_orig
@@ -173,14 +181,13 @@ def space_warp_coordinate_transform(r, R, R_orig, space_warp):
         delta_R_per_el = delta_R[ind_dist_closest]
     elif space_warp == "1/r4":
         eps = 1e-8
-        weights = 1 / (dist ** 4 + eps) # Shape n_el x n_ion
-        weights = weights / jnp.sum(weights, axis=-1, keepdims=True) # Normalize across ions Shape n_el x n_ion
-        delta_R_per_el = jnp.einsum("...iI,Id->...id", weights, delta_R) # Shape [batch x n_el x 3]
+        weights = 1 / (dist**4 + eps)  # Shape n_el x n_ion
+        weights = weights / jnp.sum(weights, axis=-1, keepdims=True)  # Normalize across ions Shape n_el x n_ion
+        delta_R_per_el = jnp.einsum("...iI,Id->...id", weights, delta_R)  # Shape [batch x n_el x 3]
     return r + delta_R_per_el
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     with open("/home/mscherbela/develop/deeperwin_jaxtest/datasets/geometries/HEAT/coord.c2h2") as f:
         content = f.read()
     R, Z = parse_coords(content)
-

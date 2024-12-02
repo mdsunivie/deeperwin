@@ -13,6 +13,7 @@ class EnvelopeOrbitals(hk.Module):
     """
     Class representing a set of enveloped (spin) orbitals
     """
+
     def __init__(
         self,
         config: EnvelopeOrbitalsConfig,
@@ -35,7 +36,6 @@ class EnvelopeOrbitals(hk.Module):
         self._weights_up_init = jnp.ones
         self._weights_dn_init = jnp.ones
 
-
     def __call__(self, dist_el_ion: jax.Array, emb_el: jax.Array, n_ions: int, n_up: int, n_dn: int):
         (e_up, e_dn) = _determine_elec_idxs(n_up, n_dn, self.determinant_schema)
 
@@ -49,7 +49,9 @@ class EnvelopeOrbitals(hk.Module):
             output_bias=self.config.use_bias,
             linear_out=True,
             name="bf_up",
-        )(emb_el[..., :e_up, :]) # output-shape: [batch x n_up x (n_dets * n_up_orb)] or [batch x n_el x (n_dets * n_up_orb)]
+        )(
+            emb_el[..., :e_up, :]
+        )  # output-shape: [batch x n_up x (n_dets * n_up_orb)] or [batch x n_el x (n_dets * n_up_orb)]
         if self.complex_wf:
             bf_up = bf_up[..., :, :n_up_tot] + 1.0j * bf_up[..., :, n_up_tot:]
 
@@ -63,7 +65,9 @@ class EnvelopeOrbitals(hk.Module):
             output_bias=self.config.use_bias,
             linear_out=True,
             name="bf_dn",
-        )(emb_el[..., -e_dn:, :]) # output-shape: [batch x n_down x (n_dets * n_down_orb)] or [batch x n_el x (n_dets * n_up_orb)]
+        )(
+            emb_el[..., -e_dn:, :]
+        )  # output-shape: [batch x n_down x (n_dets * n_down_orb)] or [batch x n_el x (n_dets * n_up_orb)]
         if self.complex_wf:
             bf_dn = bf_dn[..., :, :n_dn_tot] + 1.0j * bf_dn[..., :, n_dn_tot:]
 
@@ -76,16 +80,16 @@ class EnvelopeOrbitals(hk.Module):
         else:
             raise ValueError(f"Unknown envelope type: {self.config.envelope_type}")
 
-        mo_matrix_up *= bf_up
-        mo_matrix_dn *= bf_dn
-
         # reshape the matrices when using restricted closed shell
         if self.determinant_schema == "restricted_closed_shell":
-            n_elec = mo_matrix_dn.shape[-2] // 2
-            _mo_matrix_up = jnp.concatenate([mo_matrix_up[..., :n_elec, :], mo_matrix_dn[..., :n_elec, :]], axis=-1)
-            _mo_matrix_dn = jnp.concatenate([mo_matrix_dn[..., n_elec:, :], mo_matrix_up[..., n_elec:, :]], axis=-1)
-            mo_matrix_up = _mo_matrix_up
-            mo_matrix_dn = _mo_matrix_dn
+            raise ValueError("Restricted closed shell not implemented")
+            # n_elec = mo_matrix_dn.shape[-2] // 2
+            # _mo_matrix_up = jnp.concatenate([mo_matrix_up[..., :n_elec, :], mo_matrix_dn[..., :n_elec, :]], axis=-1)
+            # _mo_matrix_dn = jnp.concatenate([mo_matrix_dn[..., n_elec:, :], mo_matrix_up[..., n_elec:, :]], axis=-1)
+            # mo_matrix_up, mo_matrix_dn = _mo_matrix_up, _mo_matrix_dn
+
+        mo_matrix_up *= bf_up
+        mo_matrix_dn *= bf_dn
 
         return mo_matrix_up, mo_matrix_dn
 
@@ -118,16 +122,12 @@ class EnvelopeOrbitals(hk.Module):
         # rearrange
         orb_up = jnp.reshape(orb_up, orb_up.shape[:-1] + (self.n_dets, n_up_orbitals))
         orb_dn = jnp.reshape(orb_dn, orb_dn.shape[:-1] + (self.n_dets, n_dn_orbitals))
-        orb_up = jnp.moveaxis(orb_up, -2, -3) # [batch x det x el_up x orb]
+        orb_up = jnp.moveaxis(orb_up, -2, -3)  # [batch x det x el_up x orb]
         orb_dn = jnp.moveaxis(orb_dn, -2, -3)
         return orb_up, orb_dn
 
 
-def _determine_n_output_orbitals(
-    n_up: int,
-    n_dn: int,
-    determinant_schema: str
-) -> Tuple[int]:
+def _determine_n_output_orbitals(n_up: int, n_dn: int, determinant_schema: str) -> Tuple[int]:
     """
     Function to determine the dimensionality of the outputted up & down MO matrix blocks given
     the number of up & dn electrons.
@@ -140,11 +140,7 @@ def _determine_n_output_orbitals(
         return (n_up, n_dn)
 
 
-def _determine_elec_idxs(
-    n_up: int,
-    n_dn: int,
-    determinant_schema: str
-) -> Tuple[int]:
+def _determine_elec_idxs(n_up: int, n_dn: int, determinant_schema: str) -> Tuple[int]:
     """
     Function to determine indices for indexing electron embeddings when inferring the
     MO matrix blocks

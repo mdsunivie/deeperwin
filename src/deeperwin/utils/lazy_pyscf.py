@@ -10,5 +10,6 @@ def __getattr__(name):
         import pyscf.ci
         import pyscf.lo
         import pyscf.mcscf
+
         _pyscf = pyscf
     return getattr(_pyscf, name)

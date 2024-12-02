@@ -1,13 +1,14 @@
-#%%
+# %%
 """
 Helper functions.
 """
+
 import functools
 import logging
 import os
 import subprocess
 import re
-from typing import Tuple, List
+from typing import List
 import dataclasses
 import jax
 import jax.scipy
@@ -15,7 +16,6 @@ import numpy as np
 import scipy.optimize
 from jax import numpy as jnp
 import haiku as hk
-import e3nn_jax as e3nn
 
 import pyscf
 
@@ -29,10 +29,12 @@ pmap = functools.partial(jax.pmap, axis_name="devices")
 pmean = functools.partial(jax.lax.pmean, axis_name="devices")
 psum = functools.partial(jax.lax.psum, axis_name="devices")
 
+
 def multi_vmap(func, n):
     for n in range(n):
         func = jax.vmap(func)
     return func
+
 
 @pmap
 def _select_master_data(x):
@@ -40,22 +42,29 @@ def _select_master_data(x):
     Selects data from the device 0 on process 0.
     Does this by adding data across all devices, but zeroing out data on all devices except the 0th on process 0.
     """
-    x = jax.lax.cond(jax.lax.axis_index("devices") == 0,
-                     lambda y: y,
-                     lambda y: jax.tree_util.tree_map(jnp.zeros_like, y),
-                     x)
-    return jax.lax.psum(x, axis_name='devices')
+    x = jax.lax.cond(
+        jax.lax.axis_index("devices") == 0,
+        lambda y: y,
+        lambda y: jax.tree_util.tree_map(jnp.zeros_like, y),
+        x,
+    )
+    return jax.lax.psum(x, axis_name="devices")
+
 
 def replicate_across_devices(data):
     # Step 0: Preserve dtypes, since bools are lost in psum
     dtypes = jax.tree_map(lambda x: x.dtype, data)
 
     # Step 1: Tile data across local devices
-    data = jax.tree_util.tree_map(lambda x: jnp.tile(x, [jax.local_device_count()] + [1] * jnp.array(x).ndim), data)
+    data = jax.tree_util.tree_map(
+        lambda x: jnp.tile(x, [jax.local_device_count()] + [1] * jnp.array(x).ndim),
+        data,
+    )
 
     # Step 2: Replace data on each device by data from device 0 on process 0
     data = _select_master_data(data)
-    return jax.tree_map(lambda x, dtype:x.astype(dtype), data, dtypes)
+    return jax.tree_map(lambda x, dtype: x.astype(dtype), data, dtypes)
+
 
 def replicate_across_processes(data):
     if isinstance(data, (int, float)):
@@ -67,13 +76,15 @@ def replicate_across_processes(data):
     # Replicate data across GPUs (including across GPUs on different processes)
     data = replicate_across_devices(jnp.array(data, dtype))
     # Pick data from the first GPU on each process
-    data = data[0] 
+    data = data[0]
     if dtype is not None:
         data = dtype(data)
     return data
 
+
 def get_from_devices(data):
     return jax.tree_util.tree_map(lambda x: x[0], data)
+
 
 def is_equal_across_devices(data):
     full_data = jax.tree_util.tree_map(_pad_data, data)
@@ -85,11 +96,13 @@ def is_equal_across_devices(data):
                 return False
     return True
 
-@functools.partial(jax.pmap, axis_name='i')
+
+@functools.partial(jax.pmap, axis_name="i")
 def _pad_data(x):
     full_data = jnp.zeros((jax.device_count(), *x.shape), x.dtype)
-    full_data = full_data.at[jax.lax.axis_index('i')].set(x)
-    return jax.lax.psum(full_data, axis_name='i')
+    full_data = full_data.at[jax.lax.axis_index("i")].set(x)
+    return jax.lax.psum(full_data, axis_name="i")
+
 
 def merge_from_devices(x):
     if x is None:
@@ -98,16 +111,21 @@ def merge_from_devices(x):
     # Data is now identical on all local devices; pick the 0th device and flatten
     return full_data[0].reshape((-1, *full_data.shape[3:]))
 
+
 batch_rng_split = jax.vmap(lambda key, n: jax.random.split(key, n), in_axes=(0, None), out_axes=1)
+
 
 def tree_dot(x, y):
     return jax.tree_util.tree_reduce(jnp.add, jax.tree_util.tree_map(lambda x_, y_: jnp.sum(x_ * y_), x, y))
 
+
 def tree_mul(x, y):
     return jax.tree_util.tree_map(lambda x_, y_: x_ * y_, x, y)
 
+
 def tree_add(x, y):
     return jax.tree_util.tree_map(lambda x_, y_: x_ + y_, x, y)
+
 
 def tree_norm(x_as_tree):
     norm_sqr = sum(jax.tree_util.tree_leaves(jax.tree_util.tree_map(lambda x: jnp.sum(x**2), x_as_tree)))
@@ -117,6 +135,7 @@ def tree_norm(x_as_tree):
 ###############################################################################
 ##################################### Logging  ################################
 ###############################################################################
+
 
 def getCodeVersion():
     """
@@ -132,6 +151,7 @@ def getCodeVersion():
         print(e)
         return None
 
+
 def setup_job_dir(parent_dir, name) -> str:
     job_dir = os.path.join(parent_dir, name)
     if os.path.exists(job_dir):
@@ -140,12 +160,13 @@ def setup_job_dir(parent_dir, name) -> str:
         os.makedirs(job_dir, exist_ok=True)
     return job_dir
 
+
 def get_param_size_summary(params):
     s = "Param breakdown:\n"
     padding = max([len(k) for k in params.keys()])
     format_str = f"{{:<{padding}}} : {{:11,d}}\n"
 
-    for k,v in params.items():
+    for k, v in params.items():
         s += format_str.format(k, hk.data_structures.tree_size(v))
     s += "-" * (padding + 13) + "\n"
     s += format_str.format("Total", hk.data_structures.tree_size(params))
@@ -194,42 +215,49 @@ def prettyprint_param_shapes(params):
         param_blocks[param_cat] += int(np.prod(jnp.shape(param)))
         print(f"{param_cat:<40}: {full_name:<50}: {jnp.shape(param)}")
 
-    print("-"*47)
+    print("-" * 47)
     for category in sorted(param_blocks.keys(), key=lambda cat: sorting_priority[cat]):
         n_params = param_blocks[category]
         print(f"{category:<40}: {n_params//1000:4d}k")
-    print("-"*47)
+    print("-" * 47)
     print(f"{'Total':<40}: {sum(param_blocks.values())//1000:4d}k")
+
 
 ###############################################################################
 ############################# Model / physics / hamiltonian ###################
 ###############################################################################
 
+
 def build_complex(x: jax.Array):
     """Turn a real-valued tensor into a complex valued tensor, by splitting the last dimension and interpreting it as real/im part"""
     return x[..., 0::2] + 1j * x[..., 1::2]
+
 
 def interleave_real_and_complex(x: jax.Array):
     """Given a complex array of shape [..., n], return a real array of shape [..., 2*n] where the last dimension is interleaved real and imaginary parts"""
     if not jnp.iscomplexobj(x):
         return x
-    
+
     x = jnp.stack([x.real, x.imag], axis=-1)
     return x.reshape((*x.shape[:-2], -1))
+
 
 def split_axis(x: jax.Array, axis: int, new_shape):
     """Take a tensor of shape [..., dim_old, ...] and split it into shape [..., new_shape[0], ..., new_shape[-1], ...]"""
     assert x.shape[axis] == np.prod(new_shape), f"Cannot split axis {axis} of shape {x.shape} into {new_shape}"
     axis = axis % x.ndim
-    return x.reshape((*x.shape[:axis], *new_shape, *x.shape[axis+1:]))
+    return x.reshape((*x.shape[:axis], *new_shape, *x.shape[axis + 1 :]))
+
 
 def residual_update(update, x_old=None):
     if (x_old is None) or (x_old.shape != update.shape):
         return update
     return x_old + update
 
+
 def without_cache(fixed_params):
-    return {k:v for k,v in fixed_params.items() if k != "cache"}
+    return {k: v for k, v in fixed_params.items() if k != "cache"}
+
 
 def get_el_ion_distance_matrix(r_el, R_ion):
     """
@@ -265,13 +293,13 @@ def get_distance_matrix(r_el, full=True):
         tuple: differences [batch_dims x n_el x n_el x 3], distances [batch_dims x n_el x n_el]
     """
     n_el = r_el.shape[-2]
-    diff = r_el[..., None, :, :] - r_el[..., :, None, :] # r_el[..., :, None, :] - r_el[..., None, :, :]
+    diff = r_el[..., None, :, :] - r_el[..., :, None, :]  # r_el[..., :, None, :] - r_el[..., None, :, :]
     if full:
         # Fill diagonal != 0, so there is no problem with the gradients of the norm at r=0
         diff_padded = diff + jnp.eye(n_el)[..., None]
-        dist = jnp.linalg.norm(diff_padded, axis=-1) * (1 - jnp.eye(n_el)) # Remove the diagonal elements again
+        dist = jnp.linalg.norm(diff_padded, axis=-1) * (1 - jnp.eye(n_el))  # Remove the diagonal elements again
     else:
-        rows = [jnp.concatenate([diff[..., i, :i, :], diff[..., i, i + 1:, :]], axis=-2) for i in range(n_el)]
+        rows = [jnp.concatenate([diff[..., i, :i, :], diff[..., i, i + 1 :, :]], axis=-2) for i in range(n_el)]
         diff = jnp.stack(rows, axis=-3)
         dist = jnp.linalg.norm(diff, axis=-1)
     return diff, dist
@@ -290,11 +318,11 @@ def periodic_norm(metric: jnp.ndarray, r_frac: jnp.ndarray) -> jnp.ndarray:
         Adapted from https://github.com/deepmind/ferminet/blob/main/ferminet/pbc/feature_layer.py
 
     """
-    #chex.assert_rank(metric, expected_ranks=2)
+    # chex.assert_rank(metric, expected_ranks=2)
     a = 1 - jnp.cos(2 * np.pi * r_frac)
     b = jnp.sin(2 * np.pi * r_frac)
-    cos_term = jnp.einsum('...m,mn,...n->...', a, metric, a)
-    sin_term = jnp.einsum('...m,mn,...n->...', b, metric, b)
+    cos_term = jnp.einsum("...m,mn,...n->...", a, metric, a)
+    sin_term = jnp.einsum("...m,mn,...n->...", b, metric, b)
     return (1 / (2 * jnp.pi)) * jnp.sqrt(cos_term + sin_term)
 
 
@@ -315,9 +343,7 @@ def get_periodic_distance_matrix(r_el, lattice, inv_lattice=None, full=True):
     n_el = r_el.shape[-2]
     diff = r_el[..., None, :, :] - r_el[..., :, None, :]
     diff_frac = diff @ inv_lattice
-    periodic_diff = jnp.concatenate((jnp.sin(2 * np.pi * diff_frac), 
-                                     jnp.cos(2 * np.pi * diff_frac)), 
-                                     axis=-1)
+    periodic_diff = jnp.concatenate((jnp.sin(2 * np.pi * diff_frac), jnp.cos(2 * np.pi * diff_frac)), axis=-1)
 
     lattice_metric = lattice @ lattice.T
     if full:
@@ -325,9 +351,9 @@ def get_periodic_distance_matrix(r_el, lattice, inv_lattice=None, full=True):
         diff_frac += jnp.eye(n_el)[..., None]
         dist = periodic_norm(lattice_metric, diff_frac) * (1.0 - jnp.eye(n_el))
     else:
-        rows = [jnp.concatenate([diff_frac[..., i, :i, :],
-                                 diff_frac[..., i, i + 1:, :]], axis=-2)
-                for i in range(n_el)]
+        rows = [
+            jnp.concatenate([diff_frac[..., i, :i, :], diff_frac[..., i, i + 1 :, :]], axis=-2) for i in range(n_el)
+        ]
         diff_frac = jnp.stack(rows, axis=-3)
         dist = periodic_norm(lattice_metric, diff_frac)
     return periodic_diff, dist
@@ -349,9 +375,7 @@ def get_periodic_el_ion_distance_matrix(r_el, R_ion, lattice, inv_lattice=None):
 
     diff = r_el[..., None, :] - R_ion[..., None, :, :]
     diff_frac = diff @ inv_lattice
-    periodic_diff = jnp.concatenate((jnp.sin(2 * np.pi * diff_frac), 
-                                     jnp.cos(2 * np.pi * diff_frac)), 
-                                     axis=-1)
+    periodic_diff = jnp.concatenate((jnp.sin(2 * np.pi * diff_frac), jnp.cos(2 * np.pi * diff_frac)), axis=-1)
     dist = periodic_norm(lattice_metric, diff_frac)
     return periodic_diff, dist
 
@@ -365,29 +389,114 @@ def generate_exp_distributed(rng, batch_shape, k=1.0):
 
     p(r) = r^2 * exp(-k*r)
     """
-    xp = np.array([ 0.        ,  0.16646017,  0.2962203 ,  0.42016042,  0.54028054,
-        0.6017006 ,  0.66318066,  0.78726079,  0.91426091,  1.04588105,
-        1.15018115,  1.25946126,  1.37514138,  1.4998815 ,  1.73462173,
-        2.22060222,  2.43890244,  2.66892267,  2.88428288,  3.004163  ,
-        3.12246312,  3.23980324,  3.35662336,  3.47338347,  3.59030359,
-        3.70764371,  3.82564383,  3.93746394,  4.05024405,  4.16416416,
-        4.27938428,  4.3960844 ,  4.51440451,  4.63452463,  4.75662476,
-        5.00734501,  5.26824527,  5.54106554,  5.82790583,  6.12646613,
-        6.44380644,  6.78324678,  7.14934715,  7.54514755,  7.98038798,
-        8.46468846,  9.01334901, 10.13523014, 11.71389171, 20.        ])
-    Fp = np.array([0.00000000e+00, 6.78872002e-04, 3.47483629e-03, 9.05128575e-03,
-       1.76268412e-02, 2.32836169e-02, 2.98157678e-02, 4.56084288e-02,
-       6.52255332e-02, 8.89313535e-02, 1.09892813e-01, 1.33656048e-01,
-       1.60527321e-01, 1.91123424e-01, 2.51942878e-01, 3.82805274e-01,
-       4.40421447e-01, 4.98732268e-01, 5.50391443e-01, 5.77741958e-01,
-       6.03679841e-01, 6.28341184e-01, 6.51818158e-01, 6.74201746e-01,
-       6.95532631e-01, 7.15858180e-01, 7.35220119e-01, 7.52589600e-01,
-       7.69166627e-01, 7.84977683e-01, 8.00044955e-01, 8.14391869e-01,
-       8.28035657e-01, 8.40997278e-01, 8.53296166e-01, 8.75965247e-01,
-       8.96197668e-01, 9.14129002e-01, 9.29897296e-01, 9.43441707e-01,
-       9.55144213e-01, 9.65128109e-01, 9.73528150e-01, 9.80434071e-01,
-       9.86033946e-01, 9.90453671e-01, 9.93834179e-01, 9.97521537e-01,
-       9.99334839e-01, 9.99999544e-01])
+    xp = np.array(
+        [
+            0.0,
+            0.16646017,
+            0.2962203,
+            0.42016042,
+            0.54028054,
+            0.6017006,
+            0.66318066,
+            0.78726079,
+            0.91426091,
+            1.04588105,
+            1.15018115,
+            1.25946126,
+            1.37514138,
+            1.4998815,
+            1.73462173,
+            2.22060222,
+            2.43890244,
+            2.66892267,
+            2.88428288,
+            3.004163,
+            3.12246312,
+            3.23980324,
+            3.35662336,
+            3.47338347,
+            3.59030359,
+            3.70764371,
+            3.82564383,
+            3.93746394,
+            4.05024405,
+            4.16416416,
+            4.27938428,
+            4.3960844,
+            4.51440451,
+            4.63452463,
+            4.75662476,
+            5.00734501,
+            5.26824527,
+            5.54106554,
+            5.82790583,
+            6.12646613,
+            6.44380644,
+            6.78324678,
+            7.14934715,
+            7.54514755,
+            7.98038798,
+            8.46468846,
+            9.01334901,
+            10.13523014,
+            11.71389171,
+            20.0,
+        ]
+    )
+    Fp = np.array(
+        [
+            0.00000000e00,
+            6.78872002e-04,
+            3.47483629e-03,
+            9.05128575e-03,
+            1.76268412e-02,
+            2.32836169e-02,
+            2.98157678e-02,
+            4.56084288e-02,
+            6.52255332e-02,
+            8.89313535e-02,
+            1.09892813e-01,
+            1.33656048e-01,
+            1.60527321e-01,
+            1.91123424e-01,
+            2.51942878e-01,
+            3.82805274e-01,
+            4.40421447e-01,
+            4.98732268e-01,
+            5.50391443e-01,
+            5.77741958e-01,
+            6.03679841e-01,
+            6.28341184e-01,
+            6.51818158e-01,
+            6.74201746e-01,
+            6.95532631e-01,
+            7.15858180e-01,
+            7.35220119e-01,
+            7.52589600e-01,
+            7.69166627e-01,
+            7.84977683e-01,
+            8.00044955e-01,
+            8.14391869e-01,
+            8.28035657e-01,
+            8.40997278e-01,
+            8.53296166e-01,
+            8.75965247e-01,
+            8.96197668e-01,
+            9.14129002e-01,
+            9.29897296e-01,
+            9.43441707e-01,
+            9.55144213e-01,
+            9.65128109e-01,
+            9.73528150e-01,
+            9.80434071e-01,
+            9.86033946e-01,
+            9.90453671e-01,
+            9.93834179e-01,
+            9.97521537e-01,
+            9.99334839e-01,
+            9.99999544e-01,
+        ]
+    )
 
     key_uniform, key_gaussian = jax.random.split(rng)
     r = jax.random.normal(key_gaussian, shape=(*batch_shape, 3))
@@ -397,66 +506,15 @@ def generate_exp_distributed(rng, batch_shape, k=1.0):
     return r
 
 
-# def correction(R, R_org):
-#     # shape N_ions x N_ions x 3
-#     diff = R - R_org
-
-#     # shape N_ions
-#     dist = np.linalg.norm(diff, axis=-1, keepdims=True)
-#     return np.tanh(dist) * diff * 0.5
-
-# def displacement_fct(modes, eigvals, R_org, R):
-#     n_atoms = R_org.shape[-2]
-#     nb_modes = modes.shape[-1]
-#     rand_dir = np.random.normal(0, 1, (1, nb_modes)) * 0.1
-
-#     displacement = modes * rand_dir
-#     displacement = displacement * (1/np.sqrt(eigvals))
-
-#     delta_R = np.sum(displacement, axis=-1).reshape((n_atoms, 3))
-#     delta_R -= correction(R, R_org)
-#     return delta_R, R + delta_R
-
-# Based on mir-group/nequip
-# Adapted from mace_jax (fixed multiplicities)
-def tp_out_irreps_with_instructions(
-    irreps1: e3nn.Irreps, irreps2: e3nn.Irreps, target_irreps: e3nn.Irreps
-) -> Tuple[e3nn.Irreps, List]:
-    trainable = True
-
-    # Collect possible irreps and their instructions
-    irreps_out_list: List[Tuple[int, e3nn.Irrep]] = []
-    instructions = []
-    for i, (mul1, ir_in) in enumerate(irreps1):
-        for j, (mul2, ir_edge) in enumerate(irreps2):
-            for ir_out in ir_in * ir_edge:  # | l1 - l2 | <= l <= l1 + l2
-                if ir_out in target_irreps:
-                    k = len(irreps_out_list)  # instruction index
-                    irreps_out_list.append((mul1*mul2, ir_out))
-                    instructions.append((i, j, k, "uvu", trainable))
-
-    # We sort the output irreps of the tensor product so that we can simplify them
-    # when they are provided to the second o3.Linear
-    irreps_out = e3nn.Irreps(irreps_out_list)
-    irreps_out, permut, _ = irreps_out.sort()
-
-    # Permute the output indexes of the instructions to match the sorted irreps:
-    instructions = [
-        (i_in1, i_in2, permut[i_out], mode, train)
-        for i_in1, i_in2, i_out, mode, train in instructions
-    ]
-
-    return irreps_out, instructions
-
-
 ###############################################################################
 ########################### Post-processing / analysis ########################
 ###############################################################################
 
+
 def get_autocorrelation(x, n_shifts=50):
     x = np.array(x)
     assert x.ndim == 1
-    n_shifts = min(n_shifts, len(x)//2)
+    n_shifts = min(n_shifts, len(x) // 2)
 
     ac = np.ones(n_shifts)
     for i in range(1, n_shifts):
@@ -465,8 +523,9 @@ def get_autocorrelation(x, n_shifts=50):
         ac[i] = np.mean((x1 - np.mean(x1)) * (x2 - np.mean(x2))) / (np.std(x1) * np.std(x2))
     return ac
 
+
 def estimate_autocorrelation_time(x, n_shifts=50, ac_threshold=0.01):
-    """Fit an exponential decay to the autocorrelation function of x and return the decay time, 
+    """Fit an exponential decay to the autocorrelation function of x and return the decay time,
     corresponding to the inverse slope in a log-plot."""
     ac = get_autocorrelation(x, n_shifts)
 
@@ -555,7 +614,7 @@ def get_ion_pos_string(R):
     return "[" + s + "]"
 
 
-def add_value_texts_to_barchart(axes, orient="v", space=.01, format_string = "{:.1f}", at_tip=False, **text_kwargs):
+def add_value_texts_to_barchart(axes, orient="v", space=0.01, format_string="{:.1f}", at_tip=False, **text_kwargs):
     def _single(_ax):
         if orient == "v":
             for p in _ax.patches:
@@ -566,7 +625,7 @@ def add_value_texts_to_barchart(axes, orient="v", space=.01, format_string = "{:
                 else:
                     _y = _ax.get_ylim()[0] + space * (_ax.get_ylim()[1] - _ax.get_ylim()[0])
                 value = format_string.format(p.get_height())
-                _ax.text(_x, _y, value, va='bottom', ha="center", **text_kwargs)
+                _ax.text(_x, _y, value, va="bottom", ha="center", **text_kwargs)
         elif orient == "h":
             for p in _ax.patches:
                 w = 0.0 if np.isnan(p.get_width()) else p.get_width()
@@ -576,14 +635,13 @@ def add_value_texts_to_barchart(axes, orient="v", space=.01, format_string = "{:
                     _x = _ax.get_xlim()[0] + space * (_ax.get_xlim()[1] - _ax.get_xlim()[0])
                 _y = p.get_y() + p.get_height() - p.get_height() / 2
                 value = format_string.format(p.get_width())
-                _ax.text(_x, _y, value, va='center', ha="left", **text_kwargs)
+                _ax.text(_x, _y, value, va="center", ha="left", **text_kwargs)
 
     if isinstance(axes, np.ndarray):
         for ax in axes:
             _single(ax)
     else:
         _single(axes)
-
 
 
 ###############################################################################
@@ -594,6 +652,7 @@ def add_value_texts_to_barchart(axes, orient="v", space=.01, format_string = "{:
 @dataclasses.dataclass
 class PeriodicMeanFieldDuck:
     """Quacks like a pyscf.pbc.scf meanfield object."""
+
     e_tot: float
     mo_coeff: List
     kpts: np.array
@@ -610,14 +669,19 @@ def load_periodic_pyscf(chkfile):
 ##################### Shared optimization / split model #######################
 ###############################################################################
 
+
 def get_params_filter_func(module_names):
     regex = re.compile("(" + "|".join(module_names) + ")")
+
     def filter_func(module_name, name, v):
         return len(regex.findall(f"{module_name}/{name}")) > 0
+
     return filter_func
+
 
 def split_params(params, module_names):
     return hk.data_structures.partition(get_params_filter_func(module_names), params)
+
 
 def merge_params(params_init, params_reuse, enforce_equal_n_params=False):
     params_merge = hk.data_structures.merge(params_init, params_reuse)
@@ -625,8 +689,12 @@ def merge_params(params_init, params_reuse, enforce_equal_n_params=False):
         n_params_init = hk.data_structures.tree_size(params_init)
         n_params_reuse = hk.data_structures.tree_size(params_reuse)
         n_params_merge = hk.data_structures.tree_size(params_merge)
-        assert n_params_init == n_params_reuse, f"Nr of initialized and reused params does not match: {n_params_init} != {n_params_reuse}"
-        assert n_params_merge == n_params_init, f"Nr of merged and initialized params does not match: {n_params_merge} != {n_params_init}"
+        assert (
+            n_params_init == n_params_reuse
+        ), f"Nr of initialized and reused params does not match: {n_params_init} != {n_params_reuse}"
+        assert (
+            n_params_merge == n_params_init
+        ), f"Nr of merged and initialized params does not match: {n_params_merge} != {n_params_init}"
     return params_merge
 
 
@@ -636,7 +704,7 @@ def get_number_of_params(params):
 
 def get_next_geometry_index(
     n_epoch: int,
-    geometry_data_stores: List['GeometryDataStore'],
+    geometry_data_stores: List["GeometryDataStore"],  # noqa: F821
     scheduling_method: str,
     max_age: int,
     n_initial_round_robin_per_geom: int,
@@ -656,36 +724,42 @@ def get_next_geometry_index(
             return permutation[idx_next]
         else:
             return permutation
-        
+
     # 2) If any geometry has surpassed its max_age, choose this one
-    wf_ages = n_epoch - jnp.array([geometry_data_store.last_epoch_optimized for geometry_data_store in geometry_data_stores])
+    wf_ages = n_epoch - jnp.array(
+        [geometry_data_store.last_epoch_optimized for geometry_data_store in geometry_data_stores]
+    )
     max_age = max_age or int(len(geometry_data_stores) * 4.0)
     if jnp.any(wf_ages > max_age):
         index = jnp.argmax(wf_ages)
         return index
 
-    #3) Otherwise, choose based on stddev or weight
-    if scheduling_method == 'stddev':
-        stddevs = [jnp.sqrt(geometry_data_store.current_metrics['E_var']) for geometry_data_store in geometry_data_stores]
+    # 3) Otherwise, choose based on stddev or weight
+    if scheduling_method == "stddev":
+        stddevs = [
+            jnp.sqrt(geometry_data_store.current_metrics["E_var"]) for geometry_data_store in geometry_data_stores
+        ]
         return np.argmax(stddevs)
-    elif scheduling_method == 'weight':
+    elif scheduling_method == "weight":
         weights = [geometry_data_store.weight for geometry_data_store in geometry_data_stores]
         return np.random.choice(len(geometry_data_stores), p=weights)
     elif scheduling_method == "var_per_el":
-        var_per_el = [g.current_metrics.get('E_var', 1.0) / g.physical_config.n_electrons for g in geometry_data_stores]
+        var_per_el = [g.current_metrics.get("E_var", 1.0) / g.physical_config.n_electrons for g in geometry_data_stores]
         return np.random.choice(len(geometry_data_stores), p=var_per_el / np.sum(var_per_el))
     else:
         raise NotImplementedError("Wavefunction scheduler currently not supported.")
 
 
-PERIODIC_TABLE = 'H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr'.split()
+PERIODIC_TABLE = (
+    "H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr".split()
+)
 KCAL_PER_MOL_IN_HARTREE = 0.0015936
 ANGSTROM_IN_BOHR = 1.88973
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     R = np.eye(3) * 5
-    Z = [1,1,2]
-    dipole = np.random.normal(size=(3,3))
+    Z = [1, 1, 2]
+    dipole = np.random.normal(size=(3, 3))
     save_xyz_file("/home/mscherbela/tmp/test.xyz", R, Z, dipoles=dipole)
 
 

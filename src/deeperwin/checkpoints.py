@@ -5,7 +5,13 @@ import re
 
 import ruamel.yaml
 
-from deeperwin.configuration import Configuration, build_flattend_dict, CheckpointConfig, PhisNetModelConfig, build_physical_configs_from_changes
+from deeperwin.configuration import (
+    Configuration,
+    build_flattend_dict,
+    CheckpointConfig,
+    PhisNetModelConfig,
+    build_physical_configs_from_changes,
+)
 from deeperwin.mcmc import MCMCState
 import jax
 import numpy as np
@@ -14,6 +20,7 @@ import zipfile
 from dataclasses import dataclass, fields
 from typing import Optional, Any, List, Union
 from deeperwin.utils.utils import split_params, without_cache
+
 
 @dataclass
 class RunData:
@@ -28,7 +35,8 @@ class RunData:
     mcmc_state: Optional[MCMCState] = None
     clipping_state: Optional[Any] = None
 
-def write_history(f, history, delim=';'):
+
+def write_history(f, history, delim=";"):
     keys = set()
     for h in history:
         keys.update(h.keys())
@@ -36,6 +44,7 @@ def write_history(f, history, delim=';'):
     for h in history:
         line = delim.join([str(h.get(k, "")) for k in keys])
         f.write((line + "\n").encode("utf-8"))
+
 
 def save_run(fname, data: RunData):
     with zipfile.ZipFile(fname, "w", zipfile.ZIP_BZIP2) as zf:
@@ -51,14 +60,15 @@ def save_run(fname, data: RunData):
                 write_history(f, data.history)
         if data.summary is not None:
             with zf.open("summary.csv", "w", force_zip64=True) as f:
-                lines = [f"{k};{v}" for k,v in data.summary.items()]
+                lines = [f"{k};{v}" for k, v in data.summary.items()]
                 f.write("\n".join(lines).encode("utf-8"))
         for field in fields(RunData):
             key = field.name
             value = getattr(data, key)
-            if (value is not None) and (key not in ['config', 'history', 'summary']):
-                with zf.open(key+".pkl", "w", force_zip64=True) as f:
+            if (value is not None) and (key not in ["config", "history", "summary"]):
+                with zf.open(key + ".pkl", "w", force_zip64=True) as f:
                     pickle.dump(value, f)
+
 
 def load_run(fname, parse_config=True, parse_csv=False, load_pkl=True):
     data = RunData()
@@ -72,11 +82,12 @@ def load_run(fname, parse_config=True, parse_csv=False, load_pkl=True):
                     data.config = ruamel.yaml.YAML().load(f)
         for field in fnames:
             key, extension = os.path.splitext(field)
-            if (extension == '.pkl') and load_pkl:
+            if (extension == ".pkl") and load_pkl:
                 with zip.open(field, "r") as f:
                     setattr(data, key, pickle.load(f))
-            elif (extension == '.csv') and parse_csv:
+            elif (extension == ".csv") and parse_csv:
                 import pandas as pd
+
                 with zip.open(field, "r") as f:
                     setattr(data, key, pd.read_csv(f, sep=";"))
     return data
@@ -84,8 +95,15 @@ def load_run(fname, parse_config=True, parse_csv=False, load_pkl=True):
 
 def load_data_for_reuse(config: Configuration, raw_config):
     logger = logging.getLogger("dpe")
-    (params_to_reuse, fixed_params, mcmc_state, opt_state, clipping_state, phisnet_params,
-     map_fixed_params)= None, None, None, None, None, None, None
+    (params_to_reuse, fixed_params, mcmc_state, opt_state, clipping_state, phisnet_params, map_fixed_params) = (
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+    )
 
     if config.reuse.path is not None:
         # Load the old data; only parse the config if we want to reuse it, otherwise ignore
@@ -96,7 +114,7 @@ def load_data_for_reuse(config: Configuration, raw_config):
 
     if config.reuse.continue_n_epochs:
         if reuse_data.metadata:
-            config.optimization.n_epochs_prev = reuse_data.metadata.get('n_epochs', 0)
+            config.optimization.n_epochs_prev = reuse_data.metadata.get("n_epochs", 0)
     if config.reuse.skip_burn_in:
         config.optimization.mcmc.n_burn_in = 0
     if config.reuse.skip_pretraining:
@@ -112,7 +130,7 @@ def load_data_for_reuse(config: Configuration, raw_config):
             logger.debug(f"Selecting new seed for MCMC rng_state: {new_seed}")
             mcmc_state.rng_state = jax.random.PRNGKey(new_seed)
     if config.reuse.reuse_fixed_params:
-        fixed_params = without_cache(reuse_data.fixed_params) # fixed params of initial geometry 0
+        fixed_params = without_cache(reuse_data.fixed_params)  # fixed params of initial geometry 0
     if config.reuse.reuse_trainable_params:
         params_to_reuse = reuse_data.params
         if config.reuse.reuse_modules is not None:
@@ -129,22 +147,41 @@ def load_data_for_reuse(config: Configuration, raw_config):
         phisnet_data = load_run(config.reuse.path_phisnet, parse_config=False)
         phisnet_params = phisnet_data.params
         phisnet_params = jax.tree_util.tree_map(jax.numpy.array, phisnet_params)
-        logger.debug(f"Reusing {hk.data_structures.tree_size(phisnet_params)} PhisNet weights and reusing phisnet config from phisnet checkpoint")
+        logger.debug(
+            f"Reusing {hk.data_structures.tree_size(phisnet_params)} PhisNet weights and reusing phisnet config from phisnet checkpoint"
+        )
         phisnet_model_config = PhisNetModelConfig.parse_obj(phisnet_data.config["model"])
         config.model.orbitals.transferable_atomic_orbitals.phisnet_model = phisnet_model_config
 
-    if config.optimization.shared_optimization:
-        phys_configs = build_physical_configs_from_changes(raw_config['physical'])
+    if config.optimization.shared_optimization and (
+        config.reuse.reuse_fixed_params or config.reuse.reuse_mcmc_state or config.reuse.reuse_clipping_state
+    ):
+        logger.debug("Reusing for shared opt. fixed params or mcmc state or clipping state.")
+
+        phys_configs = build_physical_configs_from_changes(raw_config["physical"])
         map_fixed_params = {pc.comment.split("_")[0]: (None, None, None) for pc in phys_configs}
         for i in range(len(phys_configs)):
-            path = "/".join(config.reuse.path.split("/")[:-2]) + "/" + f"{i:04}" + "/" + config.reuse.path.split("/")[-1]
+            path = (
+                "/".join(config.reuse.path.split("/")[:-2]) + "/" + f"{i:04}" + "/" + config.reuse.path.split("/")[-1]
+            )
             g = load_run(path, parse_config=True)
             hash = g.config.physical.comment.split("_")[0]
-            map_fixed_params[hash] = (without_cache(g.fixed_params) if config.reuse.reuse_fixed_params else None,
-                                      g.mcmc_state if config.reuse.reuse_mcmc_state else None,
-                                      g.clipping_state if config.reuse.reuse_clipping_state else None,)
+            map_fixed_params[hash] = (
+                without_cache(g.fixed_params) if config.reuse.reuse_fixed_params else None,
+                g.mcmc_state if config.reuse.reuse_mcmc_state else None,
+                g.clipping_state if config.reuse.reuse_clipping_state else None,
+            )
 
-    return config, params_to_reuse, fixed_params, mcmc_state, opt_state, clipping_state, phisnet_params, map_fixed_params
+    return (
+        config,
+        params_to_reuse,
+        fixed_params,
+        mcmc_state,
+        opt_state,
+        clipping_state,
+        phisnet_params,
+        map_fixed_params,
+    )
 
 
 def is_checkpoint_required(n_epoch: int, checkpoint_config: CheckpointConfig):
@@ -170,4 +207,4 @@ def delete_obsolete_checkpoints(n_epoch, chkpt_config: CheckpointConfig, prefix=
             try:
                 os.remove(os.path.join(directory, fname))
             except FileNotFoundError:
-                pass # Checkpoint has already been deleted in some other way
+                pass  # Checkpoint has already been deleted in some other way

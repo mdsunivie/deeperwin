@@ -1,11 +1,10 @@
-#%%
+# %%
 import pandas as pd
-import seaborn as sns
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import linregress
 
-fname = "/home/mscherbela/runs/paper5_solids/runtime_scaling/timings.csv"
+fname = "plot_data/runtimes.csv"
 df = pd.read_csv(fname)
 df.loc[df.method == "FN", "method"] = "FermiNet"
 df.loc[df.method == "TAOs_batched", "method"] = "Ours"
@@ -16,38 +15,33 @@ nel_fit = np.arange(20, 50)
 plt.close("all")
 fig, ax = plt.subplots(1, 1, figsize=(6, 4))
 for method, color in zip(["FermiNet", "Ours"], ["C0", "C1"]):
-    for system, marker in zip(["Hchain", "dimer"], ['o', '^']):
+    for system, marker in zip(["Hchain", "dimer"], ["o", "^"]):
         df_plot = df[(df.method == method) & (df.system == system)]
 
         df_fit = df_plot[df_plot.n_el.isin(nel_fit)]
         k, d = linregress(np.log(df_fit.n_el), np.log(df_fit.t))[:2]
         ax.plot(nel_fit, np.exp(d) * nel_fit**k, color=color, alpha=0.2)
 
-        ax.plot(df_plot.n_el, 
-                df_plot.t, 
-                label=f"{method} ({system}): $t \\sim n^{{{k:.1f}}}$", 
-                color=color, 
-                ls="none",
-                marker=marker)
+        ax.plot(
+            df_plot.n_el,
+            df_plot.t,
+            label=f"{method} ({system}): $t \\sim n^{{{k:.1f}}}$",
+            color=color,
+            ls="none",
+            marker=marker,
+        )
 
 ax.set_xscale("log")
 ax.set_yscale("log")
-ax.set_xticks([8, 12, 16, 20,  24, 28, 36, 44, 48])
-ax.xaxis.set_major_formatter('{x:.0f}')
+ax.set_xticks([8, 12, 16, 20, 24, 28, 36, 44, 48])
+ax.xaxis.set_major_formatter("{x:.0f}")
 ax.set_yticks([0.2, 0.5, 1, 2, 5, 10])
-ax.yaxis.set_major_formatter('{x:.1f}')
+ax.yaxis.set_major_formatter("{x:.1f}")
 ax.minorticks_off()
 ax.legend()
 ax.set_xlabel("Number of electrons")
 ax.set_ylabel("Timer per opt. step / s")
 fig.tight_layout()
-fname = "/home/mscherbela/ucloud/results/05_paper_solids/figures/scaling.pdf"
+fname = "plot_output/scaling.pdf"
 fig.savefig(fname, bbox_inches="tight")
 fig.savefig(fname.replace(".pdf", ".png"), bbox_inches="tight", dpi=300)
-
-# # n_values = np.arange(, 40, 4)
-# n3 = n_values**3 * 0.001
-# n4 = n_values**4 * 0.001
-# ax.plot(n_values, n3, label="$t \sim n^3$", color="gray", ls="-")
-# ax.plot(n_values, n4, label="$t \sim n^3$", color="gray", ls="-")
-

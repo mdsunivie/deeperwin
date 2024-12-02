@@ -4,6 +4,7 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 from deeperwin.run_tools.geometry_database import load_energies, load_geometries, load_datasets
+
 sns.set_theme(style="whitegrid")
 
 all_geoms = load_geometries()
@@ -14,13 +15,13 @@ df_ref.rename(columns={"E": "E_ref"}, inplace=True)
 
 #### Fine-tuning #####
 experiments = [
-               ("2023-02-26_18x20_128karxiv_v10_128k", "Scherbela et al.\n128k pre-training"),
-               ("2023-05-ablation3_128k", "+ improved\narchitecture"),
-               ("2023-05-ablation4_128k", "+ normal-mode\ndistortions"),
-               ("2023-05-ablation5_128k", "+ larger\ntraining set"),
-               ("2023-05-01_699torsion_nc_by_std_128k", "+ 8 determinants"),
-               ("2023-05-01_699torsion_nc_by_std_256k", "+ 256k pretraining-\nsteps")
-               ]
+    ("2023-02-26_18x20_128karxiv_v10_128k", "Scherbela et al.\n128k pre-training"),
+    ("2023-05-ablation3_128k", "+ improved\narchitecture"),
+    ("2023-05-ablation4_128k", "+ normal-mode\ndistortions"),
+    ("2023-05-ablation5_128k", "+ larger\ntraining set"),
+    ("2023-05-01_699torsion_nc_by_std_128k", "+ 8 determinants"),
+    ("2023-05-01_699torsion_nc_by_std_256k", "+ 256k pretraining-\nsteps"),
+]
 experiments.append((experiments[-1][0], "Our work"))
 ablation_nr = np.arange(len(experiments))
 experiment_names = [e[0] for e in experiments]
@@ -28,24 +29,25 @@ experiment_labels = [e[1] for e in experiments]
 geom_hashes = all_datasets["TinyMol_CNO_rot_dist_test_out_of_distribution_4geoms"].get_hashes()
 
 df = df_all.query("geom in @geom_hashes and experiment in @experiment_names")
-df = df[((df.experiment == "2023-05-01_699torsion_nc_by_std_256k") & (df.n_pretrain_variational == 256_000)) | ((df.experiment != "2023-05-01_699torsion_nc_by_std_256k") & (df.n_pretrain_variational == 128_000))]
+df = df[
+    ((df.experiment == "2023-05-01_699torsion_nc_by_std_256k") & (df.n_pretrain_variational == 256_000))
+    | ((df.experiment != "2023-05-01_699torsion_nc_by_std_256k") & (df.n_pretrain_variational == 128_000))
+]
 df = pd.merge(df, df_ref, on="geom", how="left")
 df["error"] = (df.E - df.E_ref) * 1000
 df["epoch"] = df.epoch.fillna(0).astype(int)
 df["ablation_nr"] = df["experiment"].map({exp: nr for nr, exp in zip(ablation_nr, experiment_names)})
 df = df.groupby(["experiment", "epoch", "geom"]).mean().reset_index()
-#%%
-plot_settings = [
-    (0, [10, 6000], "log"),
-    (4000, [0, 20], "linear")
-                 ]
+# %%
+plot_settings = [(0, [10, 6000], "log"), (4000, [0, 20], "linear")]
 
 bar_width = 0.9
 color = "C0"
-start_end_color = 'navy'
+start_end_color = "navy"
 text_color_inside = "white"
 text_color_outside = "black"
 x_min = 5
+
 
 def _round_to_significant_digits(value, n_digits=3):
     digits = np.ceil(np.log10(np.abs(value)))
@@ -80,6 +82,7 @@ def get_value_label(E_min, E_max, x_min, x_max, is_delta=False, is_log_scale=Fal
 
     return label, pos, text_color, text_ha
 
+
 plt.close("all")
 fig, axes = plt.subplots(1, len(plot_settings), figsize=(11, 3.8), sharey=True)
 for ax, epoch, xlim, scale in zip(axes, *zip(*plot_settings)):
@@ -94,18 +97,24 @@ for ax, epoch, xlim, scale in zip(axes, *zip(*plot_settings)):
             ax.barh(y=[ind_ablation], width=[E], color=start_end_color, height=bar_width)
         elif ind_ablation == len(experiment_names) - 1:
             ax.barh(y=[ind_ablation], width=[E], color=start_end_color, height=bar_width)
-            ax.plot([E_prev, E_prev], [ind_ablation-1+0.5*bar_width, ind_ablation-0.5*bar_width], color='gray')
+            ax.plot(
+                [E_prev, E_prev], [ind_ablation - 1 + 0.5 * bar_width, ind_ablation - 0.5 * bar_width], color="gray"
+            )
             E_prev = xlim[0]
         else:
-            ax.barh(y=[ind_ablation], width=[E-E_prev], left=[E_prev], color=color, height=bar_width)
-            ax.plot([E_prev, E_prev], [ind_ablation-1+0.5*bar_width, ind_ablation-0.5*bar_width], color='gray')
+            ax.barh(y=[ind_ablation], width=[E - E_prev], left=[E_prev], color=color, height=bar_width)
+            ax.plot(
+                [E_prev, E_prev], [ind_ablation - 1 + 0.5 * bar_width, ind_ablation - 0.5 * bar_width], color="gray"
+            )
 
-        value_label, value_label_pos, text_color, ha = get_value_label(E_prev, 
-                                                                      E, 
-                                                                      xlim[0], 
-                                                                      xlim[1], 
-                                                                      is_delta=ind_ablation not in [0, len(experiment_names)-1],
-                                                                      is_log_scale=(scale=="log"))
+        value_label, value_label_pos, text_color, ha = get_value_label(
+            E_prev,
+            E,
+            xlim[0],
+            xlim[1],
+            is_delta=ind_ablation not in [0, len(experiment_names) - 1],
+            is_log_scale=(scale == "log"),
+        )
         ax.text(value_label_pos, ind_ablation, value_label, va="center", ha=ha, color=text_color, fontsize=10)
         E_prev = E
 
@@ -113,7 +122,7 @@ for ax, epoch, xlim, scale in zip(axes, *zip(*plot_settings)):
     ax.set_xlabel("$E - E_\mathrm{CCSD(T)}$ / mHa")
     ax.set_xlim(xlim)
     ax.grid(False, axis="y")
-    ax.grid(True, axis="x", color='gray', alpha=0.2, ls='-', zorder=-1)
+    ax.grid(True, axis="x", color="gray", alpha=0.2, ls="-", zorder=-1)
 
     ax.set_yticks(ablation_nr)
     # ax.set_yticklabels(experiment_labels)
@@ -137,11 +146,13 @@ for i, label in enumerate(experiment_labels):
     if "+" in label:
         label = label.replace("\n", "\n    ")
     if i == 0 or i == (len(experiment_labels) - 1):
-        fontweight="bold"
-    axes[0].text(-0.35, ypos, label, va="center", ha="left", fontsize=10, transform=axes[0].transAxes, fontweight=fontweight)
+        fontweight = "bold"
+    axes[0].text(
+        -0.35, ypos, label, va="center", ha="left", fontsize=10, transform=axes[0].transAxes, fontweight=fontweight
+    )
 
 for ax, letter in zip(axes, "abc"):
-    ax.text(x=0, y= 1.01, s=letter, transform=ax.transAxes, fontsize=14, fontweight="bold", ha="left", va="bottom")
+    ax.text(x=0, y=1.01, s=letter, transform=ax.transAxes, fontsize=14, fontweight="bold", ha="left", va="bottom")
 
 fname = "/home/mscherbela/ucloud/results/04_paper_better_universal_wf/figures/fig4_ablation.png"
 fig.savefig(fname, dpi=300, bbox_inches="tight")

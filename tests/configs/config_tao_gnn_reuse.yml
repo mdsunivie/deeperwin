@@ -1,0 +1,89 @@
+experiment_name: reg_tao_gnn
+
+physical:
+  name: NH3
+
+optimization:
+  n_epochs: 1
+  optimizer:
+    learning_rate: 0.1
+  mcmc:
+    n_walkers: 12
+    n_inter_steps: 5
+    n_burn_in: 5
+    initialization: "exponential"
+  clipping:
+    name: hard
+    center: median
+    width_metric: mae
+
+evaluation:
+  n_epochs: 0
+
+baseline:
+  basis_set: "STO-6G"
+  localization: boys
+
+model:
+  name: dpe4
+  embedding:
+    name: gnn
+    cutoff_type: constant
+    ion_ion_width: 4
+    ion_ion_depth: 1
+    el_ion_width: 4
+    el_ion_depth: 1
+    el_el_width: 4
+    el_el_depth: 1
+    gnn:
+      n_iterations: 1
+      edge_embedding_width: 2
+      attention:
+      message_passing:
+        update_edge_features: false
+        use_edge_features_for_gating: true
+        use_node_features_for_gating: false
+        activation: silu
+        node_dim: 4
+        edge_dim: 4
+      mlp_depth: 0
+    ion_gnn:
+      name: ion_gnn
+      n_iterations: 1
+      edge_embedding_width: 2
+      attention:
+      message_passing:
+        update_edge_features: false
+        use_edge_features_for_gating: true
+        use_node_features_for_gating: false
+        activation: silu
+        node_dim: 4
+        edge_dim: 4
+      mlp_depth: 0
+  Z_max: 8
+  orbitals:
+    n_determinants: 2
+    determinant_schema: full_det
+    transferable_atomic_orbitals:
+      atom_types: [1, 6, 7, 8]
+      symmetrize_exponent_mlp: true
+      antisymmetrize_backflow_mlp: true
+      use_squared_envelope_input: true
+      envelope_width: 4
+      backflow_width: 4
+      envelope_depth: 1
+      backflow_depth: 1
+      orb_feature_gnn:
+        n_iterations: 1
+        edge_embedding_width: 2
+        message_passing:
+          node_dim: 4
+          edge_dim: 4
+      phisnet_model:
+    envelope_orbitals:
+  features:
+    coordinates: cartesian
+    concatenate_el_ion_features: false
+    use_el_el_differences: True
+    n_ion_ion_rbf_features: 4
+    ion_embed_type: mlp

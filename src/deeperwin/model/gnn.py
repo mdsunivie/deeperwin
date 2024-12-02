@@ -8,12 +8,12 @@ from deeperwin.model.attention import Attention
 from deeperwin.configuration import DenseGNNConfig, MLPConfig, MessagePassingConfig, ExpScaling
 
 
-
 def _residual(x, x_old):
     if x.shape == x_old.shape:
         return x + x_old
     else:
         return x
+
 
 class MessagePassingLayer(hk.Module):
     def __init__(self, config: MessagePassingConfig, use_edge_bias=True, name=None):
@@ -30,8 +30,12 @@ class MessagePassingLayer(hk.Module):
             nodes_snd = nodes_rec
         edge_update = 0.0
         if self.config.use_node_features_for_gating:
-            edge_update += hk.Linear(self.edge_dim, with_bias=self.edge_bias, name="linear_gate_receiver")(nodes_rec)[..., :, None, :]
-            edge_update += hk.Linear(self.edge_dim, with_bias=self.edge_bias, name="linear_gate_sender")(nodes_snd)[..., None, :, :]
+            edge_update += hk.Linear(self.edge_dim, with_bias=self.edge_bias, name="linear_gate_receiver")(nodes_rec)[
+                ..., :, None, :
+            ]
+            edge_update += hk.Linear(self.edge_dim, with_bias=self.edge_bias, name="linear_gate_sender")(nodes_snd)[
+                ..., None, :, :
+            ]
         if self.config.use_edge_features_for_gating:
             edge_update += hk.Linear(self.edge_dim, with_bias=self.edge_bias, name="linear_gate_edge")(edges)
         edge_update = self.activation(edge_update)
@@ -47,8 +51,7 @@ class MessagePassingLayer(hk.Module):
         if mask is not None:
             gating *= mask[..., None]
 
-
-        messages = hk.Linear(self.edge_dim, name="linear_message_downmap")(nodes_snd) # [batch x sender x features]
+        messages = hk.Linear(self.edge_dim, name="linear_message_downmap")(nodes_snd)  # [batch x sender x features]
         messages = gating * messages[..., None, :, :]
         nodes_update = self.aggfunc(messages, axis=-2)
         nodes_update = hk.Linear(self.node_dim, name="linear_message_upmap")(nodes_update)
@@ -68,35 +71,45 @@ class DenseGNN(hk.Module):
         self.mpnn_layers = []
         self.mlp_layers = []
         if config.edge_embedding_depth > 0:
-            self.edge_embedding = MLP([config.edge_embedding_width]*config.edge_embedding_depth,
-                                      mlp_config,
-                                      use_bias=config.use_edge_bias,
-                                      linear_out=False,
-                                      name="edge_embedding")
+            self.edge_embedding = MLP(
+                [config.edge_embedding_width] * config.edge_embedding_depth,
+                mlp_config,
+                use_bias=config.use_edge_bias,
+                linear_out=False,
+                name="edge_embedding",
+            )
 
         for n in range(config.n_iterations):
             if config.attention:
-                self.attention_layers.append(Attention(self.config.attention.attention_dim,
-                                                       self.config.attention.n_heads,
-                                                       self.config.attention.use_residual,
-                                                       layer_norm=self.config.attention.use_layer_norm,
-                                                       output_linear=False,
-                                                       name=f"attention_{n}"))
+                self.attention_layers.append(
+                    Attention(
+                        self.config.attention.attention_dim,
+                        self.config.attention.n_heads,
+                        self.config.attention.use_residual,
+                        layer_norm=self.config.attention.use_layer_norm,
+                        output_linear=False,
+                        name=f"attention_{n}",
+                    )
+                )
             if config.message_passing:
-                self.mpnn_layers.append(MessagePassingLayer(self.config.message_passing,
-                                                            use_edge_bias=self.config.use_edge_bias,
-                                                            name=f"mpnn_{n}"))
+                self.mpnn_layers.append(
+                    MessagePassingLayer(
+                        self.config.message_passing, use_edge_bias=self.config.use_edge_bias, name=f"mpnn_{n}"
+                    )
+                )
 
         if self.config.final_mpnn:
-            self.mpnn_layers.append(MessagePassingLayer(self.config.message_passing,
-                                                        use_edge_bias=self.config.use_edge_bias,
-                                                        name=f"mpnn_{config.n_iterations + 1}"))
+            self.mpnn_layers.append(
+                MessagePassingLayer(
+                    self.config.message_passing,
+                    use_edge_bias=self.config.use_edge_bias,
+                    name=f"mpnn_{config.n_iterations + 1}",
+                )
+            )
 
-    def __call__(self,
-                 nodes_rec: jax.Array,
-                 nodes_snd: Optional[jax.Array] = None,
-                 edges: Optional[jax.Array] = None,
-                 mask=None):
+    def __call__(
+        self, nodes_rec: jax.Array, nodes_snd: Optional[jax.Array] = None, edges: Optional[jax.Array] = None, mask=None
+    ):
         if (edges is not None) and self.edge_embedding:
             edges = self.edge_embedding(edges)
         if nodes_snd is None:
@@ -114,10 +127,9 @@ class DenseGNN(hk.Module):
 
             # MLP on nodes
             if self.config.mlp_depth:
-                nodes_rec = MLP([nodes_rec.shape[-1]] * self.config.mlp_depth,
-                                self.mlp_config,
-                                residual=True,
-                                name=f"mlp_{n}")(nodes_rec)
+                nodes_rec = MLP(
+                    [nodes_rec.shape[-1]] * self.config.mlp_depth, self.mlp_config, residual=True, name=f"mlp_{n}"
+                )(nodes_rec)
 
         if self.config.final_mpnn:
             nodes_rec, edges = self.mpnn_layers[-1](nodes_rec, nodes_snd, edges, mask)
@@ -137,6 +149,6 @@ class ScaleFeatures(hk.Module):
         exp = dist / scale
         exp = register_scale_and_shift(exp, dist, scale=scale, shift=None)
 
-        env = self.linear_no_bias(jnp.exp(- exp**2))
+        env = self.linear_no_bias(jnp.exp(-(exp**2)))
 
         return env

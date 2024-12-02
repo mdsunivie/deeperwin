@@ -1,0 +1,48 @@
+# Config file manually specifying a molecule
+physical:
+  name: StretchedH2
+  R:
+    - [0, 0, 0]
+    - [0, 0, 1.6]
+  Z: [1, 1]
+  n_electrons: 2
+  n_up: 1
+  n_cas_electrons: 2
+  n_cas_orbitals: 2
+  el_ion_mapping: [0, 1]
+
+
+model:
+  embedding: 
+    name: dpe4
+    n_hidden_one_el: 16
+    n_hidden_two_el: 4
+    n_iterations: 2
+    emb_dim: 5
+  orbitals: 
+    n_determinants: 2
+
+optimization:
+  n_epochs: 2
+  optimizer:
+    name: adam # alternatives: kfac, slbfgs
+    learning_rate: 1.5e-3 # Usually works well for adam and slbfgs; use 5e-5 for KFAC
+  mcmc:
+    n_walkers: 10
+    n_burn_in: 5
+
+pre_training: 
+  n_epochs: 2
+  mcmc:
+    n_walkers: 10
+
+
+evaluation: 
+  n_epochs: 2
+  mcmc:
+    n_walkers: 10
+    n_burn_in: 5
+
+
+
+

@@ -8,9 +8,9 @@ from deeperwin.configuration import StandardOptimizerConfig
 import re
 
 
-def _run_mcmc_with_cache(
+def run_mcmc_with_cache(
     log_psi_sqr_func: Callable,
-    cache_func: Callable,
+    cache_func_pmapped: Callable,
     mcmc: MetropolisHastingsMonteCarlo,
     params: Dict,
     spin_state: Tuple[int],
@@ -23,8 +23,7 @@ def _run_mcmc_with_cache(
     if split_mcmc:
         mcmc_state = mcmc_state.split_across_devices()
 
-    if cache_func is not None:
-        cache_func_pmapped = jax.pmap(cache_func, axis_name="devices", static_broadcasted_argnums=(1, 2))
+    if cache_func_pmapped is not None:
         fixed_params["cache"] = cache_func_pmapped(params, *spin_state, *mcmc_state.build_batch(fixed_params))
 
     if mode == "burnin":
@@ -40,28 +39,31 @@ def _run_mcmc_with_cache(
 
 def build_lr_schedule(base_lr, schedule_config):
     if schedule_config.name == "inverse":
+
         def get_lr(t):
             lr = base_lr / (1 + (t + schedule_config.offset_time) / schedule_config.decay_time)
             lr = jnp.maximum(schedule_config.minimum, lr)
             if schedule_config.warmup > 0:
-                lr *= jnp.minimum((t+1) / schedule_config.warmup, 1.0)
+                lr *= jnp.minimum((t + 1) / schedule_config.warmup, 1.0)
             return lr
+
         return get_lr
     elif schedule_config.name == "exponential":
+
         def get_lr(t):
             lr = base_lr * jnp.exp(-(t + schedule_config.offset_time) / schedule_config.decay_time)
             lr = jnp.maximum(schedule_config.minimum, lr)
             if schedule_config.warmup > 0:
-                lr *= jnp.minimum((t+1) / schedule_config.warmup, 1.0)
+                lr *= jnp.minimum((t + 1) / schedule_config.warmup, 1.0)
             return lr
+
         return get_lr
     # TODO: test more thoroughly + prefactor should perhaps be model size
     elif schedule_config.name == "noam":
         prefactor = schedule_config.warmup_steps
-        return lambda t: base_lr * (prefactor ** 0.5 * min(
-            max(1, t) ** (-0.5),
-            max(1, t) * schedule_config.warmup_steps ** (-1.5)
-        ))
+        return lambda t: base_lr * (
+            prefactor**0.5 * min(max(1, t) ** (-0.5), max(1, t) * schedule_config.warmup_steps ** (-1.5))
+        )
     elif schedule_config.name == "fixed":
         return lambda t: base_lr
     else:
@@ -70,7 +72,7 @@ def build_lr_schedule(base_lr, schedule_config):
 
 def build_optax_optimizer(config: StandardOptimizerConfig):
     lr_schedule = build_lr_schedule(config.learning_rate, config.lr_schedule)
-    if config.name in ['adam', 'sgd', 'rmsprop', 'lamb', 'lion']:
+    if config.name in ["adam", "sgd", "rmsprop", "lamb", "lion"]:
         optimizer = getattr(optax, config.name)(lr_schedule)
     else:
         raise ValueError(f"Unknown optimizer: {config.name}")
@@ -84,7 +86,6 @@ def build_optax_optimizer(config: StandardOptimizerConfig):
 
         optimizer = optax.chain(
             optimizer,
-            optax.masked(optax.scale(config.scale_lr), lambda params: hk.data_structures.map(leaf_filter_func, params))
+            optax.masked(optax.scale(config.scale_lr), lambda params: hk.data_structures.map(leaf_filter_func, params)),
         )
     return optimizer
-

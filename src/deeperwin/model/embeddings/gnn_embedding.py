@@ -22,9 +22,15 @@ class GNNEmbedding(hk.Module):
         if self.config.ion_gnn.name == "ion_gnn":
             self.ion_gnn = DenseGNN(config.ion_gnn, mlp_config, "ion_ion_gnn")
         elif self.config.ion_gnn.name == "phisnet_ion_emb":
-            self.phisnet_downmapping = MLP([config.ion_gnn.ion_width] * config.ion_gnn.ion_depth, mlp_config, linear_out=False,
-                          name="phisnet_downmapping")
-            self.phisnet_mpnn = MessagePassingLayer(config.ion_gnn.message_passing, use_edge_bias=config.ion_gnn.use_edge_bias, name="phisnet_mpnn")
+            self.phisnet_downmapping = MLP(
+                [config.ion_gnn.ion_width] * config.ion_gnn.ion_depth,
+                mlp_config,
+                linear_out=False,
+                name="phisnet_downmapping",
+            )
+            self.phisnet_mpnn = MessagePassingLayer(
+                config.ion_gnn.message_passing, use_edge_bias=config.ion_gnn.use_edge_bias, name="phisnet_mpnn"
+            )
 
     def _split_same_diff(self, features, n_up, n_dn, batch_dims):
         up_up = features[..., :n_up, :n_up, :].reshape(batch_dims + (n_up * n_up, -1))
@@ -51,13 +57,17 @@ class GNNEmbedding(hk.Module):
             s_dist, d_dist = self._split_same_diff(diff_dist.dist_el_el[..., None], n_up, n_dn, batch_dims)
             same *= ScaleFeatures(self.config.exp_scaling, self.config.el_el_width, name="el_same")(s_dist)
             diff *= ScaleFeatures(self.config.exp_scaling, self.config.el_el_width, name="el_diff")(d_dist)
-            ion_ion *= ScaleFeatures(self.config.exp_scaling, self.config.ion_ion_width, name="ion_ion")(diff_dist.dist_ion_ion[..., None])
-            el_ion *= ScaleFeatures(self.config.exp_scaling, self.config.el_ion_width, name="el_ion")(diff_dist.dist_el_ion[..., None])
+            ion_ion *= ScaleFeatures(self.config.exp_scaling, self.config.ion_ion_width, name="ion_ion")(
+                diff_dist.dist_ion_ion[..., None]
+            )
+            el_ion *= ScaleFeatures(self.config.exp_scaling, self.config.el_ion_width, name="el_ion")(
+                diff_dist.dist_el_ion[..., None]
+            )
 
-        up_up = same[..., :(n_up * n_up), :].reshape(batch_dims + (n_up, n_up, -1))
-        up_dn = diff[..., :(n_up * n_dn), :].reshape(batch_dims + (n_up, n_dn, -1))
-        dn_up = diff[..., (n_up * n_dn):, :].reshape(batch_dims + (n_dn, n_up, -1))
-        dn_dn = same[..., (n_up * n_up):, :].reshape(batch_dims + (n_dn, n_dn, -1))
+        up_up = same[..., : (n_up * n_up), :].reshape(batch_dims + (n_up, n_up, -1))
+        up_dn = diff[..., : (n_up * n_dn), :].reshape(batch_dims + (n_up, n_dn, -1))
+        dn_up = diff[..., (n_up * n_dn) :, :].reshape(batch_dims + (n_dn, n_up, -1))
+        dn_dn = same[..., (n_up * n_up) :, :].reshape(batch_dims + (n_dn, n_dn, -1))
         up = jnp.concatenate([up_up, up_dn], axis=-2)
         dn = jnp.concatenate([dn_up, dn_dn], axis=-2)
         el_el = jnp.concatenate([up, dn], axis=-3)
@@ -76,7 +86,6 @@ class GNNEmbedding(hk.Module):
             return 0.5 * (jnp.cos(x) + 1)
         else:
             raise ValueError(f"Unsupported mask: {self.config.cutoff_type}")
-
 
     def __call__(self, diff_dist: DiffAndDistances, features: InputFeatures, n_up: int):
         edge_el_ion, edge_el_el, edge_ion_ion = self._embed_edges(features, diff_dist, n_up)
@@ -97,4 +106,3 @@ class GNNEmbedding(hk.Module):
         emb_el, edge_el_ion = self.el_ion_mpnn(features.el, emb_ion, edge_el_ion, mask_el_ion)
         emb_el, edge_el_el = self.gnn(emb_el, edges=edge_el_el, mask=mask_el_el)
         return Embeddings(emb_el, features.ion, edge_el_el, edge_el_ion)
-

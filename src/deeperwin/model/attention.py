@@ -47,7 +47,7 @@ class Attention(hk.Module):
         else:
             receiver = receiver_input
         if sender is None:
-                sender = receiver
+            sender = receiver
         else:
             if self._layer_norm:
                 sender = hk.LayerNorm(axis=-1, create_scale=True, create_offset=True)(sender)

@@ -7,6 +7,7 @@ from deeperwin.model.definitions import DiffAndDistances, Embeddings, InputFeatu
 from deeperwin.model.mlp import get_activation
 from deeperwin.utils.utils import split_axis, residual_update
 
+
 def _split_into_same_diff(diff, n_up, n_dn):
     batch_dims = diff.shape[:-3]
     up_up = diff[..., :n_up, :n_up, :]

@@ -13,7 +13,8 @@
 # limitations under the License.
 
 """Curvature blocks for FermiNet."""
-from typing import Any, Mapping, Optional, Sequence, Union
+
+from typing import Any, Mapping, Sequence
 
 import jax
 import jax.numpy as jnp
@@ -88,10 +89,10 @@ _example_args_x = np.zeros([11, 13])
 _example_args_w = np.zeros([13, 7])
 _example_args_b = np.zeros([7])
 n_repeated_max = 4
-for n_rep in range(1, n_repeated_max+1):
+for n_rep in range(1, n_repeated_max + 1):
     _dense_func = jax.vmap(_dense_func, in_axes=[0, [None, None]])
     _dense_func_no_bias = jax.vmap(_dense_func_no_bias, in_axes=[0, [None]])
-    _example_args_x = np.tile(_example_args_x, [n_rep+1] + [1] * _example_args_x.ndim)
+    _example_args_x = np.tile(_example_args_x, [n_rep + 1] + [1] * _example_args_x.ndim)
     pattern_dense = kfac_jax.tag_graph_matcher.GraphPattern(
         name=f"repeated_dense{n_rep}_with_bias",
         tag_primitive=repeated_dense_tag,

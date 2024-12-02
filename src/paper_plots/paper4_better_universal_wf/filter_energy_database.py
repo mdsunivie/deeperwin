@@ -1,5 +1,4 @@
 # %%
-import pandas as pd
 from deeperwin.run_tools.geometry_database import load_energies
 
 experiments_to_include = [

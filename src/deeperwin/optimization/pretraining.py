@@ -5,22 +5,24 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
-from deeperwin.geometries import GeometryDataStore, distort_geometry
+from deeperwin.geometries import GeometryDataStore
 from deeperwin.configuration import PreTrainingConfig, ModelConfig, PhysicalConfig, DistortionConfig
 from deeperwin.loggers import DataLogger
 from deeperwin.mcmc import MetropolisHastingsMonteCarlo, MCMCState
-from deeperwin.utils.utils import get_el_ion_distance_matrix, without_cache
-from deeperwin.model import evaluate_sum_of_determinants, get_baseline_slater_matrices, init_model_fixed_params
+from deeperwin.utils.utils import get_el_ion_distance_matrix, without_cache, pmap
+from deeperwin.model import evaluate_sum_of_determinants, get_baseline_slater_matrices
 from deeperwin.orbitals import get_sum_of_atomic_exponentials
 from deeperwin.optimizers import build_optimizer
 from deeperwin.utils.utils import replicate_across_devices, get_from_devices, get_next_geometry_index
-from deeperwin.optimization.opt_utils import _run_mcmc_with_cache
+from deeperwin.optimization.opt_utils import run_mcmc_with_cache
 from deeperwin.checkpoints import is_checkpoint_required, delete_obsolete_checkpoints
 
 LOGGER = logging.getLogger("dpe")
 
+
 def build_pretraining_loss_func(orbital_func, pretrain_config, model_config):
     norm_complex = lambda delta: delta.real**2 + delta.imag**2
+
     def loss_func(params, batch, spin_state):
         r, R, Z, fixed_params = batch
         n_up, n_dn = spin_state
@@ -35,7 +37,9 @@ def build_pretraining_loss_func(orbital_func, pretrain_config, model_config):
             mo_up_ref = mo_up_ref[..., :1, :, :]
             mo_dn_ref = mo_dn_ref[..., :1, :, :]
 
-        if (pretrain_config.off_diagonal_mode == "exponential") and (model_config.orbitals.determinant_schema != "block_diag"):
+        if (pretrain_config.off_diagonal_mode == "exponential") and (
+            model_config.orbitals.determinant_schema != "block_diag"
+        ):
             phi_exp = get_sum_of_atomic_exponentials(
                 dist_el_ion, exponent=pretrain_config.off_diagonal_exponent, scale=pretrain_config.off_diagonal_scale
             )  # [batch x n_el]
@@ -44,8 +48,8 @@ def build_pretraining_loss_func(orbital_func, pretrain_config, model_config):
 
         # Calculate neural net orbitals
         mo_up, mo_dn = orbital_func(params, n_up, n_dn, r, R, Z, without_cache(fixed_params))
-        residual_up = norm_complex(mo_up - mo_up_ref) # mo_up - mo_up_ref
-        residual_dn = norm_complex(mo_dn - mo_dn_ref) # mo_dn - mo_dn_ref
+        residual_up = norm_complex(mo_up - mo_up_ref)  # mo_up - mo_up_ref
+        residual_dn = norm_complex(mo_dn - mo_dn_ref)  # mo_dn - mo_dn_ref
         if pretrain_config.off_diagonal_mode == "ignore":
             residual_up = residual_up[..., :, :n_up]
             residual_dn = residual_dn[..., :, n_up:]
@@ -61,7 +65,11 @@ def build_log_psi_sqr_func_for_sampling(orbital_func, pretrain_config, model_con
         elif pretrain_config.sampling_density == "reference":
             diff_el_ion, dist_el_ion = get_el_ion_distance_matrix(r, R)
             mo_up, mo_dn = get_baseline_slater_matrices(
-                diff_el_ion, dist_el_ion, n_up, fixed_params["baseline_orbitals"], model_config.orbitals.determinant_schema
+                diff_el_ion,
+                dist_el_ion,
+                n_up,
+                fixed_params["baseline_orbitals"],
+                model_config.orbitals.determinant_schema,
             )
         else:
             raise ValueError(f"Unknown sampling scheme for pre-training: {pretrain_config.sampling_density} ")
@@ -87,6 +95,7 @@ def pretrain_orbitals(
 
     loss_func = build_pretraining_loss_func(orbital_func, pretrain_config, model_config)
     log_psi_squared_func = build_log_psi_sqr_func_for_sampling(orbital_func, pretrain_config, model_config)
+    cache_func_pmapped = pmap(cache_func, static_broadcasted_argnums=(1, 2)) if cache_func is not None else None
 
     # Init MCMC
     rng_mcmc, rng_opt = jax.random.split(jax.random.PRNGKey(rng_seed), 2)
@@ -96,8 +105,17 @@ def pretrain_orbitals(
     spin_state = (phys_config.n_up, phys_config.n_dn)
 
     params, fixed_params, rng_opt = replicate_across_devices((params, fixed_params, rng_opt))
-    mcmc_state, fixed_params = _run_mcmc_with_cache(
-        log_psi_squared_func, cache_func, mcmc, params, spin_state, mcmc_state, fixed_params, split_mcmc=True, merge_mcmc=False, mode="burnin"
+    mcmc_state, fixed_params = run_mcmc_with_cache(
+        log_psi_squared_func,
+        cache_func_pmapped,
+        mcmc,
+        params,
+        spin_state,
+        mcmc_state,
+        fixed_params,
+        split_mcmc=True,
+        merge_mcmc=False,
+        mode="burnin",
     )
 
     # Init optimizer
@@ -107,13 +125,15 @@ def pretrain_orbitals(
         value_func_has_aux=False,
         value_func_has_state=False,
     )
-    opt_state = opt_state or optimizer.init(params=params, rng=rng_opt, batch=mcmc_state.build_batch(fixed_params), static_args=spin_state)
+    opt_state = opt_state or optimizer.init(
+        params=params, rng=rng_opt, batch=mcmc_state.build_batch(fixed_params), static_args=spin_state
+    )
 
     # Pre-training optimization loop
     for n in range(pretrain_config.n_epochs):
-        mcmc_state, fixed_params = _run_mcmc_with_cache(
+        mcmc_state, fixed_params = run_mcmc_with_cache(
             log_psi_squared_func,
-            cache_func,
+            cache_func_pmapped,
             mcmc,
             params,
             spin_state,
@@ -124,7 +144,11 @@ def pretrain_orbitals(
             mode="intersteps",
         )
         params, opt_state, stats = optimizer.step(
-            params=params, state=opt_state, static_args=spin_state, rng=rng_opt, batch=mcmc_state.build_batch(fixed_params)
+            params=params,
+            state=opt_state,
+            static_args=spin_state,
+            rng=rng_opt,
+            batch=mcmc_state.build_batch(fixed_params),
         )
         mcmc_state_merged = mcmc_state.merge_devices()
 
@@ -164,16 +188,14 @@ def pretrain_orbitals_shared(
     distortion_config: Optional[DistortionConfig],
     rng_seed: int,
     opt_state: Optional[Any] = None,
-    phisnet_model = None,
-    N_ions_max = None,
 ) -> Tuple[Dict, Any]:
-
     # for each geometry set the pretraining orbital targets
     for g in geometries_data_stores:
         assert "baseline_orbitals" in g.fixed_params, "Baseline orbitals must be provided for pre-training"
 
     loss_func = build_pretraining_loss_func(orbital_func, pretrain_config, model_config)
     log_psi_squared_func = build_log_psi_sqr_func_for_sampling(orbital_func, pretrain_config, model_config)
+    cache_func_pmapped = pmap(cache_func, static_broadcasted_argnums=(1, 2)) if cache_func is not None else None
 
     # Init MCMC
     logging.debug("Starting pretraining...")
@@ -192,9 +214,9 @@ def pretrain_orbitals_shared(
             jax.random.PRNGKey(rng_seed + idx),
         )
         g.fixed_params = replicate_across_devices(g.fixed_params)
-        g.mcmc_state, g.fixed_params = _run_mcmc_with_cache(
+        g.mcmc_state, g.fixed_params = run_mcmc_with_cache(
             log_psi_squared_func,
-            cache_func,
+            cache_func_pmapped,
             mcmc,
             params,
             g.spin_state,
@@ -210,7 +232,9 @@ def pretrain_orbitals_shared(
     opt_state = opt_state or optimizer.init(
         params=params,
         rng=rng_opt,
-        batch=geometries_data_stores[0].mcmc_state.split_across_devices().build_batch(geometries_data_stores[0].fixed_params),
+        batch=geometries_data_stores[0]
+        .mcmc_state.split_across_devices()
+        .build_batch(geometries_data_stores[0].fixed_params),
         static_args=geometries_data_stores[0].spin_state,
     )
 
@@ -220,29 +244,15 @@ def pretrain_orbitals_shared(
         n_epoch_per_geom = n_epoch // len(geometries_data_stores)
 
         # Step 1. select next geometry
-        next_geometry_index = get_next_geometry_index(n_epoch, geometries_data_stores, "round_robin", None, None, geometry_permutation)
+        next_geometry_index = get_next_geometry_index(
+            n_epoch, geometries_data_stores, "round_robin", None, None, geometry_permutation
+        )
         g = geometries_data_stores[next_geometry_index]
 
-        if distortion_config and g.n_opt_epochs_last_dist >= distortion_config.max_age:
-            g.fixed_params, g.clipping_state = get_from_devices((g.fixed_params, g.clipping_state))
-            if jax.process_index() == 0:
-                E_old = g.fixed_params["baseline_energies"].get("E_hf", np.nan)
-                g = distort_geometry(g, distortion_config)
-                g.fixed_params = init_model_fixed_params(model_config, 
-                                                         g.physical_config, 
-                                                         baseline_config,
-                                                         phisnet_model, 
-                                                         N_ions_max,
-                                                         g.fixed_params['transferable_atomic_orbitals']["orbitals"].atomic_orbitals
-                                                         )
-                E_new = g.fixed_params["baseline_energies"].get("E_hf", np.nan)
-                LOGGER.debug(f"New geometry: geom_id={g.idx}; R_new={g.physical_config.R}; U_new={g.rotation.tolist()}, delta_E={E_new-E_old:.6f}")
-            g.fixed_params, g.clipping_state = replicate_across_devices((g.fixed_params, g.clipping_state))
-
         # Step 2: Split MCMC state across devices and run MCMC intersteps
-        g.mcmc_state, g.fixed_params = _run_mcmc_with_cache(
+        g.mcmc_state, g.fixed_params = run_mcmc_with_cache(
             log_psi_squared_func,
-            cache_func,
+            cache_func_pmapped,
             mcmc,
             params,
             g.spin_state,

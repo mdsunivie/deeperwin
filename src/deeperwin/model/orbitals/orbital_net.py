@@ -1,14 +1,13 @@
-from typing import Tuple, Dict
+from typing import Tuple
 
 import haiku as hk
 from jax import numpy as jnp
 
 from deeperwin.configuration import OrbitalsConfig, MLPConfig
-from deeperwin.model import WavefunctionDefinition, DiffAndDistances, Embeddings
+from deeperwin.model import DiffAndDistances, Embeddings
 from deeperwin.model.orbitals.transferable_atomic_orbitals import TransferableAtomicOrbitals
 from deeperwin.model.orbitals.envelope_orbitals import EnvelopeOrbitals
 from deeperwin.model.orbitals.periodic_envelope_orbitals import PeriodicEnvelopeOrbitals, BlochWaveEnvelope
-from deeperwin.orbitals import OrbitalParamsPeriodicMeanField
 
 
 class OrbitalNet(hk.Module):
@@ -47,7 +46,10 @@ class OrbitalNet(hk.Module):
         self.periodic_env = None
         if self.config.periodic_orbitals:
             self.periodic_env = PeriodicEnvelopeOrbitals(
-                self.config.periodic_orbitals, self.mlp_config, self.config.n_determinants, self.config.determinant_schema
+                self.config.periodic_orbitals,
+                self.mlp_config,
+                self.config.n_determinants,
+                self.config.determinant_schema,
             )
 
         self.bloch_env = None
@@ -84,28 +86,27 @@ class OrbitalNet(hk.Module):
             mo_dn *= dn
 
         if self.bloch_env:
-            up, dn = self.bloch_env(diff_dist.nonperiodic_diff_el_ion, 
-                                    fixed_params["baseline_orbitals"].k_points,
-                                    fixed_params["periodic"].k_twist, 
-                                    n_up,
-                                    n_dn)
+            up, dn = self.bloch_env(
+                diff_dist.nonperiodic_diff_el_ion,
+                fixed_params["baseline_orbitals"].k_points,
+                fixed_params["periodic"].k_twist,
+                n_up,
+                n_dn,
+            )
             mo_up *= up
             mo_dn *= dn
 
         if self.config.periodic_orbitals:
             k_points = fixed_params["periodic_orbitals"]["k_point_grid"]
-            up, dn = self.periodic_env(diff_dist.nonperiodic_diff_el_ion, 
-                                       k_points, 
-                                       n_up, 
-                                       n_dn)
+            up, dn = self.periodic_env(diff_dist.nonperiodic_diff_el_ion, k_points, n_up, n_dn)
             mo_up *= up
             mo_dn *= dn
-        
+
         if "periodic" in fixed_params:
-            # Multiplying the twist on the orbitals instead of the full wavefunction is computationally less efficient, 
+            # Multiplying the twist on the orbitals instead of the full wavefunction is computationally less efficient,
             # but avoids having to keep track of multiplying it separately for the full wavefunction and the orbitals during pre-training
-            el_pos = jnp.mean(diff_dist.nonperiodic_diff_el_ion, axis=-2) # sum over ions
+            el_pos = jnp.mean(diff_dist.nonperiodic_diff_el_ion, axis=-2)  # sum over ions
             phase = jnp.exp(1j * (el_pos @ fixed_params["periodic"].k_twist))
-            mo_up *= phase[..., None, :n_up, None] # [batch x det x el x orb]
+            mo_up *= phase[..., None, :n_up, None]  # [batch x det x el x orb]
             mo_dn *= phase[..., None, n_up:, None]
         return mo_up, mo_dn

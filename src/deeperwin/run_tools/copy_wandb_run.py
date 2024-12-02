@@ -4,12 +4,20 @@ import wandb
 import argparse
 import numpy as np
 
+
 def copy_run(
-    source_run, target_project, target_name=None, prefix="", entity="schroedinger_univie", convert=False, add_reference=False, verbose=False
+    source_run,
+    target_project,
+    target_name=None,
+    prefix="",
+    entity="schroedinger_univie",
+    convert=False,
+    add_reference=False,
+    verbose=False,
 ):
     source_run = source_run.replace("https://wandb.ai/", "")
     if "?workspace" in source_run:
-        source_run = source_run[:source_run.index("?workspace")]
+        source_run = source_run[: source_run.index("?workspace")]
     api = Api()
     source_run = api.run(source_run)
 
@@ -86,15 +94,21 @@ def main():
     parser.add_argument("source", help="Wandb identifier of run to copy, e.g. my_entity/my_project/3j7cyfux")
     parser.add_argument("target_project", help="Name of project to copy into")
     parser.add_argument(
-        "--target_name", default=None, help="Name of target run. Defaults to prefix+original_name, e.g. copy_of_original_run_name"
+        "--target_name",
+        default=None,
+        help="Name of target run. Defaults to prefix+original_name, e.g. copy_of_original_run_name",
     )
     parser.add_argument("--prefix", default="copy_of_", help="Prefix to auto-generate target name")
     parser.add_argument("--entity", default="schroedinger_univie", help="User/entity to copy into")
     parser.add_argument("--quiet", action="store_true", help="Do not print progress during copying")
     parser.add_argument(
-        "--no-conversion", action="store_true", help="Do not convert metrics of old runs to equivalent new metrics (e.g. std -> var)"
+        "--no-conversion",
+        action="store_true",
+        help="Do not convert metrics of old runs to equivalent new metrics (e.g. std -> var)",
     )
-    parser.add_argument("--no-reference", action="store_true", help="Do not add reference energies and corresponding errors")
+    parser.add_argument(
+        "--no-reference", action="store_true", help="Do not add reference energies and corresponding errors"
+    )
 
     args = parser.parse_args()
     copy_run(
@@ -107,6 +121,7 @@ def main():
         not args.no_reference,
         not args.quiet,
     )
+
 
 if __name__ == "__main__":
     main()

@@ -1,0 +1,106 @@
+experiment_name: orb_feat_gnn_exp
+
+physical:
+  name: HChain
+  R: [
+    [0.0, 0.0, 0.0],
+    [2.0, 0.0, 0.0],
+    [4.0, 0.0, 0.0],
+    [6.0, 0.0, 0.0],
+    [8.0, 0.0, 0.0],
+    [10.0, 0.0, 0.0],
+    [12.0, 0.0, 0.0],
+    [14.0, 0.0, 0.0],
+    [16.0, 0.0, 0.0],
+    [18.0, 0.0, 0.0],
+    [100.0, 0.0, 0.0],
+    [102.0, 0.0, 0.0],
+    [104.0, 0.0, 0.0],
+    [106.0, 0.0, 0.0],
+    [108.0, 0.0, 0.0],
+    [110.0, 0.0, 0.0],
+    [112.0, 0.0, 0.0],
+    [114.0, 0.0, 0.0],
+    [116.0, 0.0, 0.0],
+    [118.0, 0.0, 0.0]]
+  Z: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+
+
+baseline:
+  basis_set: "STO-6G"
+  localization: boys
+
+model:
+  name: dpe4
+  mlp:
+    init_bias_scale: 1.0
+  embedding:
+    name: gnn
+    cutoff_type: constant
+    ion_ion_width: 4
+    ion_ion_depth: 1
+    el_ion_width: 4
+    el_ion_depth: 1
+    el_el_width: 4
+    el_el_depth: 1
+    exp_scaling:
+      name: exp_scale
+      mean_scaling: 0.5
+    gnn:
+      n_iterations: 1
+      edge_embedding_width: 2
+      attention:
+      use_edge_bias: False
+      message_passing:
+        update_edge_features: false
+        use_edge_features_for_gating: true
+        use_node_features_for_gating: false
+        activation: silu
+        node_dim: 4
+        edge_dim: 4
+      mlp_depth: 0
+    ion_gnn:
+      name: ion_gnn
+      use_edge_bias: False
+      n_iterations: 1
+      edge_embedding_width: 2
+      attention:
+      message_passing:
+        update_edge_features: false
+        use_edge_features_for_gating: true
+        use_node_features_for_gating: false
+        activation: silu
+        node_dim: 4
+        edge_dim: 4
+      mlp_depth: 0
+  Z_max: 8
+  orbitals:
+    n_determinants: 1
+    determinant_schema: full_det
+    transferable_atomic_orbitals:
+      atom_types: [1, 6, 7, 8]
+      symmetrize_exponent_mlp: true
+      antisymmetrize_backflow_mlp: true
+      use_squared_envelope_input: true
+      envelope_width: 4
+      backflow_width: 4
+      envelope_depth: 1
+      backflow_depth: 1
+      orb_feature_gnn:
+        n_iterations: 1
+        use_edge_bias: False
+        mlp_edge_depth: 2
+        edge_embedding_width: 4
+        message_passing:
+          node_dim: 4
+          edge_dim: 4
+      phisnet_model:
+    envelope_orbitals:
+  features:
+    coordinates: cartesian
+    concatenate_el_ion_features: false
+    use_el_el_differences: True
+    n_ion_ion_rbf_features: 4
+    ion_embed_type: mlp
+
+

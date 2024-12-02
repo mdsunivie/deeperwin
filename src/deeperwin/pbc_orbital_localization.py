@@ -13,7 +13,8 @@ import logging
 #     r = r_frac @ lattice
 #     return r
 
-def get_integral_points(lat, R, points_per_atom, gaussian_width = 4.0, grid_size=2):
+
+def get_integral_points(lat, R, points_per_atom, gaussian_width=4.0, grid_size=2):
     """Draws points from a gaussian distribution around each atom and discards all points that fall outside the first unit cell.
 
     Since the points are (on purpose) not drawn uniformly (but more densly around the atoms), this function also returns their
@@ -34,26 +35,26 @@ def get_integral_points(lat, R, points_per_atom, gaussian_width = 4.0, grid_size
 
     # Compute their likelihood, being a sum of gaussians and reweight them
     dist_to_centers = np.linalg.norm(r[:, None, :] - centers[None, :, :], axis=-1)
-    p = np.sum(np.exp(-0.5 * (dist_to_centers/gaussian_width)**2), axis=-1) # sum over centers
+    p = np.sum(np.exp(-0.5 * (dist_to_centers / gaussian_width) ** 2), axis=-1)  # sum over centers
     return r, p
 
 
 # TODO: Get analytic integrals for the polarization matrix, instead of using MC integration
 def _build_polarization_matrix(cell, mo_coeff, k_twist=None, n_integration=100_000, batch_size=5_000):
     lattice_sc = np.array(cell.a)
-    rec = 2 * np.pi * np.linalg.inv(lattice_sc) # rec vectors in the columns
+    rec = 2 * np.pi * np.linalg.inv(lattice_sc)  # rec vectors in the columns
 
     # For a general lattice is not sufficient to compute <mo | exp(-i <rec_l, r>) | mo>,
     # since this can lead to distorted orbitals. Choosing theses 6 reciprocal lattice vectors ensures proper
-    # localization for all lattices, according to 
+    # localization for all lattices, according to
     # Silvestrelli, PRB 1999, Maximally localized Wannier functions for simulations with supercells of general symmetry
     # 10.1103/PhysRevB.59.9703
     if np.any(lattice_sc - np.diag(np.diag(lattice_sc)) != 0):
         additional_rec = np.sum(rec, axis=1, keepdims=True) - rec
-        rec = np.concatenate([rec, additional_rec], axis=1) # => [3 x 6]
+        rec = np.concatenate([rec, additional_rec], axis=1)  # => [3 x 6]
 
-    #rec_sc = 2 * np.pi * np.linalg.inv(lattice_sc)
-        
+    # rec_sc = 2 * np.pi * np.linalg.inv(lattice_sc)
+
     n_batches = int(np.ceil(n_integration / batch_size))
     batch_size = n_integration // n_batches
 
@@ -73,7 +74,6 @@ def _build_polarization_matrix(cell, mo_coeff, k_twist=None, n_integration=100_0
         chi += np.einsum("bn,bl,bm->nml", mos_weighted.conj(), phase, mos_weighted)
     print("Finished building polarization matrix")
     return chi / n_batches
-
 
 
 # TODO: Get analytic integrals for the overlap matrix, instead of using MC integration
@@ -134,7 +134,7 @@ def localize_orbitals_pbc(
     mo_are_orthonormal=True,
     align_phase=True,
     get_loss_curve=False,
-    force_complex=True
+    force_complex=True,
 ):
     """
     Localize the orbitals of a periodic system using Foster-Boys localization (=spatial variance minimization).
@@ -155,14 +155,16 @@ def localize_orbitals_pbc(
         get_loss_curve (bool): Whether to return the full loss curve along the optimization (True) or only the final loss (False). Loss values should be between 0 and 1. In small supercells relatively high values (e.g. 0.7) are expected.
         force_complex (bool): Whether to force the mo_coeff to be complex. If True, the mo_coeff will be cast to complex128. If False, the mo_coeff will keep its original dtype.
     """
-    logging.getLogger("dpe").debug(f"Running orbital localization for periodic system; occ. mo_coeffs shape: {mo_coeff.shape}")
+    logging.getLogger("dpe").debug(
+        f"Running orbital localization for periodic system; occ. mo_coeffs shape: {mo_coeff.shape}"
+    )
     lattice = np.array(pyscf_cell.a)
     rec = 2 * np.pi * np.linalg.inv(lattice)
     # is_diagonal = np.all(lattice == np.diag(np.diag(lattice)))
     # assert is_diagonal, "Orbital localization is currently only implemented for diagonal, orthorombic lattices"
     n_orbitals = mo_coeff.shape[1]
     if force_complex:
-        mo_coeff = mo_coeff.astype(np.complex128)
+        mo_coeff = mo_coeff * (1 + 0j)
 
     # Ensure that the original orbitals are othonormal to allow easy projection
     if not mo_are_orthonormal:
@@ -190,8 +192,9 @@ def localize_orbitals_pbc(
 
     # Built the optimizer and initialize the parameters
     def lr_schedule(t):
-        x = (t / n_steps)
+        x = t / n_steps
         return lr * jnp.cos(0.5 * np.pi * x) ** 2
+
     optimizer = optax.adam(lr_schedule)
     opt_state = optimizer.init(A)
 
@@ -215,12 +218,12 @@ def localize_orbitals_pbc(
     mo_coeff = mo_coeff @ U
 
     # Eq. 9 in Silvestrelli PRB 1999, 10.1103/PhysRevB.59.9703
-    chi_loc = jnp.einsum("nm,mlx,ln->nx", U.T.conj(), chi[..., :3], U) # only use the 3 actual rec vectors
+    chi_loc = jnp.einsum("nm,mlx,ln->nx", U.T.conj(), chi[..., :3], U)  # only use the 3 actual rec vectors
     orbital_pos = -np.log(chi_loc).imag
     rec_norm = np.linalg.norm(rec, axis=0)
-    M = rec.T / rec_norm[:, None] # M_lk = <b_l, e_k> / |b_l|
-    mapping_matrix = np.linalg.inv(M) / rec_norm[None, :] # (M^-1)_lk / b_k
-    orbital_pos = (mapping_matrix @ orbital_pos.T) # [3x3] x [3 x n_orbitals]=> [3 x n_orbital]
+    M = rec.T / rec_norm[:, None]  # M_lk = <b_l, e_k> / |b_l|
+    mapping_matrix = np.linalg.inv(M) / rec_norm[None, :]  # (M^-1)_lk / b_k
+    orbital_pos = mapping_matrix @ orbital_pos.T  # [3x3] x [3 x n_orbitals]=> [3 x n_orbital]
 
     offset = 0.5
     orbital_pos = project_into_first_unit_cell(orbital_pos.T + offset, lattice=lattice).T - offset
@@ -228,9 +231,7 @@ def localize_orbitals_pbc(
     # Get all-electron complex polarization z
     z_loc = np.linalg.det(np.moveaxis(chi[:, :, :3], 2, 0))
 
-
     logging.getLogger("dpe").debug(f"Localized orbital positions: {orbital_pos}")
-
 
     if align_phase:
         # Apply another transformation, which sets the phase of each orbital,
