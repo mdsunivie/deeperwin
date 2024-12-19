@@ -48,16 +48,26 @@ https://github.com/mdsunivie/deeperwin
 
 We recommend to use the package manager uv, to install deeperwin all all its (sub-)dependencies. Install uv, if not already installed, by [following the instructions](https://docs.astral.sh/uv/getting-started/installation/) or use
 ```bash
+    # install uv
     curl -LsSf https://astral.sh/uv/install.sh | sh
+
+    # install deeperwin and all dependencies (including CPU-version of jax) from the uv.lock file
+    uv sync --frozen
+
+    # activate the virtual environment
+    source .venv/bin/activate
 ```
 
-To install deeperwin and all its dependencies after you cloned our codebase go the the repository root and run:
+To install DeepErwin with GPU support, uncomment the `jax[cuda_12]` dependency and the `find-links` line in the `pyproject.toml`.
+Then install the dependencies with:
 ```bash
-    # Create a new virtual environment, with deeperwin and all dependencies
-    uv sync --frozen --extra gpu
-
-    # Activate this environment
+    uv sync
     source .venv/bin/activate
+```
+
+To run the test-cases (which among other tests contain a small minimal calculation), run:
+```bash
+    pytest # (takes a few minutes on CPU)
 ```
 
 ## Running a simple calculation
@@ -217,6 +227,6 @@ Check out the folder sample_configs for example config files. These files are po
 # About
 
 DeepErwin is a collaborative effort of Michael Scherbela, Leon Gerard, Rafael Reisenhofer, Philipp Marquetand, and Philipp Grohs. \
-The code was written by Michael Scherbela, Leon Gerard, and Rafael Reisenhofer, Halvard Sutterud contributed to the parts related to periodic systems. \
+The code was written by Michael Scherbela, Leon Gerard, and Rafael Reisenhofer. Halvard Sutterud contributed to the parts related to periodic systems. \
 If you have any questions, freel free to reach out via [e-mail](mailto:deeperwin.datascience@univie.ac.at).
 

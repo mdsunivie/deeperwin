@@ -15,8 +15,9 @@ authors = [
 description = "A JAX based framework to calculate deep-learning VMC solutions to the Schrödinger equation"
 readme = "README.md"
 dependencies = [
-    # Jax + libraries
-    "jax[cpu]==0.4.23; extra != 'gpu'",
+    "jax[cpu]==0.4.23", # CPU-only version of jax. Comment out for GPU support
+    # Uncomment this AND the find-links directive in the [tool.uv] section for GPU support
+    # "jax[cuda12_pip]==0.4.23",
     "numpy<2.0.0",
     "dm-haiku>=0.0.12",
     "optax>=0.2.2",
@@ -41,9 +42,6 @@ dependencies = [
     "seaborn>=0.13",
     "ase>=3.0",
 ]
-
-[project.optional-dependencies]
-gpu = ["jax[cuda12_pip]==0.4.23"]
 
 [project.scripts]
 deeperwin = "deeperwin.cli:main"
@@ -78,10 +76,10 @@ constraint-dependencies = [
     "scipy <=1.12.0,>= 1.6.0" # incompatibility with jax==0.4.23
     ] 
 index-strategy = "unsafe-best-match"
+
 find-links = [
-    "https://storage.googleapis.com/jax-releases/jax_cuda_releases.html",
+    # "https://storage.googleapis.com/jax-releases/jax_cuda_releases.html" # uncomment for GPU support
 ]
 
 [tool.uv.sources]
-deeperwin = { editable = true, path = "." }
 kfac_jax = { editable = true, path = "./custom_kfac_jax" }
