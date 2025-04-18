@@ -1,0 +1,3 @@
+# Data can be found here: https://github.com/GiantElephant123/solid_simulation_data
+deepsolid_simulation_data/*.csv
+deepsolid_simulation_data/.gitignore

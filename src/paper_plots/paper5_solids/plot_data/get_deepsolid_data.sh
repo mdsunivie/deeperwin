@@ -1,0 +1,1 @@
+git clone https://github.com/GiantElephant123/solid_simulation_data.git deepsolid_simulation_data

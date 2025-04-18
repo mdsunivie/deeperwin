@@ -4,10 +4,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 from collections import defaultdict
 import os
+import subprocess
 smoothing_window_LiH = 1000
 smoothing_window_graphene = 4000
 
 path = ""
+if not os.path.isfile("plot_data/deepsolid_simulation_data/lih_a0_34.csv"):
+    print("Downloading deepsolid data from github...")
+    subprocess.call("git clone https://github.com/GiantElephant123/solid_simulation_data.git deepsolid_simulation_data".split())
+
 
 # DeepSolid data for LiH
 all_data = []
@@ -25,12 +30,9 @@ for a in a_values:
     all_data.append(df)
 
 df_all = pd.concat(all_data, ignore_index=True)
-df_opt = df_all[df_all["type"] == "opt"].groupby("step")[["energy"]].sum().reset_index()
-df_eval = df_all[df_all["type"] == "eval"].groupby("step")[["energy"]].sum().reset_index()
-
-df_opt = df_all[df_all.type == "opt"].pivot_table(index="step", columns="a0", values="energy")
+df_opt = df_all[df_all.type == "opt"].pivot_table(index="step", columns="a0", values="energy").dropna()
 df_opt = df_opt.rolling(window=smoothing_window_LiH).mean()
-df_eval = df_all[df_all.type == "eval"].pivot_table(index="step", columns="a0", values="energy")
+df_eval = df_all[df_all.type == "eval"].pivot_table(index="step", columns="a0", values="energy").dropna()
 df_eval = df_eval.mean(axis=0)
 a_values = list(df_opt)
 df_deepsolid_mean_LiH = df_opt.mean(axis=1)

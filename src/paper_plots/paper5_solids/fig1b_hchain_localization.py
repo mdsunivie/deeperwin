@@ -6,6 +6,7 @@ from deeperwin.run_tools.geometry_database import load_geometries
 from deeperwin.utils.plotting import get_discrete_colors_from_cmap
 from typing import Iterable
 import os
+from scipy.optimize import curve_fit
 
 all_geoms = load_geometries()
 
@@ -16,6 +17,12 @@ def get_data_from_geometry(row):
     row["R"] = geom.R[1][0] - geom.R[0][0]
     row["k"] = geom.periodic.k_twist[0]
     return row
+
+
+def z_model(a, ac, c1, c2):
+    x = a - ac
+    z_high = 1 - np.exp(-c1 * x - c2 * x**2)
+    return np.where(a > ac, z_high, 0)
 
 
 # Data from DPE runs
@@ -76,11 +83,11 @@ colors_orange = get_discrete_colors_from_cmap(3, "Oranges", 0.4, 1.0)
 
 
 curves_to_plot = [
-    ("Motta (2020), AFQMC", 40, "--", "o", "black", "AFQMC, $N_\\mathrm{atoms}$=40"),
-    ("Motta (2020), DMC", 40, "dashdot", "o", "slategray", "DMC, $N_\\mathrm{atoms}$=40"),
-    ("ours_pretrain_200k", 12, "-", "none", colors_blue[0], None),
-    ("ours_pretrain_200k", 16, "-", "none", colors_blue[1], "Ours pre-train, $N_\\mathrm{atoms}$=12-20"),
-    ("ours_pretrain_200k", 20, "-", "none", colors_blue[2], None),
+    ("Motta (2020), AFQMC", 40, "-", "s", "black", "AFQMC, $N_\\mathrm{atoms}$=40"),
+    ("Motta (2020), DMC", 40, "-", "o", "slategray", "DMC, $N_\\mathrm{atoms}$=40"),
+    ("ours_pretrain_200k", 12, ":", "none", colors_blue[0], None),
+    ("ours_pretrain_200k", 16, ":", "none", colors_blue[1], "Ours pre-train, $N_\\mathrm{atoms}$=12-20"),
+    ("ours_pretrain_200k", 20, ":", "none", colors_blue[2], None),
     ("ours_reuse_200kpre_5k", 40, "-", "none", "red", "Ours fine-tune, $N_\\mathrm{atoms}$=40"),
 ]
 
@@ -101,17 +108,27 @@ for method, n_atoms, ls, marker, color, label in curves_to_plot:
         yerr = 2 * df_plot.z_sigma
     else:
         yerr = None
+
+    if n_atoms == 40:
+        popt, pcov = curve_fit(z_model, df_plot.R, df_plot.z, p0=[1.2, 1.0, 0.1], bounds=(0, np.inf))
+        print(f"{method:<20}, N={n_atoms}, ac={popt[0]:.2f} +- {np.sqrt(pcov[0][0]):.2f} a0")
+        a_fit = np.linspace(1.0, 3.6, 500)
+        ax.plot(a_fit, z_model(a_fit, *popt), color=color, ls=ls)
+    ax.errorbar([0], [0], yerr=None if yerr is None else [0], label=label, color=color, ls=ls, marker=marker, ms=4, capsize=5, capthick=1) # dummy entry for legend
+    ls = ls if n_atoms != 40 else "none"
     ax.errorbar(
-        df_plot.R, df_plot.z, yerr=yerr, label=label, color=color, ls=ls, marker=marker, ms=4, capsize=3, capthick=1
+        df_plot.R, df_plot.z, yerr=yerr, color=color, ls=ls, marker=marker, ms=4, capsize=3, capthick=1
     )
+
 
 for (x, y, text), color in zip(text_labels, colors_blue + ["red"]):
     text_box = ax.text(x, y, text, fontsize=8, ha="left", va="center", color=color)
     text_box.set_bbox(dict(facecolor="white", alpha=0.8, edgecolor="none"))
-ax.legend()
+ax.legend(loc="upper left")
 for z in [0, 1]:
     ax.axhline(z, color="gray", lw=1)
 ax.set_xlabel("$R$ / $a_0$")
+ax.set_xlim([1.0, 3.65])
 ax.set_ylabel("polarization $|z|$")
 ax.text(0, 1.0, "b", transform=ax.transAxes, ha="left", va="bottom", fontsize=16, fontweight="bold")
 
