@@ -4,13 +4,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 # Extract data
-fnames = [
-"/home/mscherbela/runs/paper5_solids/HChains/spin_correlations/SpinCorrelations_geom0080_H20_R1.2_k0.000/rho_2el_rel_200000.npz",
-"/home/mscherbela/runs/paper5_solids/HChains/spin_correlations/SpinCorrelations_geom0115_H20_R3.6_k0.000/rho_2el_rel_200000.npz",
-]
-R_values = [
-    1.2, 
-    3.6]
+fnames = ["plot_data/H20_correlations_1.2a0.npz", "plot_data/H20_correlations_3.6a0.npz"]
+R_values = [1.2, 3.6]
 n_atoms = 20
 n_pairs_diff = (n_atoms // 2) * (n_atoms // 2) * 2
 n_pairs_same = (n_atoms // 2) * (n_atoms // 2 - 1) * 2 

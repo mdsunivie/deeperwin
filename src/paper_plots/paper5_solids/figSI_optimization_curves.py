@@ -11,7 +11,7 @@ smoothing_window_graphene = 4000
 path = ""
 if not os.path.isfile("plot_data/deepsolid_simulation_data/lih_a0_34.csv"):
     print("Downloading deepsolid data from github...")
-    subprocess.call("git clone https://github.com/GiantElephant123/solid_simulation_data.git deepsolid_simulation_data".split())
+    subprocess.call("git clone https://github.com/GiantElephant123/solid_simulation_data.git plot_data/deepsolid_simulation_data".split())
 
 
 # DeepSolid data for LiH
